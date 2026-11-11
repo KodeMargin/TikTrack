@@ -147,25 +147,21 @@ export function UnifiedTimelineView() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header & Phase 2 Evidence Principles */}
-      <div className="rounded-2xl border border-indigo-500/30 bg-slate-900/80 p-5 space-y-4">
+      {/* Top Header */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700/70">
-                Milestone 2.4 • F2-001..004 & F2-030..034
-              </span>
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-700/50">
-                Zero Keystroke / Zero Source Code Exfiltration
+              <h2 className="text-lg font-semibold text-white">
+                Activity Timeline & Work Context
+              </h2>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/50">
+                Privacy-First Telemetry
               </span>
             </div>
-            <h2 className="text-lg font-bold text-white mt-1.5">
-              Unified Developer Timeline & Contextual Evidence Correlator
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5 max-w-3xl">
-              Normalizes declared work sessions, coarse 5-minute desktop/IDE activity buckets,
-              debugger/test runs, and verified GitHub commits/PRs onto a single UTC timeline.
-              Observation gaps are separated from non-billable periods and never labeled fraud.
+            <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+              Your work sessions, coarse desktop/IDE activity buckets, and GitHub deliverables
+              aligned on one timeline. Observation gaps can be explained calmly without penalty.
             </p>
           </div>
 

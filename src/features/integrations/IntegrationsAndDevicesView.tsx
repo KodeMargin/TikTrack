@@ -77,19 +77,15 @@ export function IntegrationsAndDevicesView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-2xl border border-indigo-500/30 bg-slate-900/80 p-5 space-y-3">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700/70">
-              Milestones 2.1–2.3 • F2-006..008, F2-010..026
-            </span>
-            <h2 className="text-lg font-bold text-white mt-1.5">
-              IDE Extensions, GitHub/GitLab Webhooks & Enrolled Devices
+            <h2 className="text-lg font-semibold text-white">
+              Integrations & Enrolled Devices
             </h2>
-            <p className="text-xs text-slate-400 max-w-3xl">
-              Manage least-privilege GitHub/GitLab apps, VS Code branch-to-task suggestions,
-              idempotent HMAC-SHA256 webhook ingestion, and device update channels with clock-drift
-              anomaly checks.
+            <p className="text-xs text-slate-400 mt-0.5 max-w-2xl">
+              Connect GitHub, GitLab, or your IDE extension, review branch-to-task mappings, and
+              manage enrolled devices.
             </p>
           </div>
 

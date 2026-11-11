@@ -97,19 +97,21 @@ export function TimesheetsAndReviewView() {
         </div>
       )}
 
-      {/* Role-Specific Boundary Notice (Section 1.4 & 12.4) */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 flex flex-wrap items-center justify-between gap-3">
+      {/* Page Header */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-            Milestone 1.4 • Timesheets, Five Time Concepts & Fair Review (F1-040 – F1-048)
-          </span>
-          <h2 className="text-base font-bold text-white mt-0.5">
+          <h2 className="text-lg font-semibold text-white">
             {isManagerOrOwner
-              ? 'Project Manager Timesheet Review Inbox'
+              ? 'Team Timesheet Review'
               : isFinance
-                ? 'Finance Approved Hours Ledger (Raw Workstation Evidence Redacted by RLS)'
-                : `Developer Daily & Weekly Timesheet (${activeUser.name})`}
+                ? 'Approved Billing Hours'
+                : `${activeUser.name}’s Timesheet`}
           </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {isFinance
+              ? 'Approved hours and locked contract rates only — workstation context is hidden.'
+              : 'Elapsed, claimed, observed, supported, and approved hours tracked transparently.'}
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -120,7 +122,7 @@ export function TimesheetsAndReviewView() {
                 checked={lockOnApprove}
                 onChange={(e) => setLockOnApprove(e.target.checked)}
               />
-              Lock Approved Lines (F1-047)
+              Lock on approval
             </label>
           )}
 

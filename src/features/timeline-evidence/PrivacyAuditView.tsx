@@ -71,19 +71,15 @@ export function PrivacyAuditView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-2xl border border-emerald-500/30 bg-slate-900/80 p-5 space-y-3">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/70">
-              F2-005 & F2-035 • Local Privacy Audit View
-            </span>
-            <h2 className="text-lg font-bold text-white mt-1.5">
-              Developer Privacy Audit Log & Per-App Exclusions
+            <h2 className="text-lg font-semibold text-white">
+              Privacy Controls & Audit Log
             </h2>
-            <p className="text-xs text-slate-400 max-w-3xl">
-              Inspect every exact JSON telemetry batch transmitted from your desktop agent and
-              VS Code extension, configure local privacy denylists, and toggle 1-click Personal
-              Privacy Pause.
+            <p className="text-xs text-slate-400 mt-0.5 max-w-2xl">
+              Control which apps and domains stay private on your device and inspect the exact
+              JSON batches sent from your desktop agent and IDE.
             </p>
           </div>
 

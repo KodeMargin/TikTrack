@@ -145,16 +145,16 @@ export function ProjectsTasksView({
         </div>
       )}
 
-      {/* Project Directory Bar (F1-010) */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+      {/* Project Directory Bar */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-              Milestone 1.2 • Project & Task Hierarchy Management (F1-010 – F1-016)
-            </span>
-            <h2 className="text-base font-bold text-white mt-0.5">
-              {activeTenant.name} — Scoped Engineering Projects
+            <h2 className="text-lg font-semibold text-white">
+              {activeTenant.name} Projects
             </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Organize engineering tasks, estimates, and launch focus sessions directly from a card.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">

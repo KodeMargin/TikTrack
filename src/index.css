@@ -1,17 +1,19 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* 5 Canonical Time Concept Tokens (F1-041) */
+  /* 5 Canonical Time Concept Tokens */
   --color-time-elapsed: oklch(0.64 0.04 255);
   --color-time-claimed: oklch(0.60 0.17 255);
   --color-time-observed: oklch(0.66 0.14 200);
   --color-time-supported: oklch(0.68 0.16 155);
   --color-time-approved: oklch(0.62 0.19 145);
 
-  /* 7 Evidence Status Tokens (F3-006) */
+  /* 7 Evidence Status Tokens */
   --color-status-declared: oklch(0.66 0.08 250);
   --color-status-observed: oklch(0.67 0.14 205);
   --color-status-context: oklch(0.68 0.15 170);
@@ -21,12 +23,275 @@
   --color-status-disputed: oklch(0.62 0.21 25);
 }
 
+:root {
+  color-scheme: light;
+  --dp-canvas: #f8fafc;
+  --dp-surface: #ffffff;
+  --dp-surface-subtle: #f1f5f9;
+  --dp-border: #cbd5e1;
+  --dp-text: #0f172a;
+  --dp-text-muted: #475569;
+}
+
+html.dark {
+  color-scheme: dark;
+  --dp-canvas: #090c14;
+  --dp-surface: #111623;
+  --dp-surface-subtle: #161d2e;
+  --dp-border: rgba(148, 163, 184, 0.16);
+  --dp-text: #f1f5f9;
+  --dp-text-muted: #94a3b8;
+}
+
 @layer base {
   body {
     font-family: var(--font-sans);
-    background-color: #090d16;
-    color: #f1f5f9;
+    font-optical-sizing: auto;
+    background-color: var(--dp-canvas);
+    color: var(--dp-text);
     margin: 0;
-    -webkit-font-smoothing: antialiased;
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+    transition: background-color 180ms ease, color 180ms ease;
   }
+
+  html.dark body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/*
+ * Adaptive Light Mode Surface & High-Contrast Typography Bridge
+ * Guarantees crisp readability (WCAG AA+ ink contrast) across all views.
+ */
+html:not(.dark) main .bg-slate-950,
+html:not(.dark) main .bg-slate-950\/90,
+html:not(.dark) main .bg-slate-950\/85,
+html:not(.dark) main .bg-slate-950\/80,
+html:not(.dark) main .bg-slate-950\/75,
+html:not(.dark) main .bg-slate-950\/70,
+html:not(.dark) main .bg-slate-950\/60,
+html:not(.dark) main .bg-slate-950\/50 {
+  background-color: #f8fafc;
+}
+
+html:not(.dark) main .bg-slate-900,
+html:not(.dark) main .bg-slate-900\/90,
+html:not(.dark) main .bg-slate-900\/85,
+html:not(.dark) main .bg-slate-900\/80,
+html:not(.dark) main .bg-slate-900\/75,
+html:not(.dark) main .bg-slate-900\/70,
+html:not(.dark) main .bg-slate-900\/60,
+html:not(.dark) main .bg-slate-900\/50 {
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+html:not(.dark) main .bg-slate-800,
+html:not(.dark) main .bg-slate-800\/80 {
+  background-color: #f1f5f9;
+}
+
+html:not(.dark) main .border-slate-800,
+html:not(.dark) main .border-slate-800\/90,
+html:not(.dark) main .border-slate-800\/80,
+html:not(.dark) main .border-slate-700 {
+  border-color: #cbd5e1;
+}
+
+html:not(.dark) main .text-white,
+html:not(.dark) main .text-slate-100,
+html:not(.dark) main .text-slate-200 {
+  color: #0f172a;
+}
+
+html:not(.dark) main .text-slate-300 {
+  color: #1e293b;
+}
+
+html:not(.dark) main .text-slate-400,
+html:not(.dark) main .text-slate-500 {
+  color: #475569;
+}
+
+/* Form controls in Light Mode */
+html:not(.dark) main input,
+html:not(.dark) main select,
+html:not(.dark) main textarea {
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+html:not(.dark) main input::placeholder,
+html:not(.dark) main textarea::placeholder {
+  color: #64748b;
+}
+
+/* Indigo & Purple */
+html:not(.dark) main .bg-indigo-950,
+html:not(.dark) main .bg-indigo-950\/90,
+html:not(.dark) main .bg-indigo-950\/80,
+html:not(.dark) main .bg-indigo-950\/60,
+html:not(.dark) main .bg-indigo-950\/50,
+html:not(.dark) main .bg-indigo-950\/40,
+html:not(.dark) main .bg-indigo-950\/30,
+html:not(.dark) main .bg-indigo-950\/20,
+html:not(.dark) main .bg-purple-950\/30 {
+  background-color: #eef2ff;
+}
+html:not(.dark) main .text-indigo-200,
+html:not(.dark) main .text-indigo-300,
+html:not(.dark) main .text-indigo-300\/80,
+html:not(.dark) main .text-indigo-400,
+html:not(.dark) main .text-purple-200 {
+  color: #3730a3;
+}
+html:not(.dark) main .border-indigo-700,
+html:not(.dark) main .border-indigo-700\/70,
+html:not(.dark) main .border-indigo-700\/60,
+html:not(.dark) main .border-indigo-800\/80,
+html:not(.dark) main .border-indigo-500\/30 {
+  border-color: #c7d2fe;
+}
+
+/* Emerald & Green */
+html:not(.dark) main .bg-emerald-950,
+html:not(.dark) main .bg-emerald-950\/80,
+html:not(.dark) main .bg-emerald-950\/70,
+html:not(.dark) main .bg-emerald-950\/50,
+html:not(.dark) main .bg-emerald-950\/40,
+html:not(.dark) main .bg-emerald-950\/30,
+html:not(.dark) main .bg-emerald-950\/25,
+html:not(.dark) main .bg-emerald-950\/20 {
+  background-color: #ecfdf5;
+}
+html:not(.dark) main .text-emerald-200,
+html:not(.dark) main .text-emerald-300,
+html:not(.dark) main .text-emerald-400,
+html:not(.dark) main .text-emerald-400\/80,
+html:not(.dark) main .text-green-300 {
+  color: #065f46;
+}
+html:not(.dark) main .border-emerald-700,
+html:not(.dark) main .border-emerald-800,
+html:not(.dark) main .border-emerald-800\/80,
+html:not(.dark) main .border-emerald-800\/50,
+html:not(.dark) main .border-emerald-700\/50 {
+  border-color: #a7f3d0;
+}
+
+/* Amber */
+html:not(.dark) main .bg-amber-950,
+html:not(.dark) main .bg-amber-950\/80,
+html:not(.dark) main .bg-amber-950\/40,
+html:not(.dark) main .bg-amber-950\/25,
+html:not(.dark) main .bg-amber-950\/20,
+html:not(.dark) main .bg-amber-950\/15 {
+  background-color: #fffbeb;
+}
+html:not(.dark) main .text-amber-200,
+html:not(.dark) main .text-amber-200\/80,
+html:not(.dark) main .text-amber-300,
+html:not(.dark) main .text-amber-400 {
+  color: #92400e;
+}
+html:not(.dark) main .border-amber-700,
+html:not(.dark) main .border-amber-800,
+html:not(.dark) main .border-amber-700\/60,
+html:not(.dark) main .border-amber-500\/40 {
+  border-color: #fcd34d;
+}
+
+/* Blue, Sky, Cyan & Teal */
+html:not(.dark) main .bg-blue-950\/20,
+html:not(.dark) main .bg-blue-950\/30 {
+  background-color: #eff6ff;
+}
+html:not(.dark) main .border-blue-900\/60 {
+  border-color: #bfdbfe;
+}
+html:not(.dark) main .text-blue-200,
+html:not(.dark) main .text-blue-300,
+html:not(.dark) main .text-blue-400,
+html:not(.dark) main .text-blue-400\/80 {
+  color: #1e40af;
+}
+
+html:not(.dark) main .bg-cyan-950,
+html:not(.dark) main .bg-sky-950\/20,
+html:not(.dark) main .bg-sky-950\/30 {
+  background-color: #f0f9ff;
+}
+html:not(.dark) main .border-sky-900\/60,
+html:not(.dark) main .border-cyan-700 {
+  border-color: #bae6fd;
+}
+html:not(.dark) main .text-cyan-200,
+html:not(.dark) main .text-cyan-300,
+html:not(.dark) main .text-sky-200,
+html:not(.dark) main .text-sky-300,
+html:not(.dark) main .text-sky-400,
+html:not(.dark) main .text-sky-400\/80 {
+  color: #075985;
+}
+
+html:not(.dark) main .bg-teal-950\/20,
+html:not(.dark) main .bg-teal-950\/30 {
+  background-color: #f0fdfa;
+}
+html:not(.dark) main .border-teal-900\/60 {
+  border-color: #99f6e4;
+}
+html:not(.dark) main .text-teal-200,
+html:not(.dark) main .text-teal-300,
+html:not(.dark) main .text-teal-400,
+html:not(.dark) main .text-teal-400\/80 {
+  color: #115e59;
+}
+
+/* Rose */
+html:not(.dark) main .bg-rose-950,
+html:not(.dark) main .bg-rose-950\/90,
+html:not(.dark) main .bg-rose-950\/80,
+html:not(.dark) main .bg-rose-950\/60,
+html:not(.dark) main .bg-rose-950\/40,
+html:not(.dark) main .bg-rose-950\/20 {
+  background-color: #fff1f2;
+}
+html:not(.dark) main .text-rose-200,
+html:not(.dark) main .text-rose-300,
+html:not(.dark) main .text-rose-300\/90 {
+  color: #9f1239;
+}
+html:not(.dark) main .border-rose-700,
+html:not(.dark) main .border-rose-700\/60 {
+  border-color: #fecdd3;
+}
+
+/* Preserve crisp white text on solid colored buttons in Light Mode */
+html:not(.dark) main button.bg-indigo-600,
+html:not(.dark) main button.bg-indigo-500,
+html:not(.dark) main button.bg-emerald-600,
+html:not(.dark) main button.bg-emerald-700,
+html:not(.dark) main button.bg-emerald-500,
+html:not(.dark) main button.bg-amber-600,
+html:not(.dark) main button.bg-amber-500,
+html:not(.dark) main button.bg-cyan-600,
+html:not(.dark) main button.bg-cyan-700,
+html:not(.dark) main button.bg-teal-600,
+html:not(.dark) main button.bg-teal-500,
+html:not(.dark) main button.bg-rose-600,
+html:not(.dark) main button.bg-rose-500 {
+  color: #ffffff;
+}
+
+html:not(.dark) select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+html:not(.dark) main pre {
+  background-color: #0f172a;
+  color: #e2e8f0;
 }
