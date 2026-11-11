@@ -10,6 +10,7 @@ import { prisma, checkPrismaConnection } from '../lib/prisma.ts'
 import { handleBootstrapPhase2Data } from './prismaPhase2Handlers.ts'
 import { handleBootstrapPhase3Data } from './prismaPhase3Handlers.ts'
 import { handleBootstrapPhase4Data } from './prismaPhase4Handlers.ts'
+import { handleBootstrapPhase5Data } from './prismaPhase5Handlers.ts'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -50,6 +51,7 @@ export async function handleBootstrap() {
     phase2,
     phase3,
     phase4,
+    phase5,
   ] = await Promise.all([
     prisma.tenant.findMany({
       include: {
@@ -116,6 +118,7 @@ export async function handleBootstrap() {
     handleBootstrapPhase2Data(),
     handleBootstrapPhase3Data(),
     handleBootstrapPhase4Data(),
+    handleBootstrapPhase5Data(),
   ])
 
   const taskById = new Map(dbTasks.map((t) => [t.id, t]))
@@ -313,6 +316,7 @@ export async function handleBootstrap() {
     phase2,
     phase3,
     phase4,
+    phase5,
   }
 }
 

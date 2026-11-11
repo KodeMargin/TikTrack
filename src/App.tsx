@@ -3,6 +3,7 @@ import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
 import { Phase2StoreProvider } from '@/context/Phase2Store'
 import { Phase3StoreProvider } from '@/context/Phase3Store'
 import { Phase4StoreProvider } from '@/context/Phase4Store'
+import { Phase5StoreProvider } from '@/context/Phase5Store'
 import { ThemeProvider, useTheme } from '@/context/ThemeContext'
 import { AuthAndOnboardingView } from '@/features/auth-tenancy/AuthAndOnboardingView'
 import { ProjectsTasksView } from '@/features/projects-tasks/ProjectsTasksView'
@@ -16,6 +17,7 @@ import { VerificationAndAiView } from '@/features/verification-ai/VerificationAn
 import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
 import { ClientPortalView } from '@/features/client-portal/ClientPortalView'
 import { SaasBillingAndEcosystemView } from '@/features/saas-ecosystem/SaasBillingAndEcosystemView'
+import { EnterpriseComplianceView } from '@/features/enterprise-compliance/EnterpriseComplianceView'
 import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
 import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaInspector'
 
@@ -31,6 +33,7 @@ type NavSection =
   | 'billing-admin'
   | 'client-portal'
   | 'saas-ecosystem'
+  | 'enterprise-compliance'
   | 'auth-privacy'
   | 'phase0-simulator'
 
@@ -147,6 +150,14 @@ const NAV_ITEMS: NavItem[] = [
     description: 'Plans, metering, API keys, webhooks & reports',
     group: 'admin',
     icon: <NavIcon path="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" />,
+  },
+  {
+    id: 'enterprise-compliance',
+    path: '/enterprise',
+    label: 'Enterprise & Scale',
+    description: 'SSO, SCIM, 2-person governance, holds, SIEM & DR',
+    group: 'admin',
+    icon: <NavIcon path="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-5 4v4h4v-4" />,
   },
   {
     id: 'auth-privacy',
@@ -715,6 +726,7 @@ function DevProofShell() {
           {activeSection === 'billing-admin' && <BillingAndAdminView />}
           {activeSection === 'client-portal' && <ClientPortalView />}
           {activeSection === 'saas-ecosystem' && <SaasBillingAndEcosystemView />}
+          {activeSection === 'enterprise-compliance' && <EnterpriseComplianceView />}
           {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
           {activeSection === 'phase0-simulator' && (
             <div className="space-y-8">
@@ -735,7 +747,9 @@ export function App() {
         <Phase2StoreProvider>
           <Phase3StoreProvider>
             <Phase4StoreProvider>
-              <DevProofShell />
+              <Phase5StoreProvider>
+                <DevProofShell />
+              </Phase5StoreProvider>
             </Phase4StoreProvider>
           </Phase3StoreProvider>
         </Phase2StoreProvider>

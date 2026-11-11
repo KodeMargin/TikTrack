@@ -295,3 +295,23 @@ html:not(.dark) main pre {
   background-color: #0f172a;
   color: #e2e8f0;
 }
+
+/* F5-010: WCAG AAA High-Contrast Accessibility Mode */
+html.high-contrast *:focus-visible {
+  outline: 3px solid #f59e0b !important;
+  outline-offset: 2px !important;
+}
+
+html.high-contrast.dark {
+  --dp-canvas: #000000;
+  --dp-surface: #0a0a0a;
+  --dp-border: rgba(255, 255, 255, 0.45);
+  --dp-text: #ffffff;
+}
+
+html.high-contrast:not(.dark) {
+  --dp-canvas: #ffffff;
+  --dp-surface: #ffffff;
+  --dp-border: #0f172a;
+  --dp-text: #000000;
+}

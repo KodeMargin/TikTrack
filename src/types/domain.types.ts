@@ -715,3 +715,271 @@ export interface PortableWorkReportRecord {
 
 
 
+// =============================================================================
+// Phase 5 — Enterprise, Compliance & Operational Scale (F5-001 .. F5-011)
+// =============================================================================
+
+export type SsoProviderType = 'saml' | 'oidc'
+
+export interface SsoProviderRecord {
+  id: string
+  tenantId: string
+  providerType: SsoProviderType
+  displayName: string
+  domain: string
+  entityIdOrIssuer: string
+  ssoUrl: string
+  certificateFingerprint?: string
+  clientId?: string
+  enforceSso: boolean
+  jitDefaultRole: 'developer' | 'project_manager' | 'finance' | 'client_reviewer' | 'auditor'
+  scimEnabled: boolean
+  scimTokenPrefix?: string
+  status: 'draft' | 'active' | 'disabled'
+  createdAt: string
+}
+
+export interface ScimProvisioningEventRecord {
+  id: string
+  tenantId: string
+  providerId?: string
+  action: 'user_create' | 'user_update' | 'user_deactivate' | 'group_sync'
+  externalUserId: string
+  email: string
+  targetRole: string
+  status: 'applied' | 'rejected' | 'queued'
+  correlationId: string
+  detailMessage?: string
+  occurredAtUtc: string
+}
+
+export interface PolicyChangeRequestRecord {
+  id: string
+  tenantId: string
+  proposedVersionCode: string
+  changeSummary: string
+  scopeDiff: Record<string, unknown>
+  expandsCollectionScope: boolean
+  status: 'pending_second_approval' | 'approved_activated' | 'rejected' | 'cancelled'
+  proposedBy: string
+  proposedByName?: string
+  approvedByFirst: string
+  approvedByFirstName?: string
+  approvedBySecond?: string
+  approvedBySecondName?: string
+  rejectionReason?: string
+  effectiveFrom: string
+  activatedPolicyVersionId?: string
+  createdAt: string
+  resolvedAt?: string
+}
+
+export type SensitiveAccessCategory =
+  | 'audit_export'
+  | 'policy_view'
+  | 'policy_approval'
+  | 'dispute_bundle'
+  | 'retention_run'
+  | 'legal_hold_change'
+  | 'siem_export'
+  | 'scim_sync'
+  | 'residency_change'
+  | 'dsar_request'
+
+export interface SensitiveAccessLogRecord {
+  id: string
+  tenantId: string
+  actorUserId?: string
+  actorName?: string
+  actionCategory: SensitiveAccessCategory
+  resourceType: string
+  resourceId: string
+  ipAddressMasked: string
+  correlationId: string
+  metadata: Record<string, unknown>
+  occurredAtUtc: string
+}
+
+export interface LegalHoldRecord {
+  id: string
+  tenantId: string
+  scopeType: 'timesheet' | 'dispute' | 'project' | 'user' | 'tenant'
+  targetId: string
+  reason: string
+  holdStatus: 'active' | 'released'
+  placedBy?: string
+  releasedBy?: string
+  placedAt: string
+  releasedAt?: string
+}
+
+export interface RetentionPolicyRecord {
+  id: string
+  tenantId: string
+  name: string
+  rawActivityDays: number
+  rollupDays: number
+  evidenceArtifactDays: number
+  auditLogDays: number
+  archiveStorageTier: 'supabase_cold' | 'cold_s3' | 'gcs_archive'
+  isActive: boolean
+  createdAt: string
+}
+
+export interface RetentionJobRecord {
+  id: string
+  tenantId: string
+  policyId?: string
+  jobType: 'purge_raw_events' | 'archive_rollups' | 'dsar_export' | 'dsar_erasure'
+  status: 'queued' | 'running' | 'completed' | 'partial_legal_hold' | 'failed'
+  scannedCount: number
+  purgedCount: number
+  skippedLegalHoldCount: number
+  archivedBundleUri?: string
+  executedAtUtc: string
+}
+
+export interface PrivacyRequestRecord {
+  id: string
+  tenantId: string
+  requesterUserId: string
+  requesterName?: string
+  requestType: 'export' | 'correction' | 'erasure'
+  status: 'pending' | 'in_review' | 'completed' | 'blocked_legal_hold'
+  legalHoldBlocked: boolean
+  exportDigestSha256?: string
+  resolutionNote?: string
+  createdAt: string
+  resolvedAt?: string
+}
+
+export type ResidencyRegion = 'us-east-1' | 'eu-central-1' | 'uk-south-1' | 'ap-southeast-1'
+export type FailoverRegion = 'us-west-2' | 'eu-west-1' | 'uk-west-1' | 'ap-southeast-2'
+export type IsolationTier = 'shared_rls' | 'dedicated_schema' | 'dedicated_cluster'
+
+export interface TenantResidencyConfigRecord {
+  tenantId: string
+  primaryRegion: ResidencyRegion
+  failoverRegion: FailoverRegion
+  dataResidencyLocked: boolean
+  isolationTier: IsolationTier
+  encryptionKeyMode: 'platform_kms' | 'byok_kms'
+  kmsKeyArnMasked?: string
+  dedicatedWorkerPool: boolean
+  egressAllowlistCidrs: string[]
+  updatedAt: string
+}
+
+export type SiemProvider = 'splunk' | 'datadog' | 'sentinel' | 'elastic' | 'syslog_tls'
+export type SiemFormat = 'cef' | 'json_lines' | 'ocsf'
+
+export interface SiemDestinationRecord {
+  id: string
+  tenantId: string
+  name: string
+  provider: SiemProvider
+  endpointUrl: string
+  authHeaderPrefix: string
+  format: SiemFormat
+  includeCategories: string[]
+  isActive: boolean
+  lastExportedAt?: string
+  createdAt: string
+}
+
+export interface SiemExportBatchRecord {
+  id: string
+  tenantId: string
+  destinationId: string
+  eventCount: number
+  payloadFormat: SiemFormat
+  payloadDigestSha256: string
+  deliveryStatus: 'queued' | 'delivered' | 'failed'
+  httpStatus?: number
+  sanitizedPreview: Record<string, unknown>
+  createdAt: string
+}
+
+export type FleetPlatform = 'macos_universal' | 'windows_x64' | 'windows_arm64' | 'vscode_vsix'
+export type FleetChannel = 'canary' | 'staged_25' | 'stable'
+
+export interface FleetReleaseRecord {
+  id: string
+  tenantId: string
+  version: string
+  platform: FleetPlatform
+  channel: FleetChannel
+  installerSha256: string
+  codeSigningThumbprint: string
+  notarizationStatus: 'notarized' | 'signed' | 'pending'
+  minOsVersion: string
+  rolloutPercentage: number
+  releaseNotes: string
+  isActive: boolean
+  createdAt: string
+}
+
+export type WarehouseSink =
+  | 'parquet_object_storage'
+  | 'snowflake_external'
+  | 'bigquery_load'
+  | 'duckdb_cold'
+
+export interface AnalyticsWarehouseExportRecord {
+  id: string
+  tenantId: string
+  targetSink: WarehouseSink
+  periodStart: string
+  periodEnd: string
+  rowCount: number
+  compressedBytes: number
+  objectPathUri: string
+  checksumSha256: string
+  status: 'queued' | 'exported' | 'verified'
+  createdAt: string
+}
+
+export interface DrExerciseRecord {
+  id: string
+  tenantId: string
+  exerciseType:
+    | 'backup_restore_drill'
+    | 'region_failover_tabletop'
+    | 'load_test_1000_devs'
+    | 'pen_test_remediation'
+  targetRpoMinutes: number
+  measuredRpoMinutes: number
+  targetRtoMinutes: number
+  measuredRtoMinutes: number
+  p95CrudMs: number
+  simulatedConcurrentDevs: number
+  passed: boolean
+  findingsSummary: string
+  conductedAt: string
+}
+
+export interface SecurityAssessmentRecord {
+  id: string
+  tenantId: string
+  assessmentName: string
+  assessorFirm: string
+  assessmentType: 'penetration_test' | 'rls_isolation_audit' | 'sdlc_review' | 'soc2_readiness'
+  status: 'scheduled' | 'in_progress' | 'remediating' | 'signed_off'
+  criticalFindings: number
+  highFindings: number
+  remediatedFindings: number
+  reportSha256?: string
+  assessedAt: string
+  signoffAt?: string
+}
+
+export type SupportedLocale = 'en-US' | 'en-GB' | 'de-DE' | 'fr-FR' | 'ja-JP'
+
+export interface TenantAccessibilityConfigRecord {
+  tenantId: string
+  defaultLocale: SupportedLocale
+  highContrastMode: boolean
+  keyboardShortcutsEnabled: boolean
+  wcagTargetLevel: 'AA' | 'AAA'
+  updatedAt: string
+}

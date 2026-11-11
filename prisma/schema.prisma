@@ -70,6 +70,24 @@ model Tenant {
   calendarMeetingEvents     CalendarMeetingEvent[]
   portableWorkReports       PortableWorkReport[]
 
+  // Phase 5 relations
+  ssoProviders              SsoProvider[]
+  scimProvisioningEvents    ScimProvisioningEvent[]
+  policyChangeRequests      PolicyChangeRequest[]
+  sensitiveAccessLogs       SensitiveAccessLog[]
+  legalHolds                LegalHold[]
+  retentionPolicies         RetentionPolicy[]
+  retentionJobs             RetentionJob[]
+  privacyRequests           PrivacyRequest[]
+  residencyConfig           TenantResidencyConfig?
+  siemDestinations          SiemDestination[]
+  siemExportBatches         SiemExportBatch[]
+  fleetReleases             FleetRelease[]
+  analyticsWarehouseExports AnalyticsWarehouseExport[]
+  drExercises               DrExercise[]
+  securityAssessments       SecurityAssessment[]
+  accessibilityConfig       TenantAccessibilityConfig?
+
   @@unique([id, slug])
   @@map("tenants")
 }
@@ -129,6 +147,23 @@ model UserProfile {
   connectedEcosystems    EcosystemConnector[]
   calendarMeetings       CalendarMeetingEvent[]
   portableWorkReports    PortableWorkReport[]
+
+  // Phase 5 relations
+  createdSsoProviders        SsoProvider[]
+  proposedPolicyChanges      PolicyChangeRequest[]      @relation("PolicyChangeProposer")
+  firstApprovedPolicyChanges PolicyChangeRequest[]      @relation("PolicyChangeFirstApprover")
+  secondApprovedPolicyChanges PolicyChangeRequest[]     @relation("PolicyChangeSecondApprover")
+  sensitiveAccessLogs        SensitiveAccessLog[]
+  placedLegalHolds           LegalHold[]                @relation("LegalHoldPlacer")
+  releasedLegalHolds         LegalHold[]                @relation("LegalHoldReleaser")
+  createdRetentionPolicies   RetentionPolicy[]
+  executedRetentionJobs      RetentionJob[]
+  privacyRequests            PrivacyRequest[]
+  updatedResidencyConfigs    TenantResidencyConfig[]
+  createdSiemDestinations    SiemDestination[]
+  publishedFleetReleases     FleetRelease[]
+  triggeredWarehouseExports  AnalyticsWarehouseExport[]
+  conductedDrExercises       DrExercise[]
 
   @@map("user_profiles")
 }
@@ -199,10 +234,11 @@ model PolicyVersion {
   publishedBy     String?  @map("published_by") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  publishedByUser UserProfile?    @relation(fields: [publishedBy], references: [id])
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  publishedByUser UserProfile?          @relation(fields: [publishedBy], references: [id])
   consents        PolicyConsent[]
   workSessions    WorkSession[]
+  changeRequests  PolicyChangeRequest[]
 
   @@unique([tenantId, versionCode])
   @@unique([id, tenantId])
@@ -1388,3 +1424,346 @@ model PortableWorkReport {
   @@map("portable_work_reports")
 }
 
+
+// -----------------------------------------------------------------------------
+// 9. Phase 5 — Enterprise SSO, SCIM, Two-Person Policy Governance,
+//    Legal Holds, Retention, Data Residency, SIEM, Fleet, Warehouse, DR & A11y (0014–0016)
+// -----------------------------------------------------------------------------
+
+model SsoProvider {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String   @map("tenant_id") @db.Uuid
+  providerType           String   @map("provider_type")
+  displayName            String   @map("display_name")
+  domain                 String
+  entityIdOrIssuer       String   @map("entity_id_or_issuer")
+  ssoUrl                 String   @map("sso_url")
+  certificateFingerprint String?  @map("certificate_fingerprint")
+  clientId               String?  @map("client_id")
+  enforceSso             Boolean  @default(false) @map("enforce_sso")
+  jitDefaultRole         String   @default("developer") @map("jit_default_role")
+  scimEnabled            Boolean  @default(false) @map("scim_enabled")
+  scimTokenPrefix        String?  @map("scim_token_prefix")
+  scimTokenHashSha256    String?  @map("scim_token_hash_sha256")
+  status                 String   @default("draft")
+  createdBy              String?  @map("created_by") @db.Uuid
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser UserProfile?            @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  scimEvents    ScimProvisioningEvent[]
+
+  @@unique([tenantId, domain])
+  @@index([tenantId, status], map: "idx_sso_providers_tenant_status")
+  @@map("sso_providers")
+}
+
+model ScimProvisioningEvent {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  providerId     String?  @map("provider_id") @db.Uuid
+  action         String
+  externalUserId String   @map("external_user_id")
+  email          String
+  targetRole     String   @map("target_role")
+  status         String   @default("applied")
+  correlationId  String   @map("correlation_id")
+  detailMessage  String?  @map("detail_message")
+  occurredAtUtc  DateTime @default(now()) @map("occurred_at_utc") @db.Timestamptz(6)
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider SsoProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, occurredAtUtc(sort: Desc)], map: "idx_scim_provisioning_events_tenant")
+  @@map("scim_provisioning_events")
+}
+
+model PolicyChangeRequest {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                 String    @map("tenant_id") @db.Uuid
+  proposedVersionCode      String    @map("proposed_version_code")
+  changeSummary            String    @map("change_summary")
+  scopeDiff                Json      @default("{}") @map("scope_diff")
+  expandsCollectionScope   Boolean   @default(true) @map("expands_collection_scope")
+  status                   String    @default("pending_second_approval")
+  proposedBy               String    @map("proposed_by") @db.Uuid
+  approvedByFirst          String    @map("approved_by_first") @db.Uuid
+  approvedBySecond         String?   @map("approved_by_second") @db.Uuid
+  rejectionReason          String?   @map("rejection_reason")
+  effectiveFrom            DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  activatedPolicyVersionId String?   @map("activated_policy_version_id") @db.Uuid
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  resolvedAt               DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  tenant                 Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  proposer               UserProfile    @relation("PolicyChangeProposer", fields: [proposedBy], references: [id], onDelete: Restrict)
+  firstApprover          UserProfile    @relation("PolicyChangeFirstApprover", fields: [approvedByFirst], references: [id], onDelete: Restrict)
+  secondApprover         UserProfile?   @relation("PolicyChangeSecondApprover", fields: [approvedBySecond], references: [id], onDelete: Restrict)
+  activatedPolicyVersion PolicyVersion? @relation(fields: [activatedPolicyVersionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, createdAt(sort: Desc)], map: "idx_policy_change_requests_tenant_status")
+  @@map("policy_change_requests")
+}
+
+model SensitiveAccessLog {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  actorUserId     String?  @map("actor_user_id") @db.Uuid
+  actionCategory  String   @map("action_category")
+  resourceType    String   @map("resource_type")
+  resourceId      String   @map("resource_id")
+  ipAddressMasked String   @default("0.0.0.0/0") @map("ip_address_masked")
+  correlationId   String   @map("correlation_id")
+  metadata        Json     @default("{}")
+  occurredAtUtc   DateTime @default(now()) @map("occurred_at_utc") @db.Timestamptz(6)
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser UserProfile? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, occurredAtUtc(sort: Desc)], map: "idx_sensitive_access_logs_tenant")
+  @@map("sensitive_access_logs")
+}
+
+model LegalHold {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  scopeType  String    @map("scope_type")
+  targetId   String    @map("target_id")
+  reason     String
+  holdStatus String    @default("active") @map("hold_status")
+  placedBy   String?   @map("placed_by") @db.Uuid
+  releasedBy String?   @map("released_by") @db.Uuid
+  placedAt   DateTime  @default(now()) @map("placed_at") @db.Timestamptz(6)
+  releasedAt DateTime? @map("released_at") @db.Timestamptz(6)
+
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  placedByUser   UserProfile? @relation("LegalHoldPlacer", fields: [placedBy], references: [id], onDelete: SetNull)
+  releasedByUser UserProfile? @relation("LegalHoldReleaser", fields: [releasedBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, holdStatus, scopeType], map: "idx_legal_holds_tenant_active")
+  @@map("legal_holds")
+}
+
+model RetentionPolicy {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String   @map("tenant_id") @db.Uuid
+  name                 String
+  rawActivityDays      Int      @default(90) @map("raw_activity_days")
+  rollupDays           Int      @default(365) @map("rollup_days")
+  evidenceArtifactDays Int      @default(730) @map("evidence_artifact_days")
+  auditLogDays         Int      @default(2555) @map("audit_log_days")
+  archiveStorageTier   String   @default("supabase_cold") @map("archive_storage_tier")
+  isActive             Boolean  @default(true) @map("is_active")
+  createdBy            String?  @map("created_by") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser UserProfile?   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  jobs          RetentionJob[]
+
+  @@unique([tenantId, name])
+  @@map("retention_policies")
+}
+
+model RetentionJob {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String   @map("tenant_id") @db.Uuid
+  policyId              String?  @map("policy_id") @db.Uuid
+  jobType               String   @map("job_type")
+  status                String   @default("completed")
+  scannedCount          Int      @default(0) @map("scanned_count")
+  purgedCount           Int      @default(0) @map("purged_count")
+  skippedLegalHoldCount Int      @default(0) @map("skipped_legal_hold_count")
+  archivedBundleUri     String?  @map("archived_bundle_uri")
+  executedBy            String?  @map("executed_by") @db.Uuid
+  executedAtUtc         DateTime @default(now()) @map("executed_at_utc") @db.Timestamptz(6)
+
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  policy         RetentionPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  executedByUser UserProfile?     @relation(fields: [executedBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, executedAtUtc(sort: Desc)], map: "idx_retention_jobs_tenant_exec")
+  @@map("retention_jobs")
+}
+
+model PrivacyRequest {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  requesterUserId    String    @map("requester_user_id") @db.Uuid
+  requestType        String    @map("request_type")
+  status             String    @default("pending")
+  legalHoldBlocked   Boolean   @default(false) @map("legal_hold_blocked")
+  exportDigestSha256 String?   @map("export_digest_sha256")
+  resolutionNote     String?   @map("resolution_note")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  resolvedAt         DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requester UserProfile @relation(fields: [requesterUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, requesterUserId, createdAt(sort: Desc)], map: "idx_privacy_requests_tenant_user")
+  @@map("privacy_requests")
+}
+
+model TenantResidencyConfig {
+  tenantId            String   @id @map("tenant_id") @db.Uuid
+  primaryRegion       String   @default("us-east-1") @map("primary_region")
+  failoverRegion      String   @default("us-west-2") @map("failover_region")
+  dataResidencyLocked Boolean  @default(false) @map("data_residency_locked")
+  isolationTier       String   @default("shared_rls") @map("isolation_tier")
+  encryptionKeyMode   String   @default("platform_kms") @map("encryption_key_mode")
+  kmsKeyArnMasked     String?  @map("kms_key_arn_masked")
+  dedicatedWorkerPool Boolean  @default(false) @map("dedicated_worker_pool")
+  egressAllowlistCidrs String[] @default([]) @map("egress_allowlist_cidrs")
+  updatedBy           String?  @map("updated_by") @db.Uuid
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  updatedByUser UserProfile? @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("tenant_residency_configs")
+}
+
+model SiemDestination {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  name                String
+  provider            String
+  endpointUrl         String    @map("endpoint_url")
+  authHeaderPrefix    String    @default("Bearer") @map("auth_header_prefix")
+  authTokenHashSha256 String    @map("auth_token_hash_sha256")
+  format              String    @default("json_lines")
+  includeCategories   String[]  @default(["auth", "policy", "dispute", "retention", "export"]) @map("include_categories")
+  isActive            Boolean   @default(true) @map("is_active")
+  lastExportedAt      DateTime? @map("last_exported_at") @db.Timestamptz(6)
+  createdBy           String?   @map("created_by") @db.Uuid
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser UserProfile?      @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  exportBatches SiemExportBatch[]
+
+  @@index([tenantId, isActive], map: "idx_siem_destinations_tenant")
+  @@map("siem_destinations")
+}
+
+model SiemExportBatch {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  destinationId       String   @map("destination_id") @db.Uuid
+  eventCount          Int      @default(0) @map("event_count")
+  payloadFormat       String   @map("payload_format")
+  payloadDigestSha256 String   @map("payload_digest_sha256")
+  deliveryStatus      String   @default("delivered") @map("delivery_status")
+  httpStatus          Int?     @default(200) @map("http_status")
+  sanitizedPreview    Json     @default("{}") @map("sanitized_preview")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  destination SiemDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_siem_export_batches_tenant")
+  @@map("siem_export_batches")
+}
+
+model FleetRelease {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String   @map("tenant_id") @db.Uuid
+  version               String
+  platform              String
+  channel               String   @default("staged_25")
+  installerSha256       String   @map("installer_sha256")
+  codeSigningThumbprint String   @map("code_signing_thumbprint")
+  notarizationStatus    String   @default("notarized") @map("notarization_status")
+  minOsVersion          String   @default("macOS 14 / Win 11") @map("min_os_version")
+  rolloutPercentage     Int      @default(25) @map("rollout_percentage")
+  releaseNotes          String   @default("") @map("release_notes")
+  isActive              Boolean  @default(true) @map("is_active")
+  publishedBy           String?  @map("published_by") @db.Uuid
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  publishedByUser UserProfile? @relation(fields: [publishedBy], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, platform, version])
+  @@index([tenantId, isActive, createdAt(sort: Desc)], map: "idx_fleet_releases_tenant_active")
+  @@map("fleet_releases")
+}
+
+model AnalyticsWarehouseExport {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  targetSink      String   @map("target_sink")
+  periodStart     DateTime @map("period_start") @db.Date
+  periodEnd       DateTime @map("period_end") @db.Date
+  rowCount        Int      @default(0) @map("row_count")
+  compressedBytes BigInt   @default(0) @map("compressed_bytes")
+  objectPathUri   String   @map("object_path_uri")
+  checksumSha256  String   @map("checksum_sha256")
+  status          String   @default("exported")
+  triggeredBy     String?  @map("triggered_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  triggeredByUser UserProfile? @relation(fields: [triggeredBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_analytics_warehouse_exports_tenant")
+  @@map("analytics_warehouse_exports")
+}
+
+model DrExercise {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String   @map("tenant_id") @db.Uuid
+  exerciseType            String   @map("exercise_type")
+  targetRpoMinutes        Int      @default(15) @map("target_rpo_minutes")
+  measuredRpoMinutes      Int      @default(5) @map("measured_rpo_minutes")
+  targetRtoMinutes        Int      @default(60) @map("target_rto_minutes")
+  measuredRtoMinutes      Int      @default(22) @map("measured_rto_minutes")
+  p95CrudMs               Int      @default(145) @map("p95_crud_ms")
+  simulatedConcurrentDevs Int      @default(1000) @map("simulated_concurrent_devs")
+  passed                  Boolean  @default(true)
+  findingsSummary         String   @map("findings_summary")
+  conductedBy             String?  @map("conducted_by") @db.Uuid
+  conductedAt             DateTime @default(now()) @map("conducted_at") @db.Timestamptz(6)
+
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conductedByUser UserProfile? @relation(fields: [conductedBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, conductedAt(sort: Desc)], map: "idx_dr_exercises_tenant")
+  @@map("dr_exercises")
+}
+
+model SecurityAssessment {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  assessmentName     String    @map("assessment_name")
+  assessorFirm       String    @map("assessor_firm")
+  assessmentType     String    @map("assessment_type")
+  status             String    @default("remediating")
+  criticalFindings   Int       @default(0) @map("critical_findings")
+  highFindings       Int       @default(0) @map("high_findings")
+  remediatedFindings Int       @default(0) @map("remediated_findings")
+  reportSha256       String?   @map("report_sha256")
+  assessedAt         DateTime  @default(now()) @map("assessed_at") @db.Timestamptz(6)
+  signoffAt          DateTime? @map("signoff_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, assessedAt(sort: Desc)], map: "idx_security_assessments_tenant")
+  @@map("security_assessments")
+}
+
+model TenantAccessibilityConfig {
+  tenantId                 String   @id @map("tenant_id") @db.Uuid
+  defaultLocale            String   @default("en-US") @map("default_locale")
+  highContrastMode         Boolean  @default(false) @map("high_contrast_mode")
+  keyboardShortcutsEnabled Boolean  @default(true) @map("keyboard_shortcuts_enabled")
+  wcagTargetLevel          String   @default("AA") @map("wcag_target_level")
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_accessibility_configs")
+}
