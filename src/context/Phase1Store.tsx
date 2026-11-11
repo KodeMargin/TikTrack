@@ -37,6 +37,7 @@ import {
   type PrismaConnectionStatus,
   type PrismaPhase2BootstrapPayload,
   type PrismaPhase3BootstrapPayload,
+  type PrismaPhase4BootstrapPayload,
 } from '@/lib/prismaApiClient'
 
 export interface PolicyVersionRecord {
@@ -57,6 +58,7 @@ export interface TenantWorkspace {
   roundingRule: RoundingRule
   paidBreakMinutesPerDay: number
   weeklyCapMinutes: number
+  brandingConfig?: Record<string, unknown>
   policyVersion: string
   policyVersions?: PolicyVersionRecord[]
 }
@@ -315,6 +317,9 @@ interface Phase1StoreContextValue {
   hasWorkspace: boolean
   phase2Bootstrap: PrismaPhase2BootstrapPayload | null
   phase3Bootstrap: PrismaPhase3BootstrapPayload | null
+  phase4Bootstrap: PrismaPhase4BootstrapPayload | null
+  setTenantPlanTierState: (tenantId: string, planTier: TenantWorkspace['planTier']) => void
+  setTenantBrandingState: (tenantId: string, brandingConfig: Record<string, unknown>) => void
   refreshPrismaConnection: () => Promise<void>
 }
 
@@ -409,6 +414,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     useState<PrismaPhase2BootstrapPayload | null>(null)
   const [phase3Bootstrap, setPhase3Bootstrap] =
     useState<PrismaPhase3BootstrapPayload | null>(null)
+  const [phase4Bootstrap, setPhase4Bootstrap] =
+    useState<PrismaPhase4BootstrapPayload | null>(null)
   const [bootstrapLoaded, setBootstrapLoaded] = useState(false)
   const [prismaStatus, setPrismaStatus] = useState<PrismaConnectionStatus>({
     connected: false,
@@ -449,6 +456,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       }
       setPhase2Bootstrap(payload.phase2 ?? null)
       setPhase3Bootstrap(payload.phase3 ?? null)
+      setPhase4Bootstrap(payload.phase4 ?? null)
     } else {
       setTenants([])
       setMembers([])
@@ -461,6 +469,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       setContractPolicy(EMPTY_CONTRACT_POLICY)
       setPhase2Bootstrap(null)
       setPhase3Bootstrap(null)
+      setPhase4Bootstrap(null)
     }
 
     setBootstrapLoaded(true)
@@ -1755,6 +1764,17 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         hasWorkspace,
         phase2Bootstrap,
         phase3Bootstrap,
+        phase4Bootstrap,
+        setTenantPlanTierState: (tenantId, planTier) => {
+          setTenants((prev) =>
+            prev.map((t) => (t.id === tenantId ? { ...t, planTier } : t))
+          )
+        },
+        setTenantBrandingState: (tenantId, brandingConfig) => {
+          setTenants((prev) =>
+            prev.map((t) => (t.id === tenantId ? { ...t, brandingConfig } : t))
+          )
+        },
         refreshPrismaConnection,
       }}
     >

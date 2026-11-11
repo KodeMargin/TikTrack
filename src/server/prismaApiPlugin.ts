@@ -33,6 +33,17 @@ import {
   handlePublishRuleSetPrisma,
   handleToggleTenantAiPrisma,
 } from './prismaPhase3Handlers.ts'
+import {
+  handleCheckoutSubscriptionPrisma,
+  handleCreateApiKeyPrisma,
+  handleCreatePortableReportPrisma,
+  handleCreateWebhookEndpointPrisma,
+  handleDispatchWebhookDeliveryPrisma,
+  handleRevokeApiKeyPrisma,
+  handleSyncCalendarMeetingPrisma,
+  handleUpdateBrandingPrisma,
+  handleUpsertConnectorPrisma,
+} from './prismaPhase4Handlers.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -539,6 +550,51 @@ export function prismaSupabaseApiPlugin(): Plugin {
             if (req.method === 'POST' && url.startsWith('/api/prisma/phase3/disputes')) {
               const body = await readJsonBody<Parameters<typeof handleOpenDisputePrisma>[0]>(req)
               return sendJson(res, 201, await handleOpenDisputePrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/subscription/checkout')) {
+              const body = await readJsonBody<Parameters<typeof handleCheckoutSubscriptionPrisma>[0]>(req)
+              return sendJson(res, 200, await handleCheckoutSubscriptionPrisma(body))
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase4/branding')) {
+              const body = await readJsonBody<Parameters<typeof handleUpdateBrandingPrisma>[0]>(req)
+              return sendJson(res, 200, await handleUpdateBrandingPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/api-keys/revoke')) {
+              const body = await readJsonBody<Parameters<typeof handleRevokeApiKeyPrisma>[0]>(req)
+              return sendJson(res, 200, await handleRevokeApiKeyPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/api-keys')) {
+              const body = await readJsonBody<Parameters<typeof handleCreateApiKeyPrisma>[0]>(req)
+              return sendJson(res, 201, await handleCreateApiKeyPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/webhooks/deliver')) {
+              const body = await readJsonBody<Parameters<typeof handleDispatchWebhookDeliveryPrisma>[0]>(req)
+              return sendJson(res, 201, await handleDispatchWebhookDeliveryPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/webhooks')) {
+              const body = await readJsonBody<Parameters<typeof handleCreateWebhookEndpointPrisma>[0]>(req)
+              return sendJson(res, 201, await handleCreateWebhookEndpointPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/connectors')) {
+              const body = await readJsonBody<Parameters<typeof handleUpsertConnectorPrisma>[0]>(req)
+              return sendJson(res, 200, await handleUpsertConnectorPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/calendar-sync')) {
+              const body = await readJsonBody<Parameters<typeof handleSyncCalendarMeetingPrisma>[0]>(req)
+              return sendJson(res, 201, await handleSyncCalendarMeetingPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/portable-reports')) {
+              const body = await readJsonBody<Parameters<typeof handleCreatePortableReportPrisma>[0]>(req)
+              return sendJson(res, 201, await handleCreatePortableReportPrisma(body))
             }
 
             return sendJson(res, 404, { error: 'Unknown Prisma API endpoint' })

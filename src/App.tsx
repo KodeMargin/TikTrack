@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
 import { Phase2StoreProvider } from '@/context/Phase2Store'
 import { Phase3StoreProvider } from '@/context/Phase3Store'
+import { Phase4StoreProvider } from '@/context/Phase4Store'
 import { ThemeProvider, useTheme } from '@/context/ThemeContext'
 import { AuthAndOnboardingView } from '@/features/auth-tenancy/AuthAndOnboardingView'
 import { ProjectsTasksView } from '@/features/projects-tasks/ProjectsTasksView'
@@ -13,6 +14,8 @@ import { PrivacyAuditView } from '@/features/timeline-evidence/PrivacyAuditView'
 import { IntegrationsAndDevicesView } from '@/features/integrations/IntegrationsAndDevicesView'
 import { VerificationAndAiView } from '@/features/verification-ai/VerificationAndAiView'
 import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
+import { ClientPortalView } from '@/features/client-portal/ClientPortalView'
+import { SaasBillingAndEcosystemView } from '@/features/saas-ecosystem/SaasBillingAndEcosystemView'
 import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
 import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaInspector'
 
@@ -26,6 +29,8 @@ type NavSection =
   | 'integrations-devices'
   | 'privacy-audit'
   | 'billing-admin'
+  | 'client-portal'
+  | 'saas-ecosystem'
   | 'auth-privacy'
   | 'phase0-simulator'
 
@@ -123,9 +128,25 @@ const NAV_ITEMS: NavItem[] = [
     id: 'billing-admin',
     path: '/billing',
     label: 'Billing & Rates',
-    description: 'Contracts, rate cards & invoices',
+    description: 'Contracts, rate cards & client invoices',
     group: 'admin',
     icon: <NavIcon path="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3Z" />,
+  },
+  {
+    id: 'client-portal',
+    path: '/portal',
+    label: 'Client Portal',
+    description: 'Read-only approved hours & deliverables',
+    group: 'workspace',
+    icon: <NavIcon path="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 0c-2.5 4.5-6 6-9 6s-6.5-1.5-9-6c2.5-4.5 6-6 9-6s6.5 1.5 9 6Z" />,
+  },
+  {
+    id: 'saas-ecosystem',
+    path: '/ecosystem',
+    label: 'SaaS & Ecosystem',
+    description: 'Plans, metering, API keys, webhooks & reports',
+    group: 'admin',
+    icon: <NavIcon path="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" />,
   },
   {
     id: 'auth-privacy',
@@ -692,6 +713,8 @@ function DevProofShell() {
           {activeSection === 'integrations-devices' && <IntegrationsAndDevicesView />}
           {activeSection === 'privacy-audit' && <PrivacyAuditView />}
           {activeSection === 'billing-admin' && <BillingAndAdminView />}
+          {activeSection === 'client-portal' && <ClientPortalView />}
+          {activeSection === 'saas-ecosystem' && <SaasBillingAndEcosystemView />}
           {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
           {activeSection === 'phase0-simulator' && (
             <div className="space-y-8">
@@ -711,7 +734,9 @@ export function App() {
       <Phase1StoreProvider>
         <Phase2StoreProvider>
           <Phase3StoreProvider>
-            <DevProofShell />
+            <Phase4StoreProvider>
+              <DevProofShell />
+            </Phase4StoreProvider>
           </Phase3StoreProvider>
         </Phase2StoreProvider>
       </Phase1StoreProvider>

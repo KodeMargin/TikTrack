@@ -472,4 +472,246 @@ export interface DisputeRecord {
   messages: DisputeMessageRecord[]
 }
 
+// -----------------------------------------------------------------------------
+// Phase 4 Domain Types (F4-001..F4-013)
+// -----------------------------------------------------------------------------
+
+export type SaasPlanTier = 'starter' | 'team' | 'agency' | 'enterprise'
+
+export type SubscriptionStatus =
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'canceled'
+  | 'grace_period'
+
+export type BillingProvider = 'stripe' | 'paddle' | 'manual'
+
+export interface PlanCatalogSpec {
+  planTier: SaasPlanTier
+  displayName: string
+  tagline: string
+  maxSeats: number
+  maxActiveProjects: number
+  retentionDays: number
+  monthlyEventQuota: number
+  monthlyAiTokenQuota: number
+  storageQuotaMb: number
+  apiRateLimitPerMin: number
+  githubIdeEnabled: boolean
+  clientPortalEnabled: boolean
+  aiAssistanceAvailable: boolean
+  outboundWebhooksEnabled: boolean
+  accountingConnectorsEnabled: boolean
+  externalPmEnabled: boolean
+  whiteLabelEnabled: boolean
+  baseMonthlyPriceCents: number
+  perSeatPriceCents: number
+}
+
+export interface SubscriptionAccountRecord {
+  id: string
+  tenantId: string
+  planTier: SaasPlanTier
+  billingProvider: BillingProvider
+  providerCustomerId?: string
+  providerSubscriptionId?: string
+  status: SubscriptionStatus
+  billingCycle: 'monthly' | 'annual'
+  trialEndsAt?: string
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  cancelAtPeriodEnd: boolean
+  seatLimitOverride?: number
+}
+
+export interface SaasSubscriptionInvoiceRecord {
+  id: string
+  tenantId: string
+  subscriptionAccountId: string
+  invoiceNumber: string
+  billingPeriodLabel: string
+  planTier: SaasPlanTier
+  seatsBilled: number
+  unitPriceCents: number
+  subtotalCents: number
+  taxCents: number
+  totalCents: number
+  currency: string
+  status: 'draft' | 'open' | 'paid' | 'void'
+  providerInvoiceId?: string
+  issuedAt: string
+  paidAt?: string
+}
+
+export interface UsageRecordSnapshot {
+  id: string
+  tenantId: string
+  metricDate: string
+  activeSeats: number
+  activeProjects: number
+  activityEventsCount: number
+  storageBytes: number
+  aiTokensUsed: number
+  apiRequestsCount: number
+  webhookDeliveriesCount: number
+}
+
+export interface QuotaMetricStatus {
+  key: 'seats' | 'projects' | 'events' | 'ai_tokens' | 'storage_mb'
+  label: string
+  used: number
+  limit: number
+  percent: number
+  state: 'healthy' | 'warning_80' | 'overage_graceful'
+  gracefulBehavior: string
+}
+
+export interface QuotaEvaluationReport {
+  planTier: SaasPlanTier
+  coreTimeTrackingAllowed: true
+  aiLlmAllowed: boolean
+  highFreqTelemetryMode: 'full' | 'sampled_graceful'
+  alerts: string[]
+  metrics: QuotaMetricStatus[]
+}
+
+export interface WhiteLabelBrandingConfig {
+  agencyBrandName: string
+  logoText: string
+  accentColorHex: string
+  customDomain: string
+  supportEmail: string
+  portalWelcomeMessage: string
+  hideDevProofWatermark: boolean
+}
+
+export type PublicApiScope =
+  | 'projects:read'
+  | 'tasks:read'
+  | 'tasks:write'
+  | 'timesheets:read'
+  | 'invoices:read'
+  | 'webhooks:manage'
+
+export interface ApiKeyRecord {
+  id: string
+  tenantId: string
+  name: string
+  keyPrefix: string
+  keyHashSha256: string
+  scopes: PublicApiScope[]
+  rateLimitPerMin: number
+  lastUsedAt?: string
+  expiresAt?: string
+  revokedAt?: string
+  createdAt: string
+}
+
+export type OutboundWebhookEventType =
+  | 'timesheet.approved'
+  | 'dispute.opened'
+  | 'dispute.resolved'
+  | 'invoice.finalized'
+  | 'usage.threshold_reached'
+
+export interface OutboundWebhookEndpointRecord {
+  id: string
+  tenantId: string
+  name: string
+  targetUrl: string
+  signingSecretPrefix: string
+  subscribedEvents: OutboundWebhookEventType[]
+  isActive: boolean
+  createdAt: string
+}
+
+export interface OutboundWebhookDeliveryRecord {
+  id: string
+  tenantId: string
+  endpointId: string
+  eventType: OutboundWebhookEventType
+  eventId: string
+  signatureHeader: string
+  deliveryStatus: 'pending' | 'delivered' | 'retrying' | 'failed'
+  httpStatus?: number
+  attemptCount: number
+  responseSnippet?: string
+  createdAt: string
+}
+
+export type EcosystemConnectorCategory = 'calendar' | 'accounting' | 'external_pm'
+
+export type EcosystemConnectorProvider =
+  | 'google_calendar'
+  | 'outlook_calendar'
+  | 'xero'
+  | 'quickbooks'
+  | 'jira'
+  | 'linear'
+  | 'trello'
+  | 'azure_devops'
+
+export interface EcosystemConnectorRecord {
+  id: string
+  tenantId: string
+  category: EcosystemConnectorCategory
+  provider: EcosystemConnectorProvider
+  displayName: string
+  status: 'connected' | 'paused' | 'disconnected'
+  syncConfig: Record<string, string | number | boolean>
+  lastSyncedAt?: string
+  createdAt: string
+}
+
+export interface CalendarMeetingEventRecord {
+  id: string
+  tenantId: string
+  userId: string
+  projectId?: string
+  taskId?: string
+  connectorId?: string
+  externalEventId: string
+  meetingTitleSanitized: string
+  startedAtUtc: string
+  endedAtUtc: string
+  durationMinutes: number
+  associatedSegmentId?: string
+  syncPermissionScope: 'metadata_only' | 'title_and_duration'
+}
+
+export interface ProjectForecastSummary {
+  projectId: string
+  projectCode: string
+  projectName: string
+  clientName: string
+  estimatedMinutes: number
+  approvedMinutes: number
+  claimedMinutes: number
+  unreviewedExposureMinutes: number
+  unreviewedExposureAmount: number
+  approvedSpendAmount: number
+  projectedRemainingCost: number
+  estimateAccuracyPercent: number
+  riskLevel: 'on_track' | 'watch' | 'over_estimate'
+}
+
+export interface PortableWorkReportRecord {
+  id: string
+  tenantId: string
+  developerUserId: string
+  developerName: string
+  reportTitle: string
+  periodStart: string
+  periodEnd: string
+  totalApprovedMinutes: number
+  totalSupportedMinutes: number
+  deliverablesCount: number
+  payloadDigestSha256: string
+  signatureHmacSha256: string
+  reportPayload: Record<string, unknown>
+  createdAt: string
+}
+
+
 

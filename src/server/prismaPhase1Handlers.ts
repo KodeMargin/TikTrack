@@ -9,6 +9,7 @@
 import { prisma, checkPrismaConnection } from '../lib/prisma.ts'
 import { handleBootstrapPhase2Data } from './prismaPhase2Handlers.ts'
 import { handleBootstrapPhase3Data } from './prismaPhase3Handlers.ts'
+import { handleBootstrapPhase4Data } from './prismaPhase4Handlers.ts'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -48,6 +49,7 @@ export async function handleBootstrap() {
     dbAudits,
     phase2,
     phase3,
+    phase4,
   ] = await Promise.all([
     prisma.tenant.findMany({
       include: {
@@ -113,6 +115,7 @@ export async function handleBootstrap() {
     }),
     handleBootstrapPhase2Data(),
     handleBootstrapPhase3Data(),
+    handleBootstrapPhase4Data(),
   ])
 
   const taskById = new Map(dbTasks.map((t) => [t.id, t]))
@@ -134,6 +137,7 @@ export async function handleBootstrap() {
         | 'nearest_15m',
       paidBreakMinutesPerDay: t.settings?.paidBreakAllowanceMinutes ?? 15,
       weeklyCapMinutes: t.settings?.weeklyCapMinutes ?? 2400,
+      brandingConfig: (t.settings?.brandingConfig ?? {}) as Record<string, unknown>,
       policyVersion: t.policyVersions[0]?.versionCode ?? 'v1.0-2026-11',
       policyVersions: t.policyVersions.map((pv) => ({
         id: pv.id,
@@ -308,6 +312,7 @@ export async function handleBootstrap() {
     })),
     phase2,
     phase3,
+    phase4,
   }
 }
 

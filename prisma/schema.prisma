@@ -59,6 +59,17 @@ model Tenant {
   evidenceCorrelationEdges  EvidenceCorrelationEdge[]
   aiGenerations             AiGeneration[]
 
+  // Phase 4 relations
+  subscriptionAccount       SubscriptionAccount?
+  saasSubscriptionInvoices  SaasSubscriptionInvoice[]
+  usageRecords              UsageRecord[]
+  apiKeys                   ApiKey[]
+  outboundWebhookEndpoints  OutboundWebhookEndpoint[]
+  outboundWebhookDeliveries OutboundWebhookDelivery[]
+  ecosystemConnectors       EcosystemConnector[]
+  calendarMeetingEvents     CalendarMeetingEvent[]
+  portableWorkReports       PortableWorkReport[]
+
   @@unique([id, slug])
   @@map("tenants")
 }
@@ -111,6 +122,13 @@ model UserProfile {
   approvedAiDrafts    AiGeneration[]         @relation("AiGenerationApprover")
   assignedDisputes    Dispute[]              @relation("DisputeAssignedReviewer")
   escalatedDisputes   Dispute[]              @relation("DisputeEscalatedReviewer")
+
+  // Phase 4 relations
+  createdApiKeys         ApiKey[]
+  createdWebhookEndpoints OutboundWebhookEndpoint[]
+  connectedEcosystems    EcosystemConnector[]
+  calendarMeetings       CalendarMeetingEvent[]
+  portableWorkReports    PortableWorkReport[]
 
   @@map("user_profiles")
 }
@@ -280,6 +298,7 @@ model Project {
   repositoryLinks          RepositoryLink[]
   evidenceArtifacts        EvidenceArtifact[]
   evidenceCorrelationEdges EvidenceCorrelationEdge[]
+  calendarMeetingEvents    CalendarMeetingEvent[]
 
   @@unique([tenantId, code])
   @@unique([id, tenantId])
@@ -741,13 +760,26 @@ model InvoiceLine {
 // -----------------------------------------------------------------------------
 
 model PlanEntitlement {
-  planTier              String  @id @map("plan_tier")
-  maxSeats              Int     @map("max_seats")
-  maxActiveProjects     Int     @map("max_active_projects")
-  retentionDays         Int     @map("retention_days")
-  githubIdeEnabled      Boolean @default(false) @map("github_ide_enabled")
-  clientPortalEnabled   Boolean @default(false) @map("client_portal_enabled")
-  aiAssistanceAvailable Boolean @default(false) @map("ai_assistance_available")
+  planTier                    String  @id @map("plan_tier")
+  maxSeats                    Int     @map("max_seats")
+  maxActiveProjects           Int     @map("max_active_projects")
+  retentionDays               Int     @map("retention_days")
+  githubIdeEnabled            Boolean @default(false) @map("github_ide_enabled")
+  clientPortalEnabled         Boolean @default(false) @map("client_portal_enabled")
+  aiAssistanceAvailable       Boolean @default(false) @map("ai_assistance_available")
+  monthlyEventQuota           Int     @default(50000) @map("monthly_event_quota")
+  monthlyAiTokenQuota         Int     @default(0) @map("monthly_ai_token_quota")
+  storageQuotaMb              Int     @default(512) @map("storage_quota_mb")
+  apiRateLimitPerMin          Int     @default(60) @map("api_rate_limit_per_min")
+  outboundWebhooksEnabled     Boolean @default(false) @map("outbound_webhooks_enabled")
+  accountingConnectorsEnabled Boolean @default(false) @map("accounting_connectors_enabled")
+  externalPmEnabled           Boolean @default(false) @map("external_pm_enabled")
+  whiteLabelEnabled           Boolean @default(false) @map("white_label_enabled")
+  baseMonthlyPriceCents       Int     @default(0) @map("base_monthly_price_cents")
+  perSeatPriceCents           Int     @default(0) @map("per_seat_price_cents")
+
+  subscriptionAccounts SubscriptionAccount[]
+  saasInvoices         SaasSubscriptionInvoice[]
 
   @@map("plan_entitlements")
 }
@@ -1139,5 +1171,220 @@ model AiGeneration {
   @@index([tenantId, targetType, targetId, createdAt(sort: Desc)], map: "idx_ai_generations_tenant_target")
   @@index([tenantId, userId, status, createdAt(sort: Desc)], map: "idx_ai_generations_user_status")
   @@map("ai_generations")
+}
+
+// -----------------------------------------------------------------------------
+// 8. Phase 4 — Commercial SaaS Subscriptions, Usage Metering, Public API,
+//    Outbound Webhooks, Ecosystem Connectors & Developer Portable Reports (0011–0013)
+// -----------------------------------------------------------------------------
+
+model SubscriptionAccount {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String    @unique @map("tenant_id") @db.Uuid
+  planTier               String    @default("starter") @map("plan_tier")
+  billingProvider        String    @default("stripe") @map("billing_provider")
+  providerCustomerId     String?   @map("provider_customer_id")
+  providerSubscriptionId String?   @map("provider_subscription_id")
+  status                 String    @default("trialing")
+  billingCycle           String    @default("monthly") @map("billing_cycle")
+  trialEndsAt            DateTime? @map("trial_ends_at") @db.Timestamptz(6)
+  currentPeriodStart     DateTime  @default(now()) @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd       DateTime  @default(now()) @map("current_period_end") @db.Timestamptz(6)
+  cancelAtPeriodEnd      Boolean   @default(false) @map("cancel_at_period_end")
+  seatLimitOverride      Int?      @map("seat_limit_override")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entitlement  PlanEntitlement           @relation(fields: [planTier], references: [planTier])
+  saasInvoices SaasSubscriptionInvoice[]
+
+  @@unique([id, tenantId])
+  @@index([billingProvider, providerSubscriptionId], map: "idx_subscription_accounts_provider_sub")
+  @@map("subscription_accounts")
+}
+
+model SaasSubscriptionInvoice {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  subscriptionAccountId String    @map("subscription_account_id") @db.Uuid
+  invoiceNumber         String    @map("invoice_number")
+  billingPeriodLabel    String    @map("billing_period_label")
+  planTier              String    @map("plan_tier")
+  seatsBilled           Int       @default(1) @map("seats_billed")
+  unitPriceCents        Int       @default(0) @map("unit_price_cents")
+  subtotalCents         Int       @default(0) @map("subtotal_cents")
+  taxCents              Int       @default(0) @map("tax_cents")
+  totalCents            Int       @default(0) @map("total_cents")
+  currency              String    @default("USD")
+  status                String    @default("open")
+  providerInvoiceId     String?   @map("provider_invoice_id")
+  issuedAt              DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  paidAt                DateTime? @map("paid_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptionAccount SubscriptionAccount @relation(fields: [subscriptionAccountId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  entitlement         PlanEntitlement     @relation(fields: [planTier], references: [planTier])
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId, issuedAt(sort: Desc)], map: "idx_saas_subscription_invoices_tenant")
+  @@map("saas_subscription_invoices")
+}
+
+model UsageRecord {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String   @map("tenant_id") @db.Uuid
+  metricDate             DateTime @default(dbgenerated("CURRENT_DATE")) @map("metric_date") @db.Date
+  activeSeats            Int      @default(0) @map("active_seats")
+  activeProjects         Int      @default(0) @map("active_projects")
+  activityEventsCount    BigInt   @default(0) @map("activity_events_count")
+  storageBytes           BigInt   @default(0) @map("storage_bytes")
+  aiTokensUsed           BigInt   @default(0) @map("ai_tokens_used")
+  apiRequestsCount       BigInt   @default(0) @map("api_requests_count")
+  webhookDeliveriesCount BigInt   @default(0) @map("webhook_deliveries_count")
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, metricDate])
+  @@index([tenantId, metricDate(sort: Desc)], map: "idx_usage_records_tenant_date")
+  @@map("usage_records")
+}
+
+model ApiKey {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  name            String
+  keyPrefix       String    @map("key_prefix")
+  keyHashSha256   String    @unique @map("key_hash_sha256")
+  scopes          String[]  @default(["projects:read", "tasks:read", "timesheets:read"])
+  rateLimitPerMin Int       @default(60) @map("rate_limit_per_min")
+  lastUsedAt      DateTime? @map("last_used_at") @db.Timestamptz(6)
+  expiresAt       DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdBy       String?   @map("created_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser UserProfile? @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, revokedAt, createdAt(sort: Desc)], map: "idx_api_keys_tenant_active")
+  @@map("api_keys")
+}
+
+model OutboundWebhookEndpoint {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  name                String
+  targetUrl           String   @map("target_url")
+  signingSecretPrefix String   @map("signing_secret_prefix")
+  signingSecretHash   String   @map("signing_secret_hash")
+  subscribedEvents    String[] @default(["timesheet.approved", "dispute.opened", "dispute.resolved", "invoice.finalized"]) @map("subscribed_events")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdBy           String?  @map("created_by") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant        Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser UserProfile?              @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  deliveries    OutboundWebhookDelivery[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, isActive], map: "idx_outbound_webhook_endpoints_tenant")
+  @@map("outbound_webhook_endpoints")
+}
+
+model OutboundWebhookDelivery {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  endpointId      String    @map("endpoint_id") @db.Uuid
+  eventType       String    @map("event_type")
+  eventId         String    @default(dbgenerated("gen_random_uuid()")) @map("event_id") @db.Uuid
+  payload         Json      @default("{}")
+  signatureHeader String    @map("signature_header")
+  deliveryStatus  String    @default("pending") @map("delivery_status")
+  httpStatus      Int?      @map("http_status")
+  attemptCount    Int       @default(1) @map("attempt_count")
+  lastAttemptAt   DateTime? @map("last_attempt_at") @db.Timestamptz(6)
+  nextRetryAt     DateTime? @map("next_retry_at") @db.Timestamptz(6)
+  responseSnippet String?   @map("response_snippet")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant   Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  endpoint OutboundWebhookEndpoint @relation(fields: [endpointId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@index([tenantId, endpointId, createdAt(sort: Desc)], map: "idx_outbound_webhook_deliveries_endpoint")
+  @@map("outbound_webhook_deliveries")
+}
+
+model EcosystemConnector {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  category     String
+  provider     String
+  displayName  String    @map("display_name")
+  status       String    @default("connected")
+  syncConfig   Json      @default("{}") @map("sync_config")
+  lastSyncedAt DateTime? @map("last_synced_at") @db.Timestamptz(6)
+  connectedBy  String?   @map("connected_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  connectedByUser  UserProfile?           @relation(fields: [connectedBy], references: [id], onDelete: SetNull)
+  calendarMeetings CalendarMeetingEvent[]
+
+  @@unique([tenantId, provider])
+  @@index([tenantId, category, status], map: "idx_ecosystem_connectors_tenant")
+  @@map("ecosystem_connectors")
+}
+
+model CalendarMeetingEvent {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String   @map("tenant_id") @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  projectId             String?  @map("project_id") @db.Uuid
+  taskId                String?  @map("task_id") @db.Uuid
+  connectorId           String?  @map("connector_id") @db.Uuid
+  externalEventId       String   @map("external_event_id")
+  meetingTitleSanitized String   @map("meeting_title_sanitized")
+  startedAtUtc          DateTime @map("started_at_utc") @db.Timestamptz(6)
+  endedAtUtc            DateTime @map("ended_at_utc") @db.Timestamptz(6)
+  durationMinutes       Int      @map("duration_minutes")
+  associatedSegmentId   String?  @map("associated_segment_id") @db.Uuid
+  syncPermissionScope   String   @default("metadata_only") @map("sync_permission_scope")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      UserProfile         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project?            @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: SetNull)
+  connector EcosystemConnector? @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, userId, externalEventId])
+  @@index([tenantId, userId, startedAtUtc(sort: Desc)], map: "idx_calendar_meeting_events_user")
+  @@map("calendar_meeting_events")
+}
+
+model PortableWorkReport {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String   @map("tenant_id") @db.Uuid
+  developerUserId       String   @map("developer_user_id") @db.Uuid
+  reportTitle           String   @map("report_title")
+  periodStart           DateTime @map("period_start") @db.Date
+  periodEnd             DateTime @map("period_end") @db.Date
+  totalApprovedMinutes  Decimal  @default(0) @map("total_approved_minutes") @db.Decimal(8, 2)
+  totalSupportedMinutes Decimal  @default(0) @map("total_supported_minutes") @db.Decimal(8, 2)
+  deliverablesCount     Int      @default(0) @map("deliverables_count")
+  payloadDigestSha256   String   @map("payload_digest_sha256")
+  signatureHmacSha256   String   @map("signature_hmac_sha256")
+  reportPayload         Json     @default("{}") @map("report_payload")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  developer UserProfile @relation(fields: [developerUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, developerUserId, createdAt(sort: Desc)], map: "idx_portable_work_reports_developer")
+  @@map("portable_work_reports")
 }
 

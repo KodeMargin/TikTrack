@@ -7,10 +7,26 @@
 
 import type {
   AiGenerationRecord,
+  ApiKeyRecord,
+  BillingProvider,
+  CalendarMeetingEventRecord,
   ContractBillingPolicy,
   DisputeRecord,
+  EcosystemConnectorCategory,
+  EcosystemConnectorProvider,
+  EcosystemConnectorRecord,
   EvidenceCorrelationEdgeRecord,
+  OutboundWebhookDeliveryRecord,
+  OutboundWebhookEndpointRecord,
+  OutboundWebhookEventType,
+  PortableWorkReportRecord,
+  PublicApiScope,
+  SaasPlanTier,
+  SaasSubscriptionInvoiceRecord,
+  SubscriptionAccountRecord,
+  UsageRecordSnapshot,
   VerificationRuleSetRecord,
+  WhiteLabelBrandingConfig,
 } from '@/types/domain.types'
 import type {
   AuditLogEntry,
@@ -60,6 +76,18 @@ export interface PrismaPhase3BootstrapPayload {
   disputes: DisputeRecord[]
 }
 
+export interface PrismaPhase4BootstrapPayload {
+  subscriptions: SubscriptionAccountRecord[]
+  saasInvoices: SaasSubscriptionInvoiceRecord[]
+  usageRecords: UsageRecordSnapshot[]
+  apiKeys: ApiKeyRecord[]
+  webhookEndpoints: OutboundWebhookEndpointRecord[]
+  webhookDeliveries: OutboundWebhookDeliveryRecord[]
+  connectors: EcosystemConnectorRecord[]
+  calendarMeetings: CalendarMeetingEventRecord[]
+  portableReports: PortableWorkReportRecord[]
+}
+
 export interface PrismaBootstrapPayload {
   status: PrismaConnectionStatus
   tenants: TenantWorkspace[]
@@ -73,6 +101,7 @@ export interface PrismaBootstrapPayload {
   auditLogs: AuditLogEntry[]
   phase2?: PrismaPhase2BootstrapPayload
   phase3?: PrismaPhase3BootstrapPayload
+  phase4?: PrismaPhase4BootstrapPayload
 }
 
 async function postJson<T>(url: string, body: unknown, method = 'POST'): Promise<T | null> {
@@ -353,3 +382,99 @@ export const performDisputeActionViaPrisma = (input: {
   adjustedApprovedMinutes?: number
   resolutionSummary?: string
 }) => postJson<{ ok: boolean; error?: string }>('/api/prisma/phase3/disputes/action', input)
+
+export const checkoutSubscriptionViaPrisma = (input: {
+  tenantId: string
+  planTier: SaasPlanTier
+  billingProvider: BillingProvider
+  billingCycle: 'monthly' | 'annual'
+  seatsBilled: number
+  unitPriceCents: number
+  subtotalCents: number
+  totalCents: number
+  currency: string
+  invoiceNumber: string
+  billingPeriodLabel: string
+  actorUserId?: string
+}) =>
+  postJson<{ ok: boolean; subId?: string; invoiceId?: string }>(
+    '/api/prisma/phase4/subscription/checkout',
+    input
+  )
+
+export const updateBrandingViaPrisma = (input: {
+  tenantId: string
+  brandingConfig: WhiteLabelBrandingConfig
+  actorUserId?: string
+}) => postJson<{ ok: boolean }>('/api/prisma/phase4/branding', input, 'PATCH')
+
+export const createApiKeyViaPrisma = (input: {
+  tenantId: string
+  name: string
+  keyPrefix: string
+  keyHashSha256: string
+  scopes: PublicApiScope[]
+  rateLimitPerMin: number
+  createdBy?: string
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase4/api-keys', input)
+
+export const revokeApiKeyViaPrisma = (input: { tenantId: string; keyId: string }) =>
+  postJson<{ ok: boolean }>('/api/prisma/phase4/api-keys/revoke', input)
+
+export const createWebhookEndpointViaPrisma = (input: {
+  tenantId: string
+  name: string
+  targetUrl: string
+  signingSecretPrefix: string
+  signingSecretHash: string
+  subscribedEvents: OutboundWebhookEventType[]
+  createdBy?: string
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase4/webhooks', input)
+
+export const dispatchWebhookDeliveryViaPrisma = (input: {
+  tenantId: string
+  endpointId: string
+  eventType: OutboundWebhookEventType
+  eventId: string
+  payload: Record<string, unknown>
+  signatureHeader: string
+  responseSnippet: string
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase4/webhooks/deliver', input)
+
+export const upsertConnectorViaPrisma = (input: {
+  tenantId: string
+  category: EcosystemConnectorCategory
+  provider: EcosystemConnectorProvider
+  displayName: string
+  status: 'connected' | 'paused' | 'disconnected'
+  syncConfig: Record<string, string | number | boolean>
+  connectedBy?: string
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase4/connectors', input)
+
+export const syncCalendarMeetingViaPrisma = (input: {
+  tenantId: string
+  userId: string
+  projectId?: string
+  taskId?: string
+  connectorId?: string
+  externalEventId: string
+  meetingTitleSanitized: string
+  startedAtUtc: string
+  endedAtUtc: string
+  durationMinutes: number
+  syncPermissionScope: 'metadata_only' | 'title_and_duration'
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase4/calendar-sync', input)
+
+export const createPortableReportViaPrisma = (input: {
+  tenantId: string
+  developerUserId: string
+  reportTitle: string
+  periodStart: string
+  periodEnd: string
+  totalApprovedMinutes: number
+  totalSupportedMinutes: number
+  deliverablesCount: number
+  payloadDigestSha256: string
+  signatureHmacSha256: string
+  reportPayload: Record<string, unknown>
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase4/portable-reports', input)
