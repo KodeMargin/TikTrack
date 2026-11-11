@@ -871,3 +871,243 @@ CREATE POLICY ai_generations_select_scoped ON public.ai_generations
   );
 
 
+
+-- -----------------------------------------------------------------------------
+-- 8. Phase 4 Live Security Guards & Client Portal Security-Barrier Views
+-- -----------------------------------------------------------------------------
+
+CREATE OR REPLACE VIEW public.client_portal_project_timesheets_v
+WITH (security_barrier = true, security_invoker = true) AS
+SELECT
+  tl.id AS timesheet_line_id,
+  tl.tenant_id,
+  ts.project_id,
+  p.code AS project_code,
+  p.name AS project_name,
+  p.client_name,
+  tk.id AS task_id,
+  tk.code AS task_code,
+  tk.title AS task_title,
+  tk.status AS task_status,
+  tl.work_date,
+  tl.work_mode,
+  tl.approved_billable_minutes,
+  round(tl.approved_billable_minutes / 60.0, 2) AS approved_billable_hours,
+  tl.snapshot_hourly_rate,
+  tl.snapshot_currency,
+  round((tl.approved_billable_minutes / 60.0) * tl.snapshot_hourly_rate, 2) AS approved_amount,
+  tl.line_status,
+  tl.is_locked,
+  ts.status AS timesheet_status,
+  ts.approved_at
+FROM public.timesheet_lines tl
+JOIN public.timesheets ts
+  ON ts.id = tl.timesheet_id AND ts.tenant_id = tl.tenant_id
+JOIN public.projects p
+  ON p.id = ts.project_id AND p.tenant_id = ts.tenant_id
+JOIN public.tasks tk
+  ON tk.id = tl.task_id AND tk.tenant_id = ts.tenant_id
+WHERE tl.line_status IN ('approved', 'adjusted_approved')
+  AND ts.status IN ('partially_approved', 'approved', 'locked')
+  AND (
+    public.user_has_project_access(ts.tenant_id, ts.project_id, ARRAY['client_reviewer', 'manager'])
+    OR public.user_has_tenant_role(ts.tenant_id, ARRAY['tenant_owner', 'auditor'])
+  );
+
+ALTER TABLE public.subscription_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saas_subscription_invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.usage_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.outbound_webhook_endpoints ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.outbound_webhook_deliveries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ecosystem_connectors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.calendar_meeting_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.portable_work_reports ENABLE ROW LEVEL SECURITY;
+
+-- -----------------------------------------------------------------------------
+-- 9. Phase 5 Live Enterprise, Two-Person Governance, Legal Hold Retention & RLS
+-- -----------------------------------------------------------------------------
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'two_person_distinct_approvers'
+      AND conrelid = 'public.policy_change_requests'::regclass
+  ) THEN
+    ALTER TABLE public.policy_change_requests
+      ADD CONSTRAINT two_person_distinct_approvers
+      CHECK (
+        approved_by_second IS NULL
+        OR (approved_by_second <> proposed_by AND approved_by_second <> approved_by_first)
+      );
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'no_prohibited_policy_diff_keys'
+      AND conrelid = 'public.policy_change_requests'::regclass
+  ) THEN
+    ALTER TABLE public.policy_change_requests
+      ADD CONSTRAINT no_prohibited_policy_diff_keys
+      CHECK (NOT public.jsonb_contains_prohibited_surveillance_keys(scope_diff));
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'no_prohibited_siem_preview_keys'
+      AND conrelid = 'public.siem_export_batches'::regclass
+  ) THEN
+    ALTER TABLE public.siem_export_batches
+      ADD CONSTRAINT no_prohibited_siem_preview_keys
+      CHECK (NOT public.jsonb_contains_prohibited_surveillance_keys(sanitized_preview));
+  END IF;
+END $$;
+
+REVOKE UPDATE, DELETE ON public.sensitive_access_logs FROM PUBLIC, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.execute_tenant_retention_sweep(p_tenant_id uuid)
+RETURNS TABLE (
+  job_id uuid,
+  scanned_count int,
+  purged_count int,
+  skipped_legal_hold_count int,
+  job_status text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_raw_days int := 90;
+  v_policy_id uuid;
+  v_cutoff timestamptz;
+  v_tenant_hold boolean := false;
+  v_scanned int := 0;
+  v_purged int := 0;
+  v_skipped int := 0;
+  v_job_id uuid;
+  v_status text := 'completed';
+BEGIN
+  SELECT id, raw_activity_days
+  INTO v_policy_id, v_raw_days
+  FROM public.retention_policies
+  WHERE tenant_id = p_tenant_id AND is_active = true
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  v_cutoff := now() - make_interval(days => COALESCE(v_raw_days, 90));
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.legal_holds lh
+    WHERE lh.tenant_id = p_tenant_id
+      AND lh.hold_status = 'active'
+      AND lh.scope_type IN ('tenant', 'dispute', 'timesheet')
+  )
+  INTO v_tenant_hold;
+
+  SELECT count(*)::int INTO v_scanned
+  FROM public.activity_events ae
+  WHERE ae.tenant_id = p_tenant_id
+    AND ae.occurred_at_utc < v_cutoff;
+
+  IF v_tenant_hold THEN
+    v_purged := 0;
+    v_skipped := v_scanned;
+    v_status := 'partial_legal_hold';
+  ELSE
+    WITH deleted_rows AS (
+      DELETE FROM public.activity_events ae
+      WHERE ae.tenant_id = p_tenant_id
+        AND ae.occurred_at_utc < v_cutoff
+        AND NOT EXISTS (
+          SELECT 1 FROM public.legal_holds lh
+          WHERE lh.tenant_id = p_tenant_id
+            AND lh.hold_status = 'active'
+            AND lh.scope_type = 'user'
+            AND lh.target_id = ae.user_id::text
+        )
+      RETURNING ae.event_id
+    )
+    SELECT count(*)::int INTO v_purged FROM deleted_rows;
+
+    v_skipped := GREATEST(0, v_scanned - v_purged);
+    IF v_skipped > 0 THEN
+      v_status := 'partial_legal_hold';
+    END IF;
+  END IF;
+
+  INSERT INTO public.retention_jobs (
+    tenant_id, policy_id, job_type, status,
+    scanned_count, purged_count, skipped_legal_hold_count, archived_bundle_uri
+  )
+  VALUES (
+    p_tenant_id, v_policy_id, 'purge_raw_events', v_status,
+    v_scanned, v_purged, v_skipped,
+    format('cold://devproof-archive/%s/%s.ndjson.gz', p_tenant_id, to_char(now(), 'YYYYMMDD-HH24MISS'))
+  )
+  RETURNING id INTO v_job_id;
+
+  INSERT INTO public.sensitive_access_logs (
+    tenant_id, action_category, resource_type, resource_id, correlation_id, metadata
+  )
+  VALUES (
+    p_tenant_id, 'retention_run', 'retention_jobs', v_job_id::text,
+    'ret-' || left(v_job_id::text, 8),
+    jsonb_build_object('scanned_count', v_scanned, 'purged_count', v_purged, 'skipped_legal_hold_count', v_skipped, 'status', v_status)
+  );
+
+  RETURN QUERY SELECT v_job_id, v_scanned, v_purged, v_skipped, v_status;
+END;
+$$;
+
+ALTER TABLE public.sso_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scim_provisioning_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.policy_change_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sensitive_access_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.legal_holds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.retention_policies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.retention_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.privacy_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_residency_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.siem_destinations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.siem_export_batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fleet_releases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.analytics_warehouse_exports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dr_exercises ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.security_assessments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenant_accessibility_configs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS sso_providers_select ON public.sso_providers;
+CREATE POLICY sso_providers_select ON public.sso_providers
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS policy_change_requests_select ON public.policy_change_requests;
+CREATE POLICY policy_change_requests_select ON public.policy_change_requests
+  FOR SELECT TO authenticated
+  USING (
+    public.user_is_active_tenant_member(tenant_id)
+    AND NOT public.user_has_tenant_role(tenant_id, ARRAY['client_reviewer'])
+  );
+
+DROP POLICY IF EXISTS legal_holds_select ON public.legal_holds;
+CREATE POLICY legal_holds_select ON public.legal_holds
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS siem_destinations_select ON public.siem_destinations;
+CREATE POLICY siem_destinations_select ON public.siem_destinations
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS security_assessments_select ON public.security_assessments;
+CREATE POLICY security_assessments_select ON public.security_assessments
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));

@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test src/lib/time-engine/__tests__/*.test.ts",
+    "worker": "node --experimental-strip-types src/worker/detachableQueueWorker.ts",
+    "verify:scale": "node --experimental-strip-types scripts/phase5-load-and-dr-drill.ts",
     "preview": "vite preview",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

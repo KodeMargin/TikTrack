@@ -1,0 +1,21 @@
+# DevProof (TikTrack) — Detachable Queue Worker Container (F5-008)
+FROM node:22-alpine
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+COPY src/lib ./src/lib
+COPY src/types ./src/types
+COPY src/worker ./src/worker
+
+RUN npx prisma generate
+
+ENV NODE_ENV=production
+ENV WORKER_POLL_MS=2000
+ENV WORKER_BATCH_SIZE=50
+
+CMD ["node", "--experimental-strip-types", "src/worker/detachableQueueWorker.ts"]
+

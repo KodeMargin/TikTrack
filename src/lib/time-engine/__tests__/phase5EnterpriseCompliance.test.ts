@@ -18,6 +18,7 @@ import {
   evaluateFleetReleaseCompliance,
   processQueueBatchWithDlq,
 } from '../../phase5/fleetAndWarehouse.ts'
+import { normalizeActivityEventsToBuckets } from '../../../worker/detachableQueueWorker.ts'
 import {
   formatMinutesLocalized,
   getEnterpriseLocaleStrings,
@@ -292,6 +293,56 @@ describe('Phase 5 Fleet, Warehouse, Queue Worker, DR/Load & Accessibility (F5-00
     const deStrings = getEnterpriseLocaleStrings('de-DE')
     assert.ok(deStrings.twoPersonBadge.includes('Vier-Augen'))
     assert.ok(formatMinutesLocalized(90, 'en-US').includes('1.5'))
+  })
+})
+
+describe('Phase 5 Detachable Queue Worker Normalization', () => {
+  it('merges concurrent desktop + vscode events into one bucket and flags observation gaps', () => {
+    const buckets = normalizeActivityEventsToBuckets([
+      {
+        eventId: 'evt-1',
+        eventType: 'app_focus',
+        source: 'desktop',
+        occurredAtUtc: '2026-11-11T10:01:00.000Z',
+        metadata: {
+          app_category: 'browser',
+          has_input_signal: false,
+        },
+      },
+      {
+        eventId: 'evt-2',
+        eventType: 'ide_heartbeat',
+        source: 'vscode',
+        occurredAtUtc: '2026-11-11T10:03:00.000Z',
+        metadata: {
+          app_category: 'ide',
+          has_input_signal: true,
+        },
+      },
+      {
+        eventId: 'evt-3',
+        eventType: 'idle_gap_detected',
+        source: 'desktop',
+        occurredAtUtc: '2026-11-11T10:07:00.000Z',
+        metadata: {
+          app_category: 'other',
+          has_input_signal: false,
+        },
+      },
+    ])
+
+    assert.equal(buckets.length, 2)
+    const first = buckets[0]
+    assert.equal(first.bucketMinutes, 5)
+    assert.equal(first.appCategory, 'ide')
+    assert.equal(first.hasInputSignal, true)
+    assert.deepEqual(first.concurrentSources, ['desktop', 'vscode'])
+    assert.equal(first.isObservationGap, false)
+
+    const second = buckets[1]
+    assert.equal(second.bucketMinutes, 5)
+    assert.equal(second.isObservationGap, true)
+    assert.equal(second.hasInputSignal, false)
   })
 })
 
