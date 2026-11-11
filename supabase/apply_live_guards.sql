@@ -914,6 +914,104 @@ WHERE tl.line_status IN ('approved', 'adjusted_approved')
     OR public.user_has_tenant_role(ts.tenant_id, ARRAY['tenant_owner', 'auditor'])
   );
 
+CREATE OR REPLACE VIEW public.client_portal_deliverables_v
+WITH (security_barrier = true, security_invoker = true) AS
+SELECT
+  ea.id AS artifact_id,
+  ea.tenant_id,
+  ea.project_id,
+  p.code AS project_code,
+  p.name AS project_name,
+  p.client_name,
+  tk.id AS task_id,
+  tk.code AS task_code,
+  tk.title AS task_title,
+  tk.status AS task_status,
+  ea.source_type,
+  ea.external_id,
+  ea.summary_title,
+  ea.occurred_at_utc,
+  el.link_type
+FROM public.evidence_artifacts ea
+JOIN public.projects p
+  ON p.id = ea.project_id AND p.tenant_id = ea.tenant_id
+JOIN public.evidence_links el
+  ON el.artifact_id = ea.id AND el.tenant_id = ea.tenant_id AND el.project_id = ea.project_id
+JOIN public.tasks tk
+  ON tk.id = el.task_id AND tk.tenant_id = el.tenant_id AND tk.project_id = el.project_id
+WHERE ea.source_type IN (
+    'github_pr', 'github_commit', 'github_ci', 'github_review',
+    'gitlab_mr', 'gitlab_commit', 'gitlab_pipeline', 'design_doc', 'external_ticket'
+  )
+  AND tk.status IN ('review', 'done')
+  AND (
+    public.user_has_project_access(
+      ea.tenant_id,
+      ea.project_id,
+      ARRAY['client_reviewer', 'manager']
+    )
+    OR public.user_has_tenant_role(ea.tenant_id, ARRAY['tenant_owner', 'auditor'])
+  );
+
+CREATE OR REPLACE FUNCTION public.aggregate_daily_tenant_usage(target_date date DEFAULT current_date)
+RETURNS int
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_upserted int := 0;
+BEGIN
+  INSERT INTO public.usage_records (
+    tenant_id,
+    metric_date,
+    active_seats,
+    active_projects,
+    activity_events_count,
+    storage_bytes,
+    ai_tokens_used,
+    updated_at
+  )
+  SELECT
+    t.id AS tenant_id,
+    target_date AS metric_date,
+    COALESCE((
+      SELECT count(*)::int
+      FROM public.memberships m
+      WHERE m.tenant_id = t.id AND m.status = 'active'
+    ), 0) AS active_seats,
+    COALESCE((
+      SELECT count(*)::int
+      FROM public.projects p
+      WHERE p.tenant_id = t.id AND p.status = 'active'
+    ), 0) AS active_projects,
+    COALESCE((
+      SELECT count(*)::bigint
+      FROM public.activity_events ae
+      WHERE ae.tenant_id = t.id
+        AND (ae.occurred_at_utc AT TIME ZONE 'UTC')::date = target_date
+    ), 0) AS activity_events_count,
+    0::bigint AS storage_bytes,
+    COALESCE((
+      SELECT sum(ag.tokens_used)::bigint
+      FROM public.ai_generations ag
+      WHERE ag.tenant_id = t.id
+        AND (ag.created_at AT TIME ZONE 'UTC')::date = target_date
+    ), 0) AS ai_tokens_used,
+    now()
+  FROM public.tenants t
+  ON CONFLICT (tenant_id, metric_date) DO UPDATE SET
+    active_seats = EXCLUDED.active_seats,
+    active_projects = EXCLUDED.active_projects,
+    activity_events_count = EXCLUDED.activity_events_count,
+    ai_tokens_used = EXCLUDED.ai_tokens_used,
+    updated_at = now();
+
+  GET DIAGNOSTICS v_upserted = ROW_COUNT;
+  RETURN v_upserted;
+END;
+$$;
+
 ALTER TABLE public.subscription_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.saas_subscription_invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_records ENABLE ROW LEVEL SECURITY;
@@ -923,6 +1021,123 @@ ALTER TABLE public.outbound_webhook_deliveries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ecosystem_connectors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.calendar_meeting_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.portable_work_reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS subscription_accounts_select ON public.subscription_accounts;
+CREATE POLICY subscription_accounts_select ON public.subscription_accounts
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'finance', 'auditor']));
+
+DROP POLICY IF EXISTS subscription_accounts_manage ON public.subscription_accounts;
+CREATE POLICY subscription_accounts_manage ON public.subscription_accounts
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
+
+DROP POLICY IF EXISTS saas_subscription_invoices_select ON public.saas_subscription_invoices;
+CREATE POLICY saas_subscription_invoices_select ON public.saas_subscription_invoices
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'finance', 'auditor']));
+
+DROP POLICY IF EXISTS saas_subscription_invoices_manage ON public.saas_subscription_invoices;
+CREATE POLICY saas_subscription_invoices_manage ON public.saas_subscription_invoices
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
+
+DROP POLICY IF EXISTS usage_records_select ON public.usage_records;
+CREATE POLICY usage_records_select ON public.usage_records
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager', 'finance', 'auditor']));
+
+DROP POLICY IF EXISTS api_keys_select ON public.api_keys;
+CREATE POLICY api_keys_select ON public.api_keys
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS api_keys_manage ON public.api_keys;
+CREATE POLICY api_keys_manage ON public.api_keys
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
+
+DROP POLICY IF EXISTS outbound_webhook_endpoints_select ON public.outbound_webhook_endpoints;
+CREATE POLICY outbound_webhook_endpoints_select ON public.outbound_webhook_endpoints
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager', 'auditor']));
+
+DROP POLICY IF EXISTS outbound_webhook_endpoints_manage ON public.outbound_webhook_endpoints;
+CREATE POLICY outbound_webhook_endpoints_manage ON public.outbound_webhook_endpoints
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager']));
+
+DROP POLICY IF EXISTS outbound_webhook_deliveries_select ON public.outbound_webhook_deliveries;
+CREATE POLICY outbound_webhook_deliveries_select ON public.outbound_webhook_deliveries
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager', 'auditor']));
+
+DROP POLICY IF EXISTS outbound_webhook_deliveries_insert ON public.outbound_webhook_deliveries;
+CREATE POLICY outbound_webhook_deliveries_insert ON public.outbound_webhook_deliveries
+  FOR INSERT TO authenticated
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager']));
+
+DROP POLICY IF EXISTS ecosystem_connectors_select ON public.ecosystem_connectors;
+CREATE POLICY ecosystem_connectors_select ON public.ecosystem_connectors
+  FOR SELECT TO authenticated
+  USING (
+    public.user_is_active_tenant_member(tenant_id)
+    AND NOT public.user_has_tenant_role(tenant_id, ARRAY['client_reviewer'])
+  );
+
+DROP POLICY IF EXISTS ecosystem_connectors_manage ON public.ecosystem_connectors;
+CREATE POLICY ecosystem_connectors_manage ON public.ecosystem_connectors
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager', 'finance']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager', 'finance']));
+
+DROP POLICY IF EXISTS calendar_meeting_events_select ON public.calendar_meeting_events;
+CREATE POLICY calendar_meeting_events_select ON public.calendar_meeting_events
+  FOR SELECT TO authenticated
+  USING (
+    public.user_is_active_tenant_member(tenant_id)
+    AND NOT public.user_has_tenant_role(tenant_id, ARRAY['finance', 'client_reviewer'])
+    AND (
+      user_id = (SELECT auth.uid())
+      OR public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor'])
+    )
+  );
+
+DROP POLICY IF EXISTS calendar_meeting_events_manage_own ON public.calendar_meeting_events;
+CREATE POLICY calendar_meeting_events_manage_own ON public.calendar_meeting_events
+  FOR ALL TO authenticated
+  USING (
+    user_id = (SELECT auth.uid())
+    AND public.user_is_active_tenant_member(tenant_id)
+  )
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
+    AND public.user_is_active_tenant_member(tenant_id)
+  );
+
+DROP POLICY IF EXISTS portable_work_reports_select ON public.portable_work_reports;
+CREATE POLICY portable_work_reports_select ON public.portable_work_reports
+  FOR SELECT TO authenticated
+  USING (
+    public.user_is_active_tenant_member(tenant_id)
+    AND (
+      developer_user_id = (SELECT auth.uid())
+      OR public.user_has_tenant_role(tenant_id, ARRAY['auditor'])
+    )
+  );
+
+DROP POLICY IF EXISTS portable_work_reports_insert_own ON public.portable_work_reports;
+CREATE POLICY portable_work_reports_insert_own ON public.portable_work_reports
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    developer_user_id = (SELECT auth.uid())
+    AND public.user_is_active_tenant_member(tenant_id)
+    AND NOT public.user_has_tenant_role(tenant_id, ARRAY['client_reviewer'])
+  );
 
 -- -----------------------------------------------------------------------------
 -- 9. Phase 5 Live Enterprise, Two-Person Governance, Legal Hold Retention & RLS
@@ -967,6 +1182,19 @@ BEGIN
     ALTER TABLE public.siem_export_batches
       ADD CONSTRAINT no_prohibited_siem_preview_keys
       CHECK (NOT public.jsonb_contains_prohibited_surveillance_keys(sanitized_preview));
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'no_prohibited_sensitive_log_keys'
+      AND conrelid = 'public.sensitive_access_logs'::regclass
+  ) THEN
+    ALTER TABLE public.sensitive_access_logs
+      ADD CONSTRAINT no_prohibited_sensitive_log_keys
+      CHECK (NOT public.jsonb_contains_prohibited_surveillance_keys(metadata));
   END IF;
 END $$;
 
@@ -1089,6 +1317,22 @@ CREATE POLICY sso_providers_select ON public.sso_providers
   FOR SELECT TO authenticated
   USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
 
+DROP POLICY IF EXISTS sso_providers_manage ON public.sso_providers;
+CREATE POLICY sso_providers_manage ON public.sso_providers
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
+
+DROP POLICY IF EXISTS scim_provisioning_events_select ON public.scim_provisioning_events;
+CREATE POLICY scim_provisioning_events_select ON public.scim_provisioning_events
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS scim_provisioning_events_insert ON public.scim_provisioning_events;
+CREATE POLICY scim_provisioning_events_insert ON public.scim_provisioning_events
+  FOR INSERT TO authenticated
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
+
 DROP POLICY IF EXISTS policy_change_requests_select ON public.policy_change_requests;
 CREATE POLICY policy_change_requests_select ON public.policy_change_requests
   FOR SELECT TO authenticated
@@ -1097,17 +1341,167 @@ CREATE POLICY policy_change_requests_select ON public.policy_change_requests
     AND NOT public.user_has_tenant_role(tenant_id, ARRAY['client_reviewer'])
   );
 
+DROP POLICY IF EXISTS policy_change_requests_manage ON public.policy_change_requests;
+CREATE POLICY policy_change_requests_manage ON public.policy_change_requests
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS sensitive_access_logs_select ON public.sensitive_access_logs;
+CREATE POLICY sensitive_access_logs_select ON public.sensitive_access_logs
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS sensitive_access_logs_insert ON public.sensitive_access_logs;
+CREATE POLICY sensitive_access_logs_insert ON public.sensitive_access_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor', 'project_manager', 'finance']));
+
 DROP POLICY IF EXISTS legal_holds_select ON public.legal_holds;
 CREATE POLICY legal_holds_select ON public.legal_holds
   FOR SELECT TO authenticated
   USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS legal_holds_manage ON public.legal_holds;
+CREATE POLICY legal_holds_manage ON public.legal_holds
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS retention_policies_select ON public.retention_policies;
+CREATE POLICY retention_policies_select ON public.retention_policies
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS retention_policies_manage ON public.retention_policies;
+CREATE POLICY retention_policies_manage ON public.retention_policies
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
+
+DROP POLICY IF EXISTS retention_jobs_select ON public.retention_jobs;
+CREATE POLICY retention_jobs_select ON public.retention_jobs
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS retention_jobs_insert ON public.retention_jobs;
+CREATE POLICY retention_jobs_insert ON public.retention_jobs
+  FOR INSERT TO authenticated
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS privacy_requests_select ON public.privacy_requests;
+CREATE POLICY privacy_requests_select ON public.privacy_requests
+  FOR SELECT TO authenticated
+  USING (
+    public.user_is_active_tenant_member(tenant_id)
+    AND NOT public.user_has_tenant_role(tenant_id, ARRAY['client_reviewer'])
+    AND (
+      requester_user_id = (SELECT auth.uid())
+      OR public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor'])
+    )
+  );
+
+DROP POLICY IF EXISTS privacy_requests_insert_own ON public.privacy_requests;
+CREATE POLICY privacy_requests_insert_own ON public.privacy_requests
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    requester_user_id = (SELECT auth.uid())
+    AND public.user_is_active_tenant_member(tenant_id)
+    AND NOT public.user_has_tenant_role(tenant_id, ARRAY['client_reviewer'])
+  );
+
+DROP POLICY IF EXISTS privacy_requests_manage_admin ON public.privacy_requests;
+CREATE POLICY privacy_requests_manage_admin ON public.privacy_requests
+  FOR UPDATE TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS tenant_residency_configs_select ON public.tenant_residency_configs;
+CREATE POLICY tenant_residency_configs_select ON public.tenant_residency_configs
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS tenant_residency_configs_manage ON public.tenant_residency_configs;
+CREATE POLICY tenant_residency_configs_manage ON public.tenant_residency_configs
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
 
 DROP POLICY IF EXISTS siem_destinations_select ON public.siem_destinations;
 CREATE POLICY siem_destinations_select ON public.siem_destinations
   FOR SELECT TO authenticated
   USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
 
+DROP POLICY IF EXISTS siem_destinations_manage ON public.siem_destinations;
+CREATE POLICY siem_destinations_manage ON public.siem_destinations
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
+
+DROP POLICY IF EXISTS siem_export_batches_select ON public.siem_export_batches;
+CREATE POLICY siem_export_batches_select ON public.siem_export_batches
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS siem_export_batches_insert ON public.siem_export_batches;
+CREATE POLICY siem_export_batches_insert ON public.siem_export_batches
+  FOR INSERT TO authenticated
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS fleet_releases_select ON public.fleet_releases;
+CREATE POLICY fleet_releases_select ON public.fleet_releases
+  FOR SELECT TO authenticated
+  USING (
+    public.user_is_active_tenant_member(tenant_id)
+    AND NOT public.user_has_tenant_role(tenant_id, ARRAY['client_reviewer'])
+  );
+
+DROP POLICY IF EXISTS fleet_releases_manage ON public.fleet_releases;
+CREATE POLICY fleet_releases_manage ON public.fleet_releases
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
+
+DROP POLICY IF EXISTS analytics_warehouse_exports_select ON public.analytics_warehouse_exports;
+CREATE POLICY analytics_warehouse_exports_select ON public.analytics_warehouse_exports
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor', 'finance']));
+
+DROP POLICY IF EXISTS analytics_warehouse_exports_manage ON public.analytics_warehouse_exports;
+CREATE POLICY analytics_warehouse_exports_manage ON public.analytics_warehouse_exports
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'finance']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'finance']));
+
+DROP POLICY IF EXISTS dr_exercises_select ON public.dr_exercises;
+CREATE POLICY dr_exercises_select ON public.dr_exercises
+  FOR SELECT TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS dr_exercises_manage ON public.dr_exercises;
+CREATE POLICY dr_exercises_manage ON public.dr_exercises
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
 DROP POLICY IF EXISTS security_assessments_select ON public.security_assessments;
 CREATE POLICY security_assessments_select ON public.security_assessments
   FOR SELECT TO authenticated
   USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS security_assessments_manage ON public.security_assessments;
+CREATE POLICY security_assessments_manage ON public.security_assessments
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor']));
+
+DROP POLICY IF EXISTS tenant_accessibility_configs_select ON public.tenant_accessibility_configs;
+CREATE POLICY tenant_accessibility_configs_select ON public.tenant_accessibility_configs
+  FOR SELECT TO authenticated
+  USING (public.user_is_active_tenant_member(tenant_id));
+
+DROP POLICY IF EXISTS tenant_accessibility_configs_manage ON public.tenant_accessibility_configs;
+CREATE POLICY tenant_accessibility_configs_manage ON public.tenant_accessibility_configs
+  FOR ALL TO authenticated
+  USING (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']))
+  WITH CHECK (public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner']));
