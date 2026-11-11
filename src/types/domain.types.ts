@@ -270,3 +270,206 @@ export interface PilotScenarioFixture {
   slices: RawTimeSliceInput[]
 }
 
+// -----------------------------------------------------------------------------
+// Phase 3 Domain Types (F3-001..F3-035)
+// -----------------------------------------------------------------------------
+
+export interface VerificationRuleConfig {
+  idleClarificationThresholdMinutes: number
+  deepWorkNoInputWindowMinutes: number
+  clockDriftThresholdSeconds: number
+  estimateVarianceAlertPercent: number
+  enabledRules: Record<VerificationRuleCode, boolean>
+}
+
+export interface VerificationRuleSetRecord {
+  id: string
+  tenantId: string
+  versionNumber: number
+  versionLabel: string
+  effectiveFrom: string
+  status: 'draft' | 'active' | 'superseded'
+  rulesConfig: VerificationRuleConfig
+  createdByName: string
+  createdAt: string
+}
+
+export interface PolicySimulationDelta {
+  segmentId: string
+  label: string
+  currentStatus: EvidenceStatus
+  simulatedStatus: EvidenceStatus
+  currentRules: VerificationRuleCode[]
+  simulatedRules: VerificationRuleCode[]
+  retroactivePayDeduction: 0
+}
+
+export interface PolicySimulationReport {
+  draftVersionLabel: string
+  totalEvaluatedSegments: number
+  statusChangedCount: number
+  clarificationCountBefore: number
+  clarificationCountAfter: number
+  corroboratedCountAfter: number
+  retroactiveHistoricalMutations: 0
+  automatedPayDeductions: 0
+  deltas: PolicySimulationDelta[]
+}
+
+export interface WorkModeSuggestion {
+  id: string
+  workDate: string
+  startMinuteOfDay: number
+  endMinuteOfDay: number
+  currentWorkMode: WorkMode
+  suggestedWorkMode: WorkMode
+  confidence: number
+  rationale: string
+  citedSignalIds: string[]
+}
+
+export type CorrelationNodeType =
+  | 'session'
+  | 'segment'
+  | 'task'
+  | 'ide_event'
+  | 'artifact'
+  | 'annotation'
+  | 'review'
+
+export type CorrelationEdgeType =
+  | 'attributed_to'
+  | 'corroborated_by'
+  | 'contextualized_by'
+  | 'retrospective_outcome_of'
+  | 'variance_flagged'
+  | 'outcome_associated'
+
+export interface EvidenceCorrelationEdgeRecord {
+  id: string
+  tenantId: string
+  projectId: string
+  sourceNodeType: CorrelationNodeType
+  sourceNodeId: string
+  sourceLabel: string
+  targetNodeType: CorrelationNodeType
+  targetNodeId: string
+  targetLabel: string
+  edgeType: CorrelationEdgeType
+  confidence: number
+  rationale: string
+}
+
+export interface TaskEffortVarianceSummary {
+  taskId: string
+  taskCode: string
+  taskTitle: string
+  estimateMinutes: number
+  claimedMinutes: number
+  supportedMinutes: number
+  approvedMinutes: number
+  varianceMinutes: number
+  variancePercent: number
+  reasonCodes: string[]
+  linkedDeliverableCount: number
+  acceptanceCriteriaSummary: string
+}
+
+export interface UnusualPatternAlert {
+  id: string
+  ruleCode: VerificationRuleCode
+  title: string
+  explanation: string
+  suggestedReviewAction: string
+  prohibitedInference: string
+  citedIds: string[]
+  severity: 'info' | 'clarification' | 'warning'
+}
+
+export type AiTargetType =
+  | 'daily_summary'
+  | 'reviewer_digest'
+  | 'gap_explanation'
+  | 'task_mapping'
+  | 'debug_investigation'
+  | 'pattern_cluster'
+
+export type AiGenerationMode = 'ai_guardrailed' | 'deterministic_template'
+
+export type AiGenerationStatus = 'draft' | 'edited_approved' | 'discarded'
+
+export interface AiGenerationRecord {
+  id: string
+  tenantId: string
+  userId?: string
+  targetType: AiTargetType
+  targetId: string
+  targetLabel: string
+  generationMode: AiGenerationMode
+  modelId: string
+  promptVersion: string
+  sanitizedPromptPayload: Record<string, unknown>
+  citedEventIds: string[]
+  citedArtifactIds: string[]
+  draftMarkdown: string
+  humanApprovedMarkdown?: string
+  status: AiGenerationStatus
+  tokensUsed: number
+  approvedByName?: string
+  approvedAt?: string
+  createdAt: string
+}
+
+export type DisputeStatus =
+  | 'open'
+  | 'awaiting_developer'
+  | 'awaiting_manager'
+  | 'escalated'
+  | 'resolved_accepted'
+  | 'resolved_adjusted'
+  | 'resolved_upheld'
+
+export interface DisputeMessageRecord {
+  id: string
+  authorUserId: string
+  authorName: string
+  authorRole: UserRole
+  messageType: 'clarification_request' | 'developer_appeal' | 'reviewer_note' | 'escalation' | 'resolution'
+  messageMarkdown: string
+  attachedArtifactIds: string[]
+  beforeMinutes?: number
+  afterMinutes?: number
+  createdAt: string
+}
+
+export interface DisputeRecord {
+  id: string
+  tenantId: string
+  timesheetId: string
+  timesheetLineId: string
+  taskCode: string
+  taskTitle: string
+  developerId: string
+  developerName: string
+  openedByUserId: string
+  openedByName: string
+  assignedReviewerId?: string
+  assignedReviewerName?: string
+  escalatedReviewerId?: string
+  escalatedReviewerName?: string
+  escalationReason?: string
+  dueDate?: string
+  requestedEvidenceType?: string
+  status: DisputeStatus
+  disputedMinutes: number
+  adjustedApprovedMinutes?: number
+  reason: string
+  resolutionSummary?: string
+  policyVersionCode: string
+  creditInvoiceId?: string
+  createdAt: string
+  resolvedAt?: string
+  messages: DisputeMessageRecord[]
+}
+
+

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
 import { Phase2StoreProvider } from '@/context/Phase2Store'
+import { Phase3StoreProvider } from '@/context/Phase3Store'
 import { ThemeProvider, useTheme } from '@/context/ThemeContext'
 import { AuthAndOnboardingView } from '@/features/auth-tenancy/AuthAndOnboardingView'
 import { ProjectsTasksView } from '@/features/projects-tasks/ProjectsTasksView'
@@ -10,6 +11,8 @@ import { BillingAndAdminView } from '@/features/billing-contracts/BillingAndAdmi
 import { UnifiedTimelineView } from '@/features/timeline-evidence/UnifiedTimelineView'
 import { PrivacyAuditView } from '@/features/timeline-evidence/PrivacyAuditView'
 import { IntegrationsAndDevicesView } from '@/features/integrations/IntegrationsAndDevicesView'
+import { VerificationAndAiView } from '@/features/verification-ai/VerificationAndAiView'
+import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
 import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
 import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaInspector'
 
@@ -18,6 +21,8 @@ type NavSection =
   | 'timer-sessions'
   | 'projects-tasks'
   | 'timeline-evidence'
+  | 'verification-ai'
+  | 'disputes-appeals'
   | 'integrations-devices'
   | 'privacy-audit'
   | 'billing-admin'
@@ -81,6 +86,22 @@ const NAV_ITEMS: NavItem[] = [
     description: 'Unified timeline, gaps & annotations',
     group: 'evidence',
     icon: <NavIcon path="M3 12h4l3-7 4 14 3-7h4" />,
+  },
+  {
+    id: 'verification-ai',
+    path: '/verification',
+    label: 'Verification & AI',
+    description: 'Rules R-01..R-08, policy simulator & AI drafts',
+    group: 'evidence',
+    icon: <NavIcon path="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016Z" />,
+  },
+  {
+    id: 'disputes-appeals',
+    path: '/disputes',
+    label: 'Disputes & Appeals',
+    description: 'Clarifications, 2nd review & audit export',
+    group: 'workspace',
+    icon: <NavIcon path="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-5 5v-5Z" />,
   },
   {
     id: 'integrations-devices',
@@ -666,6 +687,8 @@ function DevProofShell() {
             />
           )}
           {activeSection === 'timeline-evidence' && <UnifiedTimelineView />}
+          {activeSection === 'verification-ai' && <VerificationAndAiView />}
+          {activeSection === 'disputes-appeals' && <DisputesAndAppealsView />}
           {activeSection === 'integrations-devices' && <IntegrationsAndDevicesView />}
           {activeSection === 'privacy-audit' && <PrivacyAuditView />}
           {activeSection === 'billing-admin' && <BillingAndAdminView />}
@@ -687,7 +710,9 @@ export function App() {
     <ThemeProvider>
       <Phase1StoreProvider>
         <Phase2StoreProvider>
-          <DevProofShell />
+          <Phase3StoreProvider>
+            <DevProofShell />
+          </Phase3StoreProvider>
         </Phase2StoreProvider>
       </Phase1StoreProvider>
     </ThemeProvider>

@@ -11,6 +11,7 @@ export function TimesheetsAndReviewView() {
     respondToClarification,
     openDisputeOnLine,
     reviewTimesheetLine,
+    approveUncontestedTimesheetLines,
   } = usePhase1Store()
 
   const [submitProjectId, setSubmitProjectId] = useState<string>(
@@ -243,6 +244,21 @@ export function TimesheetsAndReviewView() {
           >
             Submit Timesheet Period (F1-040)
           </button>
+
+          {isManagerOrOwner && (
+            <button
+              type="button"
+              onClick={() => {
+                const targetProj = submitProjectId || projects[0]?.id
+                const res = approveUncontestedTimesheetLines(targetProj)
+                setBanner({ ok: res.ok, text: res.message })
+              }}
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-white cursor-pointer"
+              title="Approves uncontested lines while holding disputed/clarification lines (F3-034)"
+            >
+              Approve Uncontested & Hold Disputed (F3-034)
+            </button>
+          )}
         </div>
       </div>
 

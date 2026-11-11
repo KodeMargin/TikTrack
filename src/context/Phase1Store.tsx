@@ -26,6 +26,7 @@ import {
   inviteMemberViaPrisma,
   lockInvoiceViaPrisma,
   markNotificationReadViaPrisma,
+  partialApproveTimesheetViaPrisma,
   recordAuditViaPrisma,
   recordSessionViaPrisma,
   reviewTimesheetLineViaPrisma,
@@ -35,6 +36,7 @@ import {
   updateTenantSettingsViaPrisma,
   type PrismaConnectionStatus,
   type PrismaPhase2BootstrapPayload,
+  type PrismaPhase3BootstrapPayload,
 } from '@/lib/prismaApiClient'
 
 export interface PolicyVersionRecord {
@@ -51,6 +53,7 @@ export interface TenantWorkspace {
   timezone: string
   currency: string
   planTier: 'starter' | 'team' | 'agency' | 'enterprise'
+  aiEnabled?: boolean
   roundingRule: RoundingRule
   paidBreakMinutesPerDay: number
   weeklyCapMinutes: number
@@ -284,6 +287,17 @@ interface Phase1StoreContextValue {
     adjustedMinutes?: number,
     lockLine?: boolean
   ) => { ok: boolean; message: string }
+  approveUncontestedTimesheetLines: (projectId?: string) => {
+    ok: boolean
+    approvedCount: number
+    heldCount: number
+    message: string
+  }
+  resolveDisputeLineAdjust: (
+    lineId: string,
+    approvedMinutes: number,
+    resolutionNote: string
+  ) => { ok: boolean; createdCreditInvoiceId?: string; message: string }
   invoices: InvoiceDraftRecord[]
   generateInvoiceFromApproved: (projectId: string, taxPercent: number) => { ok: boolean; message: string }
   lockInvoice: (invoiceId: string) => void
@@ -300,6 +314,7 @@ interface Phase1StoreContextValue {
   bootstrapLoaded: boolean
   hasWorkspace: boolean
   phase2Bootstrap: PrismaPhase2BootstrapPayload | null
+  phase3Bootstrap: PrismaPhase3BootstrapPayload | null
   refreshPrismaConnection: () => Promise<void>
 }
 
@@ -392,6 +407,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([])
   const [phase2Bootstrap, setPhase2Bootstrap] =
     useState<PrismaPhase2BootstrapPayload | null>(null)
+  const [phase3Bootstrap, setPhase3Bootstrap] =
+    useState<PrismaPhase3BootstrapPayload | null>(null)
   const [bootstrapLoaded, setBootstrapLoaded] = useState(false)
   const [prismaStatus, setPrismaStatus] = useState<PrismaConnectionStatus>({
     connected: false,
@@ -431,6 +448,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         setContractPolicy(EMPTY_CONTRACT_POLICY)
       }
       setPhase2Bootstrap(payload.phase2 ?? null)
+      setPhase3Bootstrap(payload.phase3 ?? null)
     } else {
       setTenants([])
       setMembers([])
@@ -442,6 +460,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       setAuditLogs([])
       setContractPolicy(EMPTY_CONTRACT_POLICY)
       setPhase2Bootstrap(null)
+      setPhase3Bootstrap(null)
     }
 
     setBootstrapLoaded(true)
@@ -1367,6 +1386,151 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: `Decision (${decision}) recorded with audit trail.` }
   }
 
+  function approveUncontestedTimesheetLines(projectId?: string) {
+    const tenantLines = timesheetLines.filter(
+      (l) => l.tenantId === activeTenant.id && (!projectId || l.projectId === projectId)
+    )
+    const uncontested = tenantLines.filter(
+      (l) =>
+        !l.isLocked &&
+        l.evidenceStatus !== 'approved' &&
+        l.evidenceStatus !== 'disputed' &&
+        l.evidenceStatus !== 'needs_clarification'
+    )
+    const contested = tenantLines.filter(
+      (l) => l.evidenceStatus === 'disputed' || l.evidenceStatus === 'needs_clarification'
+    )
+
+    if (uncontested.length === 0) {
+      return {
+        ok: false,
+        approvedCount: 0,
+        heldCount: contested.length,
+        message: 'No uncontested lines awaiting partial approval.',
+      }
+    }
+
+    const uncontestedIds = new Set(uncontested.map((l) => l.id))
+    const nextTimesheetStatus = contested.length > 0 ? 'partially_approved' : 'approved'
+
+    setTimesheetLines((prev) =>
+      prev.map((l) => {
+        if (uncontestedIds.has(l.id)) {
+          const rounded = applyTimeRounding(l.claimedMinutes, activeTenant.roundingRule)
+          return {
+            ...l,
+            approvedBillableMinutes: rounded,
+            evidenceStatus: 'approved',
+            timesheetStatus: nextTimesheetStatus,
+            managerComment: `Partial approval by ${activeUser.name}: uncontested period approved while ${contested.length} contested line(s) remain held (F3-034).`,
+          }
+        }
+        if (l.tenantId === activeTenant.id && (!projectId || l.projectId === projectId)) {
+          return { ...l, timesheetStatus: nextTimesheetStatus }
+        }
+        return l
+      })
+    )
+
+    appendAudit(
+      'PARTIAL_APPROVAL_EXECUTED',
+      `timesheets:${projectId ?? activeTenant.id}`,
+      `Approved ${uncontested.length} uncontested line(s); held ${contested.length} contested/disputed line(s) (F3-034).`
+    )
+
+    if (prismaStatus.connected && uncontested[0]?.timesheetId) {
+      void partialApproveTimesheetViaPrisma({
+        tenantId: activeTenant.id,
+        timesheetId: uncontested[0].timesheetId,
+        reviewerUserId: activeUser.id,
+        uncontestedLineIds: Array.from(uncontestedIds),
+        reason: 'Partial approval: uncontested hours approved while disputed lines remain open (F3-034).',
+      })
+    }
+
+    return {
+      ok: true,
+      approvedCount: uncontested.length,
+      heldCount: contested.length,
+      message: `Partially approved ${uncontested.length} uncontested line(s); ${contested.length} contested line(s) preserved for dispute resolution.`,
+    }
+  }
+
+  function resolveDisputeLineAdjust(
+    lineId: string,
+    approvedMinutes: number,
+    resolutionNote: string
+  ): { ok: boolean; createdCreditInvoiceId?: string; message: string } {
+    const target = timesheetLines.find((l) => l.id === lineId)
+    if (!target) return { ok: false, message: 'Timesheet line not found.' }
+
+    const rounded = applyTimeRounding(approvedMinutes, activeTenant.roundingRule)
+
+    if (target.isLocked) {
+      // F1-047 & F3-032: Locked period cannot be mutated in place; issue an immutable
+      // Credit / Adjustment Invoice Line in the open billing period.
+      const deltaMinutes = rounded - target.approvedBillableMinutes
+      const deltaAmount = Math.round(((deltaMinutes / 60) * target.snapshotHourlyRate) * 100) / 100
+      const project = projects.find((p) => p.id === target.projectId)
+      const creditId = `inv-adj-${Date.now()}`
+      const adjInvoice: InvoiceDraftRecord = {
+        id: creditId,
+        tenantId: activeTenant.id,
+        invoiceNumber: `ADJ-${String(invoices.length + 201)}`,
+        projectId: target.projectId,
+        projectName: project?.name ?? 'Project',
+        clientName: project?.clientName ?? 'Client',
+        currency: activeTenant.currency,
+        periodLabel: `Post-Lock Dispute Adjustment (${target.taskCode})`,
+        totalApprovedMinutes: deltaMinutes,
+        subtotalAmount: deltaAmount,
+        taxPercent: 0,
+        taxAmount: 0,
+        totalAmount: deltaAmount,
+        status: 'credited_adjusted',
+        createdAt: new Date().toISOString(),
+        lines: [
+          {
+            lineId: target.id,
+            workDate: new Date().toISOString().slice(0, 10),
+            taskCode: target.taskCode,
+            description: `Dispute Resolution Adjustment (${deltaMinutes >= 0 ? '+' : ''}${deltaMinutes}m): ${resolutionNote}`,
+            approvedMinutes: deltaMinutes,
+            hourlyRate: target.snapshotHourlyRate,
+            amount: deltaAmount,
+          },
+        ],
+      }
+
+      setInvoices((prev) => [adjInvoice, ...prev])
+      appendAudit(
+        'POST_LOCK_DISPUTE_ADJUSTMENT_INVOICED',
+        `invoice_drafts:${adjInvoice.invoiceNumber}`,
+        `Issued post-lock dispute adjustment ${adjInvoice.invoiceNumber} (${deltaMinutes}m, ${deltaAmount.toFixed(2)}) for locked line ${target.taskCode}.`
+      )
+      return {
+        ok: true,
+        createdCreditInvoiceId: creditId,
+        message: `Line was locked (F1-047); issued immutable adjustment memo ${adjInvoice.invoiceNumber} ($${deltaAmount.toFixed(2)}).`,
+      }
+    }
+
+    setTimesheetLines((prev) =>
+      prev.map((l) =>
+        l.id === lineId
+          ? {
+              ...l,
+              approvedBillableMinutes: rounded,
+              evidenceStatus: rounded > 0 ? 'approved' : 'disputed',
+              managerComment: `Dispute resolved by ${activeUser.name}: ${resolutionNote}`,
+            }
+          : l
+      )
+    )
+    appendAudit('DISPUTE_LINE_UPDATED', `timesheet_lines:${lineId}`, resolutionNote)
+    return { ok: true, message: `Updated timesheet line to ${rounded}m approved.` }
+  }
+
   function generateInvoiceFromApproved(
     projectId: string,
     taxPercent: number
@@ -1576,6 +1740,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         respondToClarification,
         openDisputeOnLine,
         reviewTimesheetLine,
+        approveUncontestedTimesheetLines,
+        resolveDisputeLineAdjust,
         invoices: invoices.filter((i) => i.tenantId === activeTenant.id),
         generateInvoiceFromApproved,
         lockInvoice,
@@ -1588,6 +1754,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         bootstrapLoaded,
         hasWorkspace,
         phase2Bootstrap,
+        phase3Bootstrap,
         refreshPrismaConnection,
       }}
     >

@@ -131,6 +131,39 @@ Deno.serve(async (req: Request) => {
       .select('id, decided_at_utc')
       .single()
 
+    // Phase 3 Milestone 3.3 (F3-034): Recompute parent timesheet status for Partial Approval
+    const { data: siblingLines } = await auth.supabase
+      .from('timesheet_lines')
+      .select('line_status')
+      .eq('tenant_id', body.tenant_id)
+      .eq('timesheet_id', body.timesheet_id)
+
+    const statuses: string[] = ((siblingLines ?? []) as Array<{ line_status: string }>).map(
+      (s) => s.line_status
+    )
+    const hasApproved = statuses.some((s) => s === 'approved' || s === 'adjusted_approved')
+    const hasContested = statuses.some(
+      (s) => s === 'disputed' || s === 'needs_clarification' || s === 'pending_review' || s === 'rejected'
+    )
+
+    const nextTimesheetStatus =
+      hasApproved && !hasContested
+        ? 'approved'
+        : hasApproved && hasContested
+          ? 'partially_approved'
+          : statuses.some((s) => s === 'disputed')
+            ? 'disputed'
+            : 'needs_clarification'
+
+    await auth.supabase
+      .from('timesheets')
+      .update({
+        status: nextTimesheetStatus,
+        ...(nextTimesheetStatus === 'approved' ? { approved_at: new Date().toISOString() } : {}),
+      })
+      .eq('id', body.timesheet_id)
+      .eq('tenant_id', body.tenant_id)
+
     return jsonResponse(200, {
       ok: true,
       correlation_id: correlationId,
@@ -140,6 +173,7 @@ Deno.serve(async (req: Request) => {
         timesheet_line_id: body.timesheet_line_id,
         decision_type: body.decision_type,
         line_status: nextLineStatus,
+        timesheet_status: nextTimesheetStatus,
         new_approved_minutes: newApprovedMinutes,
         decided_at_utc: decision?.decided_at_utc ?? new Date().toISOString(),
       },

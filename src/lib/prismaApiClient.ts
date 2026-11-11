@@ -5,7 +5,13 @@
  * React frontend persists Phase 1 data through Prisma ORM without exposing DATABASE_URL.
  */
 
-import type { ContractBillingPolicy } from '@/types/domain.types'
+import type {
+  AiGenerationRecord,
+  ContractBillingPolicy,
+  DisputeRecord,
+  EvidenceCorrelationEdgeRecord,
+  VerificationRuleSetRecord,
+} from '@/types/domain.types'
 import type {
   AuditLogEntry,
   InvoiceDraftRecord,
@@ -47,6 +53,13 @@ export interface PrismaConnectionStatus {
   message: string
 }
 
+export interface PrismaPhase3BootstrapPayload {
+  ruleSets: VerificationRuleSetRecord[]
+  correlationEdges: EvidenceCorrelationEdgeRecord[]
+  aiGenerations: AiGenerationRecord[]
+  disputes: DisputeRecord[]
+}
+
 export interface PrismaBootstrapPayload {
   status: PrismaConnectionStatus
   tenants: TenantWorkspace[]
@@ -59,6 +72,7 @@ export interface PrismaBootstrapPayload {
   notifications: NotificationItem[]
   auditLogs: AuditLogEntry[]
   phase2?: PrismaPhase2BootstrapPayload
+  phase3?: PrismaPhase3BootstrapPayload
 }
 
 async function postJson<T>(url: string, body: unknown, method = 'POST'): Promise<T | null> {
@@ -267,3 +281,75 @@ export const reconcileGapViaPrisma = (input: {
   choice: string
   note: string
 }) => postJson<{ ok: boolean }>('/api/prisma/phase2/reconcile-gap', input, 'PATCH')
+
+export const toggleTenantAiViaPrisma = (input: {
+  tenantId: string
+  aiEnabled: boolean
+  actorUserId?: string
+}) => postJson<{ ok: boolean }>('/api/prisma/phase3/tenant-ai', input, 'PATCH')
+
+export const publishRuleSetViaPrisma = (input: {
+  tenantId: string
+  versionNumber: number
+  versionLabel: string
+  rulesConfig: Record<string, unknown>
+  simulationSummary?: Record<string, unknown>
+  createdBy?: string
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase3/rule-sets', input)
+
+export const createAiGenerationViaPrisma = (input: {
+  tenantId: string
+  userId?: string
+  targetType: string
+  targetId: string
+  generationMode: 'ai_guardrailed' | 'deterministic_template'
+  modelId: string
+  promptVersion: string
+  sanitizedPromptPayload: Record<string, unknown>
+  citedEventIds: string[]
+  citedArtifactIds: string[]
+  draftMarkdown: string
+  tokensUsed: number
+}) => postJson<{ ok: boolean; id?: string; error?: string }>('/api/prisma/phase3/ai-generate', input)
+
+export const decideAiGenerationViaPrisma = (input: {
+  generationId: string
+  status: 'edited_approved' | 'discarded'
+  humanApprovedMarkdown?: string
+  approvedByUserId?: string
+}) => postJson<{ ok: boolean }>('/api/prisma/phase3/ai-decision', input, 'PATCH')
+
+export const partialApproveTimesheetViaPrisma = (input: {
+  tenantId: string
+  timesheetId: string
+  reviewerUserId: string
+  uncontestedLineIds: string[]
+  reason: string
+}) => postJson<{ ok: boolean }>('/api/prisma/phase3/timesheets/partial-approve', input)
+
+export const openDisputeViaPrisma = (input: {
+  tenantId: string
+  timesheetId: string
+  timesheetLineId: string
+  openedByUserId: string
+  assignedReviewerId?: string
+  dueDate?: string
+  requestedEvidenceType?: string
+  disputedMinutes: number
+  reason: string
+  messageType?: 'clarification_request' | 'developer_appeal'
+  attachedArtifactIds?: string[]
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase3/disputes', input)
+
+export const performDisputeActionViaPrisma = (input: {
+  action: 'reply' | 'escalate' | 'resolve'
+  tenantId: string
+  disputeId: string
+  actorUserId: string
+  messageMarkdown?: string
+  attachedArtifactIds?: string[]
+  escalatedReviewerId?: string
+  resolutionStatus?: 'resolved_accepted' | 'resolved_adjusted' | 'resolved_upheld'
+  adjustedApprovedMinutes?: number
+  resolutionSummary?: string
+}) => postJson<{ ok: boolean; error?: string }>('/api/prisma/phase3/disputes/action', input)

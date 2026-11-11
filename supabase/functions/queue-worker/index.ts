@@ -11,6 +11,7 @@ import {
   jsonResponse,
   requireAuthenticatedUser,
 } from '../_shared/auth-guard.ts'
+import { evaluateSegmentRulesR01ToR08 } from './rules-engine.ts'
 
 interface QueueNormalizeRequest {
   tenant_id: string
@@ -117,6 +118,61 @@ Deno.serve(async (req: Request) => {
       if (!rollupErr) upsertedBuckets += 1
     }
 
+    // Phase 3 Milestone 3.1: Evaluate versioned verification rules (R-01..R-08)
+    let evaluatedRuleCount = 0
+    const { data: activeRuleSet } = await auth.supabase
+      .from('verification_rule_sets')
+      .select('id, rules_config')
+      .eq('tenant_id', body.tenant_id)
+      .eq('status', 'active')
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (activeRuleSet) {
+      const { data: segments } = await auth.supabase
+        .from('time_segments')
+        .select('id, task_id, work_mode, provenance, elapsed_minutes, observed_minutes, developer_explanation')
+        .eq('tenant_id', body.tenant_id)
+        .eq('session_id', body.session_id)
+
+      const hasDocsBucket = Array.from(bucketMap.values()).some(
+        (b) => b.appCategory === 'docs_browser'
+      )
+
+      for (const seg of segments ?? []) {
+        const evalRows = evaluateSegmentRulesR01ToR08(
+          body.tenant_id,
+          activeRuleSet.id,
+          {
+            id: seg.id,
+            work_mode: seg.work_mode,
+            provenance: seg.provenance,
+            elapsed_minutes: Number(seg.elapsed_minutes),
+            observed_minutes: Number(seg.observed_minutes),
+            developer_explanation: seg.developer_explanation,
+            clock_drift_seconds: 0,
+            has_debug_or_test_artifact: ((events ?? []) as Array<{ event_type: string }>).some(
+              (e) => e.event_type === 'vscode_debug_session' || e.event_type === 'vscode_test_run'
+            ),
+            has_commit_artifact: false,
+            has_docs_browser_rollup: hasDocsBucket,
+            has_retrospective_artifact: false,
+            was_overlap_deduplicated: seg.provenance === 'superseded_duplicate',
+            task_estimate_minutes: 0,
+            cumulative_task_minutes: Number(seg.elapsed_minutes),
+          }
+        )
+
+        for (const row of evalRows) {
+          const { error: evalErr } = await auth.supabase
+            .from('segment_rule_evaluations')
+            .upsert(row, { onConflict: 'tenant_id,time_segment_id,rule_set_id,rule_code' })
+          if (!evalErr) evaluatedRuleCount += 1
+        }
+      }
+    }
+
     return jsonResponse(200, {
       ok: true,
       correlation_id: correlationId,
@@ -124,6 +180,7 @@ Deno.serve(async (req: Request) => {
         session_id: body.session_id,
         processed_events: (events ?? []).length,
         canonical_5m_buckets: upsertedBuckets,
+        evaluated_rules: evaluatedRuleCount,
       },
     })
   } catch (err) {

@@ -756,3 +756,118 @@ CREATE POLICY storage_invoice_exports_select ON storage.objects
     )
   );
 
+-- -----------------------------------------------------------------------------
+-- 7. Phase 3 Live Security, AI Opt-Out & Independent Dispute Escalation Guards
+-- -----------------------------------------------------------------------------
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'no_prohibited_ai_payload'
+      AND conrelid = 'public.ai_generations'::regclass
+  ) THEN
+    ALTER TABLE public.ai_generations
+      ADD CONSTRAINT no_prohibited_ai_payload
+      CHECK (NOT public.jsonb_contains_prohibited_surveillance_keys(sanitized_prompt_payload));
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'disputes_independent_escalated_reviewer'
+      AND conrelid = 'public.disputes'::regclass
+  ) THEN
+    ALTER TABLE public.disputes
+      ADD CONSTRAINT disputes_independent_escalated_reviewer CHECK (
+        escalated_reviewer_id IS NULL
+        OR (
+          escalated_reviewer_id IS DISTINCT FROM assigned_reviewer_id
+          AND escalated_reviewer_id IS DISTINCT FROM opened_by_user_id
+        )
+      );
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.enforce_tenant_ai_opt_out_gate()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_ai_enabled boolean;
+BEGIN
+  IF NEW.generation_mode = 'ai_guardrailed' THEN
+    SELECT ai_enabled INTO v_ai_enabled
+    FROM public.tenants
+    WHERE id = NEW.tenant_id;
+
+    IF COALESCE(v_ai_enabled, false) = false THEN
+      RAISE EXCEPTION 'Tenant (%) has AI assistance disabled (F3-027). Use deterministic_template mode instead.', NEW.tenant_id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_enforce_tenant_ai_opt_out_gate ON public.ai_generations;
+CREATE TRIGGER trg_enforce_tenant_ai_opt_out_gate
+  BEFORE INSERT ON public.ai_generations
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_tenant_ai_opt_out_gate();
+
+ALTER TABLE public.verification_rule_sets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.segment_rule_evaluations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.evidence_correlation_edges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_generations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS verification_rule_sets_select ON public.verification_rule_sets;
+CREATE POLICY verification_rule_sets_select ON public.verification_rule_sets
+  FOR SELECT TO authenticated
+  USING (public.user_is_active_tenant_member(tenant_id));
+
+DROP POLICY IF EXISTS segment_rule_evaluations_select ON public.segment_rule_evaluations;
+CREATE POLICY segment_rule_evaluations_select ON public.segment_rule_evaluations
+  FOR SELECT TO authenticated
+  USING (
+    public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager', 'auditor'])
+    OR EXISTS (
+      SELECT 1 FROM public.time_segments ts
+      WHERE ts.id = segment_rule_evaluations.time_segment_id
+        AND ts.tenant_id = segment_rule_evaluations.tenant_id
+        AND ts.user_id = (SELECT auth.uid())
+    )
+  );
+
+DROP POLICY IF EXISTS evidence_correlation_edges_select ON public.evidence_correlation_edges;
+CREATE POLICY evidence_correlation_edges_select ON public.evidence_correlation_edges
+  FOR SELECT TO authenticated
+  USING (
+    public.user_has_project_access(tenant_id, project_id, ARRAY['manager', 'contributor'])
+    OR public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'auditor'])
+  );
+
+DROP POLICY IF EXISTS ai_generations_select_scoped ON public.ai_generations;
+CREATE POLICY ai_generations_select_scoped ON public.ai_generations
+  FOR SELECT TO authenticated
+  USING (
+    public.user_is_active_tenant_member(tenant_id)
+    AND NOT public.user_has_tenant_role(tenant_id, ARRAY['finance', 'client_reviewer'])
+    AND (
+      user_id = (SELECT auth.uid())
+      OR (
+        status = 'edited_approved'
+        AND public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager', 'auditor'])
+      )
+      OR (
+        target_type IN ('reviewer_digest', 'pattern_cluster', 'gap_explanation')
+        AND public.user_has_tenant_role(tenant_id, ARRAY['tenant_owner', 'project_manager', 'auditor'])
+      )
+    )
+  );
+
+

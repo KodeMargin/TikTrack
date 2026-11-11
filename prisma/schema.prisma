@@ -53,6 +53,12 @@ model Tenant {
   evidenceLinks         EvidenceLink[]
   sessionAnnotations    SessionAnnotation[]
 
+  // Phase 3 relations
+  verificationRuleSets      VerificationRuleSet[]
+  segmentRuleEvaluations    SegmentRuleEvaluation[]
+  evidenceCorrelationEdges  EvidenceCorrelationEdge[]
+  aiGenerations             AiGeneration[]
+
   @@unique([id, slug])
   @@map("tenants")
 }
@@ -98,6 +104,13 @@ model UserProfile {
   ideWorkspaceMappings  IdeWorkspaceMapping[]
   evidenceArtifacts     EvidenceArtifact[]
   sessionAnnotations    SessionAnnotation[]
+
+  // Phase 3 relations
+  createdRuleSets     VerificationRuleSet[]
+  aiGenerations       AiGeneration[]         @relation("AiGenerationAuthor")
+  approvedAiDrafts    AiGeneration[]         @relation("AiGenerationApprover")
+  assignedDisputes    Dispute[]              @relation("DisputeAssignedReviewer")
+  escalatedDisputes   Dispute[]              @relation("DisputeEscalatedReviewer")
 
   @@map("user_profiles")
 }
@@ -264,8 +277,9 @@ model Project {
   contracts      Contract[]
   timesheets     Timesheet[]
   invoiceDrafts  InvoiceDraft[]
-  repositoryLinks RepositoryLink[]
-  evidenceArtifacts EvidenceArtifact[]
+  repositoryLinks          RepositoryLink[]
+  evidenceArtifacts        EvidenceArtifact[]
+  evidenceCorrelationEdges EvidenceCorrelationEdge[]
 
   @@unique([tenantId, code])
   @@unique([id, tenantId])
@@ -458,8 +472,9 @@ model TimeSegment {
   task           Task                @relation(fields: [taskId, tenantId, projectId], references: [id, tenantId, projectId], onDelete: Restrict)
   adjustments    SessionAdjustment[]
   timesheetLines TimesheetLine[]
-  evidenceLinks  EvidenceLink[]
-  annotations    SessionAnnotation[]
+  evidenceLinks   EvidenceLink[]
+  annotations     SessionAnnotation[]
+  ruleEvaluations SegmentRuleEvaluation[]
 
   @@index([tenantId, userId, workDate], map: "idx_time_segments_tenant_user_date")
   @@index([tenantId, projectId, workDate], map: "idx_time_segments_tenant_project_date")
@@ -613,39 +628,59 @@ model ReviewDecision {
   timesheet     Timesheet     @relation(fields: [timesheetId, tenantId], references: [id, tenantId], onDelete: Restrict)
   timesheetLine TimesheetLine @relation(fields: [timesheetLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
   reviewer      UserProfile   @relation(fields: [reviewerUserId], references: [id])
+  disputes      Dispute[]
 
   @@map("review_decisions")
 }
 
 model Dispute {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId        String    @map("tenant_id") @db.Uuid
-  timesheetId     String    @map("timesheet_id") @db.Uuid
-  timesheetLineId String    @map("timesheet_line_id") @db.Uuid
-  openedByUserId  String    @map("opened_by_user_id") @db.Uuid
-  status          String    @default("open")
-  disputedMinutes Decimal   @map("disputed_minutes") @db.Decimal(6, 2)
-  reason          String
-  resolutionNote  String?   @map("resolution_note")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(6)
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String    @map("tenant_id") @db.Uuid
+  timesheetId             String    @map("timesheet_id") @db.Uuid
+  timesheetLineId         String    @map("timesheet_line_id") @db.Uuid
+  reviewDecisionId        String?   @map("review_decision_id") @db.Uuid
+  openedByUserId          String    @map("opened_by_user_id") @db.Uuid
+  assignedReviewerId      String?   @map("assigned_reviewer_id") @db.Uuid
+  escalatedReviewerId     String?   @map("escalated_reviewer_id") @db.Uuid
+  escalationReason        String?   @map("escalation_reason")
+  dueDate                 DateTime? @map("due_date") @db.Date
+  requestedEvidenceType   String?   @map("requested_evidence_type")
+  status                  String    @default("open")
+  disputedMinutes         Decimal   @map("disputed_minutes") @db.Decimal(6, 2)
+  adjustedApprovedMinutes Decimal?  @map("adjusted_approved_minutes") @db.Decimal(6, 2)
+  reason                  String
+  resolutionNote          String?   @map("resolution_note")
+  resolutionSummary       String?   @map("resolution_summary")
+  policyVersionId         String?   @map("policy_version_id") @db.Uuid
+  creditInvoiceId         String?   @map("credit_invoice_id") @db.Uuid
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  resolvedAt              DateTime? @map("resolved_at") @db.Timestamptz(6)
 
-  timesheet     Timesheet        @relation(fields: [timesheetId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  timesheetLine TimesheetLine    @relation(fields: [timesheetLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  openedBy      UserProfile      @relation(fields: [openedByUserId], references: [id])
-  messages      DisputeMessage[]
+  timesheet         Timesheet        @relation(fields: [timesheetId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  timesheetLine     TimesheetLine    @relation(fields: [timesheetLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  reviewDecision    ReviewDecision?  @relation(fields: [reviewDecisionId], references: [id], onDelete: SetNull)
+  openedBy          UserProfile      @relation(fields: [openedByUserId], references: [id])
+  assignedReviewer  UserProfile?     @relation("DisputeAssignedReviewer", fields: [assignedReviewerId], references: [id], onDelete: SetNull)
+  escalatedReviewer UserProfile?     @relation("DisputeEscalatedReviewer", fields: [escalatedReviewerId], references: [id], onDelete: SetNull)
+  creditInvoice     InvoiceDraft?    @relation("DisputeCreditInvoice", fields: [creditInvoiceId], references: [id], onDelete: SetNull)
+  messages          DisputeMessage[]
 
   @@unique([id, tenantId])
+  @@index([tenantId, status, createdAt(sort: Desc)], map: "idx_disputes_tenant_status")
   @@map("disputes")
 }
 
 model DisputeMessage {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  disputeId       String   @map("dispute_id") @db.Uuid
-  authorUserId    String   @map("author_user_id") @db.Uuid
-  messageMarkdown String   @map("message_markdown")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  disputeId           String   @map("dispute_id") @db.Uuid
+  authorUserId        String   @map("author_user_id") @db.Uuid
+  messageMarkdown     String   @map("message_markdown")
+  attachedArtifactIds String[] @default([]) @map("attached_artifact_ids") @db.Uuid
+  messageType         String   @default("developer_appeal") @map("message_type")
+  beforeMinutes       Decimal? @map("before_minutes") @db.Decimal(6, 2)
+  afterMinutes        Decimal? @map("after_minutes") @db.Decimal(6, 2)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   dispute Dispute     @relation(fields: [disputeId, tenantId], references: [id, tenantId], onDelete: Cascade)
   author  UserProfile @relation(fields: [authorUserId], references: [id])
@@ -676,6 +711,7 @@ model InvoiceDraft {
   referenceCreditTarget InvoiceDraft?  @relation("InvoiceCreditRef", fields: [referenceCreditForInvoiceId], references: [id])
   creditAdjustments     InvoiceDraft[] @relation("InvoiceCreditRef")
   lines                 InvoiceLine[]
+  disputesCredited      Dispute[]      @relation("DisputeCreditInvoice")
 
   @@unique([tenantId, invoiceNumber])
   @@unique([id, tenantId])
@@ -1001,5 +1037,107 @@ model SessionAnnotation {
 
   @@index([tenantId, sessionId, createdAt], map: "idx_session_annotations_session")
   @@map("session_annotations")
+}
+
+// -----------------------------------------------------------------------------
+// 7. Phase 3 — Verification Rules Engine, Correlation Graph & Guardrailed AI (0008–0010)
+// -----------------------------------------------------------------------------
+
+model VerificationRuleSet {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  versionNumber     Int      @map("version_number")
+  versionLabel      String   @map("version_label")
+  effectiveFrom     DateTime @default(now()) @map("effective_from") @db.Timestamptz(6)
+  status            String   @default("active")
+  rulesConfig       Json     @default("{}") @map("rules_config")
+  simulationSummary Json?    @map("simulation_summary")
+  createdBy         String?  @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser UserProfile?            @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  evaluations   SegmentRuleEvaluation[]
+
+  @@unique([tenantId, versionNumber])
+  @@unique([id, tenantId])
+  @@index([tenantId, status, effectiveFrom(sort: Desc)], map: "idx_verification_rule_sets_tenant_effective")
+  @@map("verification_rule_sets")
+}
+
+model SegmentRuleEvaluation {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  timeSegmentId       String    @map("time_segment_id") @db.Uuid
+  ruleSetId           String    @map("rule_set_id") @db.Uuid
+  ruleCode            String    @map("rule_code")
+  triggered           Boolean   @default(true)
+  severity            String    @default("info")
+  title               String
+  triggerDescription  String    @map("trigger_description")
+  suggestedAction     String    @map("suggested_action")
+  prohibitedInference String    @map("prohibited_inference")
+  explanationPrompt   String?   @map("explanation_prompt")
+  developerResponse   String?   @map("developer_response")
+  resolvedAtUtc       DateTime? @map("resolved_at_utc") @db.Timestamptz(6)
+  evaluatedAtUtc      DateTime  @default(now()) @map("evaluated_at_utc") @db.Timestamptz(6)
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  timeSegment TimeSegment         @relation(fields: [timeSegmentId], references: [id], onDelete: Cascade)
+  ruleSet     VerificationRuleSet @relation(fields: [ruleSetId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([tenantId, timeSegmentId, ruleSetId, ruleCode])
+  @@index([tenantId, timeSegmentId, evaluatedAtUtc(sort: Desc)], map: "idx_segment_rule_evals_segment")
+  @@map("segment_rule_evaluations")
+}
+
+model EvidenceCorrelationEdge {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  sourceNodeType String   @map("source_node_type")
+  sourceNodeId   String   @map("source_node_id")
+  targetNodeType String   @map("target_node_type")
+  targetNodeId   String   @map("target_node_id")
+  edgeType       String   @map("edge_type")
+  confidence     Decimal  @default(0.90) @db.Decimal(3, 2)
+  rationale      String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, sourceNodeType, sourceNodeId, targetNodeType, targetNodeId, edgeType])
+  @@index([tenantId, projectId, edgeType], map: "idx_evidence_correlation_edges_project")
+  @@map("evidence_correlation_edges")
+}
+
+model AiGeneration {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String    @map("tenant_id") @db.Uuid
+  userId                 String?   @map("user_id") @db.Uuid
+  targetType             String    @map("target_type")
+  targetId               String    @map("target_id")
+  generationMode         String    @default("ai_guardrailed") @map("generation_mode")
+  modelId                String    @map("model_id")
+  promptVersion          String    @default("v1.0") @map("prompt_version")
+  sanitizedPromptPayload Json      @default("{}") @map("sanitized_prompt_payload")
+  citedEventIds          String[]  @default([]) @map("cited_event_ids")
+  citedArtifactIds       String[]  @default([]) @map("cited_artifact_ids")
+  draftMarkdown          String    @map("draft_markdown")
+  humanApprovedMarkdown  String?   @map("human_approved_markdown")
+  status                 String    @default("draft")
+  tokensUsed             Int       @default(0) @map("tokens_used")
+  approvedByUserId       String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt             DateTime? @map("approved_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  authorUser UserProfile? @relation("AiGenerationAuthor", fields: [userId], references: [id], onDelete: SetNull)
+  approver   UserProfile? @relation("AiGenerationApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, targetType, targetId, createdAt(sort: Desc)], map: "idx_ai_generations_tenant_target")
+  @@index([tenantId, userId, status, createdAt(sort: Desc)], map: "idx_ai_generations_user_status")
+  @@map("ai_generations")
 }
 

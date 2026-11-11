@@ -24,6 +24,15 @@ import {
   handleRemovePrivacyExclusionPrisma,
   handleToggleDeviceRevocationPrisma,
 } from './prismaPhase2Handlers.ts'
+import {
+  handleCreateAiGenerationPrisma,
+  handleDecideAiGenerationPrisma,
+  handleDisputeActionPrisma,
+  handleOpenDisputePrisma,
+  handlePartialApproveTimesheetPrisma,
+  handlePublishRuleSetPrisma,
+  handleToggleTenantAiPrisma,
+} from './prismaPhase3Handlers.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -495,6 +504,41 @@ export function prismaSupabaseApiPlugin(): Plugin {
             if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase2/reconcile-gap')) {
               const body = await readJsonBody<Parameters<typeof handleReconcileGapPrisma>[0]>(req)
               return sendJson(res, 200, await handleReconcileGapPrisma(body))
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase3/tenant-ai')) {
+              const body = await readJsonBody<Parameters<typeof handleToggleTenantAiPrisma>[0]>(req)
+              return sendJson(res, 200, await handleToggleTenantAiPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase3/rule-sets')) {
+              const body = await readJsonBody<Parameters<typeof handlePublishRuleSetPrisma>[0]>(req)
+              return sendJson(res, 201, await handlePublishRuleSetPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase3/ai-generate')) {
+              const body = await readJsonBody<Parameters<typeof handleCreateAiGenerationPrisma>[0]>(req)
+              return sendJson(res, 201, await handleCreateAiGenerationPrisma(body))
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase3/ai-decision')) {
+              const body = await readJsonBody<Parameters<typeof handleDecideAiGenerationPrisma>[0]>(req)
+              return sendJson(res, 200, await handleDecideAiGenerationPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase3/timesheets/partial-approve')) {
+              const body = await readJsonBody<Parameters<typeof handlePartialApproveTimesheetPrisma>[0]>(req)
+              return sendJson(res, 200, await handlePartialApproveTimesheetPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase3/disputes/action')) {
+              const body = await readJsonBody<Parameters<typeof handleDisputeActionPrisma>[0]>(req)
+              return sendJson(res, 200, await handleDisputeActionPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase3/disputes')) {
+              const body = await readJsonBody<Parameters<typeof handleOpenDisputePrisma>[0]>(req)
+              return sendJson(res, 201, await handleOpenDisputePrisma(body))
             }
 
             return sendJson(res, 404, { error: 'Unknown Prisma API endpoint' })
