@@ -5,11 +5,17 @@ export function TimesheetsAndReviewView() {
   const {
     activeTenant,
     activeUser,
+    projects,
     timesheetLines,
+    submitTimesheetPeriod,
     respondToClarification,
     openDisputeOnLine,
     reviewTimesheetLine,
   } = usePhase1Store()
+
+  const [submitProjectId, setSubmitProjectId] = useState<string>(
+    projects[0]?.id ?? ''
+  )
 
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [clarificationDrafts, setClarificationDrafts] = useState<Record<string, string>>({})
@@ -185,6 +191,59 @@ export function TimesheetsAndReviewView() {
         </div>
       </div>
 
+      {/* Timesheet Period Submission & Weekly Cap Progress (F1-040) */}
+      <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex-1 min-w-64 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-200">
+              Weekly Cap Progress (F1-040)
+            </span>
+            <span className="font-mono text-indigo-300">
+              {(totals.claimed / 60).toFixed(2)}h / {(activeTenant.weeklyCapMinutes / 60).toFixed(1)}h cap ({Math.min(100, Math.round((totals.claimed / Math.max(1, activeTenant.weeklyCapMinutes)) * 100))}%)
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-slate-950 overflow-hidden border border-slate-800">
+            <div
+              className={`h-full transition-all ${
+                totals.claimed > activeTenant.weeklyCapMinutes
+                  ? 'bg-rose-500'
+                  : 'bg-indigo-500'
+              }`}
+              style={{
+                width: `${Math.min(100, Math.round((totals.claimed / Math.max(1, activeTenant.weeklyCapMinutes)) * 100))}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <select
+            value={submitProjectId || projects[0]?.id || ''}
+            onChange={(e) => setSubmitProjectId(e.target.value)}
+            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.code} — {p.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={isFinance}
+            onClick={() => {
+              const targetProj = submitProjectId || projects[0]?.id
+              if (!targetProj) return
+              const res = submitTimesheetPeriod(targetProj)
+              setBanner({ ok: res.ok, text: res.message })
+            }}
+            className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 font-semibold text-white cursor-pointer"
+          >
+            Submit Timesheet Period (F1-040)
+          </button>
+        </div>
+      </div>
+
       {/* Timesheet Lines List */}
       <div className="space-y-4">
         {filteredLines.map((line) => {
@@ -213,6 +272,15 @@ export function TimesheetsAndReviewView() {
                     </span>
                     <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
                       Provenance: {line.provenance}
+                    </span>
+                    <span
+                      className={`text-[11px] px-2 py-0.5 rounded font-mono uppercase border ${
+                        line.timesheetStatus === 'submitted'
+                          ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                          : 'bg-slate-900 text-slate-400 border-slate-700'
+                      }`}
+                    >
+                      Period: {line.timesheetStatus ?? 'draft'}
                     </span>
                     {line.isLocked && (
                       <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700 font-semibold">

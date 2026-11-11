@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
+import { AuthAndOnboardingView } from '@/features/auth-tenancy/AuthAndOnboardingView'
 import { ProjectsTasksView } from '@/features/projects-tasks/ProjectsTasksView'
 import { WorkSessionTimerView } from '@/features/sessions-timer/WorkSessionTimerView'
 import { TimesheetsAndReviewView } from '@/features/timesheets-review/TimesheetsAndReviewView'
@@ -12,45 +13,64 @@ type NavSection =
   | 'projects-tasks'
   | 'timesheets-review'
   | 'billing-admin'
+  | 'auth-privacy'
   | 'phase0-simulator'
 
 const NAV_ITEMS: {
   id: NavSection
+  path: string
   badge: string
   label: string
   subtitle: string
 }[] = [
-    {
-      id: 'timer-sessions',
-      badge: 'F1-020..030',
-      label: 'Work Session Timer & Deep Work',
-      subtitle: 'Visible timer, 8 work modes, offline queue & manual entry',
-    },
-    {
-      id: 'projects-tasks',
-      badge: 'F1-010..016',
-      label: 'Projects & Task Board',
-      subtitle: 'Kanban/list views, acceptance criteria & task assignments',
-    },
-    {
-      id: 'timesheets-review',
-      badge: 'F1-040..043',
-      label: 'Timesheets & Manager Review',
-      subtitle: '5 time concepts, clarification requests & dispute trail',
-    },
-    {
-      id: 'billing-admin',
-      badge: 'F1-001..007 / F1-044..047',
-      label: 'Contracts, Invoices & Tenancy',
-      subtitle: 'Effective-dated rates, locked invoices, RBAC & audit log',
-    },
-    {
-      id: 'phase0-simulator',
-      badge: 'D-001..006',
-      label: 'Phase 0 Simulator & DPIA Gate',
-      subtitle: 'Ground-truth pilot fixtures & live privacy schema validator',
-    },
-  ]
+  {
+    id: 'timer-sessions',
+    path: '/timer',
+    badge: 'F1-020..030',
+    label: 'Work Session Timer & Deep Work',
+    subtitle: 'Visible timer, 8 work modes, offline queue & manual entry',
+  },
+  {
+    id: 'projects-tasks',
+    path: '/projects',
+    badge: 'F1-010..016',
+    label: 'Projects & Task Board',
+    subtitle: 'Kanban/list views, acceptance criteria & task assignments',
+  },
+  {
+    id: 'timesheets-review',
+    path: '/timesheets',
+    badge: 'F1-040..043',
+    label: 'Timesheets & Manager Review',
+    subtitle: '5 time concepts, clarification requests & dispute trail',
+  },
+  {
+    id: 'billing-admin',
+    path: '/billing',
+    badge: 'F1-001..007 / F1-044..047',
+    label: 'Contracts, Invoices & Tenancy',
+    subtitle: 'Effective-dated rates, locked invoices, RBAC & audit log',
+  },
+  {
+    id: 'auth-privacy',
+    path: '/auth-privacy',
+    badge: 'F1-001..006 / F1-030',
+    label: 'Auth, Tenant Setup & Policy Consent',
+    subtitle: 'Supabase login/MFA, org onboarding & policy ledger',
+  },
+  {
+    id: 'phase0-simulator',
+    path: '/simulator',
+    badge: 'D-001..006',
+    label: 'Phase 0 Simulator & DPIA Gate',
+    subtitle: 'Ground-truth pilot fixtures & live privacy schema validator',
+  },
+]
+
+function resolveSectionFromPath(pathname: string): NavSection {
+  const match = NAV_ITEMS.find((item) => item.path === pathname)
+  return match ? match.id : 'timesheets-review'
+}
 
 function DevProofShell() {
   const {
@@ -65,10 +85,33 @@ function DevProofShell() {
     transitionTimer,
     prismaStatus,
     refreshPrismaConnection,
+    notifications,
+    unreadNotificationCount,
+    markNotificationRead,
   } = usePhase1Store()
 
-  const [activeSection, setActiveSection] =
-    useState<NavSection>('timesheets-review')
+  const [activeSection, setActiveSection] = useState<NavSection>(() =>
+    typeof window !== 'undefined'
+      ? resolveSectionFromPath(window.location.pathname)
+      : 'timesheets-review'
+  )
+  const [notifOpen, setNotifOpen] = useState(false)
+
+  useEffect(() => {
+    const onPopState = () => {
+      setActiveSection(resolveSectionFromPath(window.location.pathname))
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  function navigateToSection(section: NavSection) {
+    setActiveSection(section)
+    const target = NAV_ITEMS.find((n) => n.id === section)
+    if (target && typeof window !== 'undefined' && window.location.pathname !== target.path) {
+      window.history.pushState({}, '', target.path)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col">
@@ -186,17 +229,76 @@ function DevProofShell() {
               <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-emerald-300">
                 Rounding: {activeTenant.roundingRule}
               </span>
+
+              {/* Notifications Center (F1-048) */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setNotifOpen((prev) => !prev)}
+                  className="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 hover:border-indigo-500 text-slate-200 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Notifications</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      unreadNotificationCount > 0
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {unreadNotificationCount}
+                  </span>
+                </button>
+                {notifOpen && (
+                  <div className="absolute right-0 mt-2 w-80 max-h-80 overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 shadow-2xl p-3 space-y-2 z-50">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 pb-1 border-b border-slate-800">
+                      <span>Alerts & Activity (F1-048)</span>
+                      <button
+                        type="button"
+                        onClick={() => setNotifOpen(false)}
+                        className="text-slate-400 hover:text-white cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="text-[11px] text-slate-500 py-3 text-center">
+                        No notifications for {activeTenant.name}.
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => markNotificationRead(n.id)}
+                          className={`p-2 rounded-lg border text-[11px] cursor-pointer space-y-0.5 ${
+                            n.readAt
+                              ? 'border-slate-800 bg-slate-900/50 text-slate-400'
+                              : 'border-indigo-700/70 bg-indigo-950/40 text-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between font-semibold">
+                            <span>{n.title}</span>
+                            {!n.readAt && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                            )}
+                          </div>
+                          <p className="text-[10px] leading-snug">{n.body}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          <nav className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+          <nav className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
             {NAV_ITEMS.map((item) => {
               const selected = item.id === activeSection
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveSection(item.id)}
+                  onClick={() => navigateToSection(item.id)}
                   className={`text-left p-3 rounded-xl border transition cursor-pointer ${selected
                       ? 'border-indigo-500 bg-indigo-950/50 text-white shadow-sm'
                       : 'border-slate-800/90 bg-slate-900/50 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
@@ -229,12 +331,13 @@ function DevProofShell() {
             onLaunchTimerForTask={(projectId, taskId, mode) => {
               setTimerTaskAndMode(projectId, taskId, mode)
               transitionTimer('running')
-              setActiveSection('timer-sessions')
+              navigateToSection('timer-sessions')
             }}
           />
         )}
         {activeSection === 'timesheets-review' && <TimesheetsAndReviewView />}
         {activeSection === 'billing-admin' && <BillingAndAdminView />}
+        {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
         {activeSection === 'phase0-simulator' && (
           <div className="space-y-8">
             <GroundTruthSimulator />

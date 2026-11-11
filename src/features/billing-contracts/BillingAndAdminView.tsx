@@ -5,6 +5,7 @@ import type { RoundingRule, UserRole } from '@/types/domain.types'
 export function BillingAndAdminView() {
   const {
     activeTenant,
+    activeEntitlement,
     updateTenantSettings,
     members,
     activeUser,
@@ -12,9 +13,11 @@ export function BillingAndAdminView() {
     toggleMemberStatus,
     projects,
     contractPolicy,
+    addContractRateVersion,
     invoices,
     generateInvoiceFromApproved,
     lockInvoice,
+    issueCreditAdjustmentInvoice,
     auditLogs,
   } = usePhase1Store()
 
@@ -22,6 +25,13 @@ export function BillingAndAdminView() {
     projects[0]?.id ?? ''
   )
   const [taxPercent, setTaxPercent] = useState<number>(8.5)
+  const [rateLabel, setRateLabel] = useState('')
+  const [rateEffectiveFrom, setRateEffectiveFrom] = useState('2026-11-16')
+  const [rateEffectiveTo, setRateEffectiveTo] = useState('')
+  const [rateHourly, setRateHourly] = useState<number>(155)
+  const [creditInvoiceId, setCreditInvoiceId] = useState<string | null>(null)
+  const [creditAmount, setCreditAmount] = useState<number>(125)
+  const [creditReason, setCreditReason] = useState('')
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<UserRole>('developer')
@@ -58,13 +68,42 @@ export function BillingAndAdminView() {
   function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     if (!inviteName.trim() || !inviteEmail.trim()) return
-    inviteMember(inviteName.trim(), inviteEmail.trim(), inviteRole)
-    setInviteName('')
-    setInviteEmail('')
-    setBanner({
-      ok: true,
-      text: `Invited ${inviteName} (${inviteRole}) to ${activeTenant.name}.`,
+    const res = inviteMember(inviteName.trim(), inviteEmail.trim(), inviteRole)
+    if (res.ok) {
+      setInviteName('')
+      setInviteEmail('')
+    }
+    setBanner({ ok: res.ok, text: res.message })
+  }
+
+  function handleAddRateVersion(e: React.FormEvent) {
+    e.preventDefault()
+    if (!rateLabel.trim() || !rateEffectiveFrom) return
+    const res = addContractRateVersion({
+      label: rateLabel.trim(),
+      effectiveFrom: rateEffectiveFrom,
+      effectiveTo: rateEffectiveTo.trim() || null,
+      hourlyRate: rateHourly,
+      currency: activeTenant.currency,
     })
+    if (res.ok) {
+      setRateLabel('')
+      setRateEffectiveTo('')
+    }
+    setBanner({ ok: res.ok, text: res.message })
+  }
+
+  function handleIssueCredit(invoiceId: string) {
+    const res = issueCreditAdjustmentInvoice(
+      invoiceId,
+      creditAmount,
+      creditReason.trim()
+    )
+    setBanner({ ok: res.ok, text: res.message })
+    if (res.ok) {
+      setCreditInvoiceId(null)
+      setCreditReason('')
+    }
   }
 
   return (
@@ -121,6 +160,55 @@ export function BillingAndAdminView() {
               </div>
             ))}
           </div>
+
+          {/* Add Effective-Dated Rate Version Form (F1-044) */}
+          <form
+            onSubmit={handleAddRateVersion}
+            className="rounded-lg border border-slate-800 bg-slate-950/80 p-3 space-y-2 text-xs"
+          >
+            <div className="font-semibold text-emerald-300">
+              + Add Effective-Dated Rate Version (F1-044)
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                placeholder="Label (e.g. Q4 Amendment)"
+                value={rateLabel}
+                onChange={(e) => setRateLabel(e.target.value)}
+                className="rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white"
+                required
+              />
+              <input
+                type="number"
+                min={1}
+                placeholder="Hourly Rate"
+                value={rateHourly}
+                onChange={(e) => setRateHourly(Number(e.target.value))}
+                className="rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+                required
+              />
+              <input
+                type="date"
+                value={rateEffectiveFrom}
+                onChange={(e) => setRateEffectiveFrom(e.target.value)}
+                className="rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+                required
+              />
+              <input
+                type="date"
+                placeholder="End Date (optional)"
+                value={rateEffectiveTo}
+                onChange={(e) => setRateEffectiveTo(e.target.value)}
+                className="rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold cursor-pointer"
+            >
+              Add Contract Rate Snapshot
+            </button>
+          </form>
 
           {/* Workspace Billing & Rounding Policy (F1-005) */}
           <div className="pt-2 border-t border-slate-800 space-y-2.5 text-xs">
@@ -262,6 +350,26 @@ export function BillingAndAdminView() {
                           Lock Period & Finalize (F1-047)
                         </button>
                       )}
+                      {inv.status === 'finalized_locked' && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCreditInvoiceId(
+                              creditInvoiceId === inv.id ? null : inv.id
+                            )
+                          }
+                          className="px-2.5 py-1 rounded border border-amber-700 bg-amber-950/60 hover:bg-amber-900/60 text-amber-200 font-semibold cursor-pointer"
+                        >
+                          Credit / Rebill (F1-047)
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="px-2.5 py-1 rounded border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 font-medium cursor-pointer"
+                      >
+                        🖨 Print / PDF (F1-046)
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleExportCsv(inv.id)}
@@ -307,6 +415,48 @@ export function BillingAndAdminView() {
                       </span>
                     </div>
                   </div>
+
+                  {creditInvoiceId === inv.id && (
+                    <div className="rounded-lg border border-amber-800/80 bg-amber-950/25 p-3 space-y-2 text-xs">
+                      <div className="font-semibold text-amber-200">
+                        Issue Credit Note Against Locked Invoice (F1-047)
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={creditAmount}
+                          onChange={(e) => setCreditAmount(Number(e.target.value))}
+                          placeholder="Credit USD"
+                          className="rounded border border-amber-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+                        />
+                        <input
+                          type="text"
+                          value={creditReason}
+                          onChange={(e) => setCreditReason(e.target.value)}
+                          placeholder="Mandatory adjustment reason"
+                          className="sm:col-span-2 rounded border border-amber-700 bg-slate-900 px-2.5 py-1.5 text-white"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCreditInvoiceId(null)}
+                          className="px-3 py-1 rounded border border-slate-700 text-slate-300 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleIssueCredit(inv.id)}
+                          className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold cursor-pointer"
+                        >
+                          Confirm Credit Adjustment
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -317,13 +467,20 @@ export function BillingAndAdminView() {
       {/* Bottom Row: Team Memberships & RBAC (F1-003, F1-004) + Immutable Audit Log (F1-007) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-6 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-              Milestone 1.1 • Invitations, Memberships & RBAC (F1-003, F1-004)
-            </span>
-            <h3 className="text-sm font-bold text-white mt-0.5">
-              {activeTenant.name} — Workspace Members & Role Grants
-            </h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
+                Milestone 1.1 • Invitations, Memberships & RBAC (F1-003, F1-004, F1-006)
+              </span>
+              <h3 className="text-sm font-bold text-white mt-0.5">
+                {activeTenant.name} — Workspace Members & Role Grants
+              </h3>
+            </div>
+            <div className="text-[11px] font-mono px-2.5 py-1 rounded-lg border border-slate-800 bg-slate-950 text-slate-300">
+              Tier: <strong className="text-indigo-300 uppercase">{activeEntitlement.planTier}</strong> • Seats{' '}
+              {members.filter((m) => m.status === 'active').length}/{activeEntitlement.maxSeats} • Projects{' '}
+              {projects.length}/{activeEntitlement.maxActiveProjects}
+            </div>
           </div>
 
           <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">

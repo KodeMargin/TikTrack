@@ -37,6 +37,7 @@ model Tenant {
   contracts      Contract[]
   timesheets     Timesheet[]
   invoiceDrafts  InvoiceDraft[]
+  notifications  Notification[]
 
   @@unique([id, slug])
   @@map("tenants")
@@ -72,6 +73,7 @@ model UserProfile {
   reviewDecisions    ReviewDecision[]
   openedDisputes     Dispute[]
   disputeMessages    DisputeMessage[]
+  notifications      Notification[]
 
   @@map("user_profiles")
 }
@@ -274,6 +276,8 @@ model Task {
   updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   project      Project          @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  parentTask   Task?            @relation("TaskHierarchy", fields: [parentTaskId, tenantId, projectId], references: [id, tenantId, projectId], onDelete: SetNull)
+  subtasks     Task[]           @relation("TaskHierarchy")
   assignments  TaskAssignment[]
   notes        TaskNote[]
   workSessions WorkSession[]
@@ -282,6 +286,7 @@ model Task {
   @@unique([tenantId, code])
   @@unique([id, tenantId, projectId])
   @@index([tenantId, projectId, status], map: "idx_tasks_tenant_project_status")
+  @@index([tenantId, projectId, parentTaskId], map: "idx_tasks_parent_task")
   @@map("tasks")
 }
 
@@ -653,5 +658,39 @@ model InvoiceLine {
   timesheetLine TimesheetLine @relation(fields: [timesheetLineId, tenantId], references: [id, tenantId], onDelete: Restrict)
 
   @@map("invoice_lines")
+}
+
+// -----------------------------------------------------------------------------
+// 5. Plan Entitlements & Notifications (0005)
+// -----------------------------------------------------------------------------
+
+model PlanEntitlement {
+  planTier              String  @id @map("plan_tier")
+  maxSeats              Int     @map("max_seats")
+  maxActiveProjects     Int     @map("max_active_projects")
+  retentionDays         Int     @map("retention_days")
+  githubIdeEnabled      Boolean @default(false) @map("github_ide_enabled")
+  clientPortalEnabled   Boolean @default(false) @map("client_portal_enabled")
+  aiAssistanceAvailable Boolean @default(false) @map("ai_assistance_available")
+
+  @@map("plan_entitlements")
+}
+
+model Notification {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  recipientUserId  String    @map("recipient_user_id") @db.Uuid
+  notificationType String    @map("notification_type")
+  title            String
+  body             String
+  targetEntity     String?   @map("target_entity")
+  targetId         String?   @map("target_id") @db.Uuid
+  readAt           DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipient UserProfile @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }
 

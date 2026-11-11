@@ -12,7 +12,8 @@ const WORK_MODE_DETAILS: {
     mode: 'thinking',
     label: 'Thinking / Architecture',
     deepWork: true,
-    description: 'Declared deep reasoning or whiteboarding. Zero keyboard activity required (F1-023).',
+    description:
+      'Declared deep reasoning or whiteboarding. Zero keyboard activity required (F1-023).',
   },
   {
     mode: 'coding',
@@ -58,6 +59,13 @@ const WORK_MODE_DETAILS: {
   },
 ]
 
+function formatSecondsHms(totalSeconds: number): string {
+  const hrs = Math.floor(totalSeconds / 3600)
+  const mins = Math.floor((totalSeconds % 3600) / 60)
+  const secs = totalSeconds % 60
+  return [hrs, mins, secs].map((n) => String(n).padStart(2, '0')).join(':')
+}
+
 export function WorkSessionTimerView() {
   const {
     activeTenant,
@@ -69,6 +77,7 @@ export function WorkSessionTimerView() {
     setTimerTaskAndMode,
     transitionTimer,
     toggleOfflineMode,
+    resetTimerClock,
     completeAndRecordSession,
     addManualTimeEntry,
   } = usePhase1Store()
@@ -78,6 +87,7 @@ export function WorkSessionTimerView() {
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:30')
   const [durationMinutes, setDurationMinutes] = useState(90)
+  const [breakMinutes, setBreakMinutes] = useState(0)
   const [feedbackBanner, setFeedbackBanner] = useState<{
     ok: boolean
     text: string
@@ -96,18 +106,21 @@ export function WorkSessionTimerView() {
     'Documented monthly partition boundaries for activity_events table.'
   )
 
-  const currentTask =
-    tasks.find((t) => t.id === timer.taskId) ?? tasks[0]
+  const currentTask = tasks.find((t) => t.id === timer.taskId) ?? tasks[0]
   const currentModeInfo =
     WORK_MODE_DETAILS.find((m) => m.mode === timer.workMode) ??
     WORK_MODE_DETAILS[0]
 
+  const liveBreakMins = Math.floor(timer.breakSeconds / 60)
+
   function handleCompleteSession() {
+    const effectiveBreak = Math.max(breakMinutes, liveBreakMins)
     const res = completeAndRecordSession(
       durationMinutes,
       startTime,
       endTime,
-      sessionDate
+      sessionDate,
+      effectiveBreak
     )
     setFeedbackBanner({ ok: res.ok, text: res.message })
   }
@@ -131,6 +144,22 @@ export function WorkSessionTimerView() {
 
   return (
     <div className="space-y-6">
+      {timer.recoveredFromCrash && (
+        <div className="rounded-xl border border-indigo-500/50 bg-indigo-950/60 px-4 py-3 text-xs text-indigo-200 flex items-center justify-between">
+          <span>
+            <strong>Crash Recovery (F1-022):</strong> Restored your in-progress session timer (
+            <span className="font-mono">{formatSecondsHms(timer.elapsedSeconds)}</span>) from local persistence.
+          </span>
+          <button
+            type="button"
+            onClick={resetTimerClock}
+            className="underline text-indigo-300 cursor-pointer"
+          >
+            Discard Recovered Clock
+          </button>
+        </div>
+      )}
+
       {feedbackBanner && (
         <div
           className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
@@ -151,7 +180,7 @@ export function WorkSessionTimerView() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 7 Columns: Active Session Timer & Deep-Work Controls (F1-020..F1-027) */}
+        {/* Left 7 Columns: Active Session Timer & Deep-Work Controls */}
         <div className="lg:col-span-7 rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-xl">
           {/* Visible Tracking Tray Bar (F1-027) */}
           <div
@@ -175,15 +204,23 @@ export function WorkSessionTimerView() {
                 {timer.lifecycle === 'running'
                   ? `VISIBLE TRACKING ACTIVE • MODE: ${timer.workMode.toUpperCase()}`
                   : timer.lifecycle === 'on_break'
-                    ? 'ON CONFIRMED BREAK (EXCLUDED PER CONTRACT POLICY)'
+                    ? 'ON CONFIRMED BREAK (EXCLUDED FROM CLAIMED MINUTES)'
                     : 'TIMER PAUSED — ZERO COLLECTION'}
               </span>
             </div>
-            <span className="font-mono text-[11px]">
-              {timer.isOfflineQueueActive
-                ? '⚡ OFFLINE QUEUE (SQLite AES-256)'
-                : '● ONLINE & IDEMPOTENT'}
-            </span>
+            <div className="flex items-center gap-3 font-mono text-[11px]">
+              <span className="text-white font-bold">
+                {formatSecondsHms(timer.elapsedSeconds)}
+              </span>
+              {timer.breakSeconds > 0 && (
+                <span className="text-amber-300">
+                  Break: {formatSecondsHms(timer.breakSeconds)}
+                </span>
+              )}
+              <span>
+                {timer.isOfflineQueueActive ? '⚡ OFFLINE QUEUE' : '● SYNCED'}
+              </span>
+            </div>
           </div>
 
           <div className="p-5 space-y-5">
@@ -334,12 +371,12 @@ export function WorkSessionTimerView() {
               </button>
             </div>
 
-            {/* Contemporaneous Session Note & Record Segment Form (F1-026, F1-029) */}
+            {/* Contemporaneous Session Note & Record Segment Form (F1-024, F1-026, F1-029) */}
             <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-4 space-y-3">
               <div className="text-xs font-semibold text-white">
-                Log Completed Session to Canonical Timesheet (Tests Overlap Guard F1-029 & Rate Lock F1-044)
+                Log Completed Session to Canonical Timesheet (Break Subtraction F1-024 & Overlap Guard F1-029)
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
                 <div>
                   <label className="block text-[10px] text-slate-400 mb-1">
                     Work Date
@@ -375,7 +412,7 @@ export function WorkSessionTimerView() {
                 </div>
                 <div>
                   <label className="block text-[10px] text-slate-400 mb-1">
-                    Duration (Mins)
+                    Elapsed (Mins)
                   </label>
                   <input
                     type="number"
@@ -384,6 +421,19 @@ export function WorkSessionTimerView() {
                     value={durationMinutes}
                     onChange={(e) => setDurationMinutes(Number(e.target.value))}
                     className="w-full rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-amber-300 mb-1">
+                    Break Excl (Mins)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={120}
+                    value={Math.max(breakMinutes, liveBreakMins)}
+                    onChange={(e) => setBreakMinutes(Number(e.target.value))}
+                    className="w-full rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-amber-200 font-mono"
                   />
                 </div>
               </div>
@@ -398,8 +448,11 @@ export function WorkSessionTimerView() {
 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] text-slate-400">
-                  Tip: Try logging <span className="font-mono text-slate-200">2026-11-10</span> at{' '}
-                  <span className="font-mono text-slate-200">09:00–10:30</span> twice to test Overlap Prevention (`F1-029`).
+                  Net Claimed:{' '}
+                  <strong className="font-mono text-white">
+                    {Math.max(0, durationMinutes - Math.max(breakMinutes, liveBreakMins))}m
+                  </strong>{' '}
+                  (Elapsed {durationMinutes}m minus {Math.max(breakMinutes, liveBreakMins)}m break)
                 </span>
                 <button
                   type="button"
@@ -415,7 +468,6 @@ export function WorkSessionTimerView() {
 
         {/* Right 5 Columns: Manual Time Entry (F1-028) & Policy Consent Status (F1-030) */}
         <div className="lg:col-span-5 space-y-5">
-          {/* Manual Time Entry Card (F1-028) */}
           <form
             onSubmit={handleManualSubmit}
             className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3.5"
@@ -538,7 +590,7 @@ export function WorkSessionTimerView() {
             <p className="text-slate-400">
               Logged in as <strong>{activeUser.name}</strong> ({activeUser.role}). All sessions record the exact policy version in effect at `started_at_utc`.
             </p>
-            {!activeUser.consentedPolicyVersion && (
+            {activeUser.consentedPolicyVersion !== activeTenant.policyVersion && (
               <button
                 type="button"
                 onClick={acknowledgeCurrentPolicy}
@@ -553,4 +605,3 @@ export function WorkSessionTimerView() {
     </div>
   )
 }
-
