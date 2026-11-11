@@ -184,3 +184,38 @@ export const recordAuditViaPrisma = (input: {
   targetEntity: string
   reason: string
 }) => postJson<{ ok: boolean }>('/api/prisma/audit', input)
+
+export const ingestWebhookViaPrisma = (input: {
+  tenantId: string
+  projectId: string
+  taskId?: string | null
+  provider: 'github' | 'gitlab' | 'jira' | 'linear'
+  deliveryId: string
+  eventType: string
+  signatureVerified: boolean
+  payloadSha256: string
+  sourceType: string
+  externalId: string
+  summaryTitle: string
+  metadata: Record<string, string | number | boolean>
+  linkType: 'contemporaneous' | 'retrospective_outcome' | 'manual_attached'
+  linkRationale: string
+  actorUserId?: string | null
+}) =>
+  postJson<{
+    ok: boolean
+    deduplicated?: boolean
+    deliveryAttemptCount?: number
+    artifactId?: string
+  }>('/api/prisma/phase2/webhook', input)
+
+export const createSessionAnnotationViaPrisma = (input: {
+  tenantId: string
+  userId: string
+  sessionId: string
+  annotationType: string
+  title: string
+  contentMarkdown: string
+  startMinuteOfDay?: number
+  endMinuteOfDay?: number
+}) => postJson<{ ok: boolean; annotationId?: string }>('/api/prisma/phase2/annotation', input)

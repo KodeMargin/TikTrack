@@ -1,7 +1,8 @@
 // =============================================================================
 // DevProof (TikTrack) — Prisma ORM Schema for Supabase PostgreSQL
-// Maps Phase 1 Migrations 0001..0004 (Multi-Tenant Identity, Projects, Tasks,
-// Work Sessions, Time Segments, Contracts, Timesheets, Reviews & Invoices)
+// Maps Phase 1 & Phase 2 Migrations 0001..0007 (Multi-Tenant Identity, Projects,
+// Tasks, Work Sessions, Time Segments, Contracts, Timesheets, Reviews, Invoices,
+// Activity Ingestion, IDE Mappings, GitHub/GitLab Webhooks & Evidence Links)
 // =============================================================================
 
 generator client {
@@ -39,6 +40,19 @@ model Tenant {
   invoiceDrafts  InvoiceDraft[]
   notifications  Notification[]
 
+  // Phase 2 relations
+  privacyExclusions     PrivacyExclusion[]
+  activityEventBatches  ActivityEventBatch[]
+  activityEvents        ActivityEvent[]
+  activityRollups       ActivityRollup[]
+  connectedIntegrations ConnectedIntegration[]
+  repositoryLinks       RepositoryLink[]
+  ideWorkspaceMappings  IdeWorkspaceMapping[]
+  webhookReceipts       WebhookReceipt[]
+  evidenceArtifacts     EvidenceArtifact[]
+  evidenceLinks         EvidenceLink[]
+  sessionAnnotations    SessionAnnotation[]
+
   @@unique([id, slug])
   @@map("tenants")
 }
@@ -74,6 +88,16 @@ model UserProfile {
   openedDisputes     Dispute[]
   disputeMessages    DisputeMessage[]
   notifications      Notification[]
+
+  // Phase 2 relations
+  privacyExclusions     PrivacyExclusion[]
+  activityEventBatches  ActivityEventBatch[]
+  activityEvents        ActivityEvent[]
+  activityRollups       ActivityRollup[]
+  connectedIntegrations ConnectedIntegration[]
+  ideWorkspaceMappings  IdeWorkspaceMapping[]
+  evidenceArtifacts     EvidenceArtifact[]
+  sessionAnnotations    SessionAnnotation[]
 
   @@map("user_profiles")
 }
@@ -178,12 +202,18 @@ model Device {
   osPlatform            String    @map("os_platform")
   agentVersion          String    @map("agent_version")
   deviceFingerprintHash String    @map("device_fingerprint_hash")
+  updateChannel         String    @default("stable") @map("update_channel")
+  lastClockDriftSeconds Int       @default(0) @map("last_clock_drift_seconds")
+  clockAnomalyDetected  Boolean   @default(false) @map("clock_anomaly_detected")
+  multiDisplayPolicy    String    @default("coarse_metadata_only") @map("multi_display_policy")
   revokedAt             DateTime? @map("revoked_at") @db.Timestamptz(6)
   lastSeenAt            DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  tenant Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user           UserProfile          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventBatches   ActivityEventBatch[]
+  activityEvents ActivityEvent[]
 
   @@unique([id, tenantId, userId])
   @@map("devices")
@@ -234,6 +264,8 @@ model Project {
   contracts      Contract[]
   timesheets     Timesheet[]
   invoiceDrafts  InvoiceDraft[]
+  repositoryLinks RepositoryLink[]
+  evidenceArtifacts EvidenceArtifact[]
 
   @@unique([tenantId, code])
   @@unique([id, tenantId])
@@ -282,6 +314,8 @@ model Task {
   notes        TaskNote[]
   workSessions WorkSession[]
   timeSegments TimeSegment[]
+  ideMappings  IdeWorkspaceMapping[]
+  evidenceLinks EvidenceLink[]
 
   @@unique([tenantId, code])
   @@unique([id, tenantId, projectId])
@@ -356,6 +390,10 @@ model WorkSession {
   modeEvents    WorkModeEvent[]
   breaks        Break[]
   timeSegments  TimeSegment[]
+  eventBatches  ActivityEventBatch[]
+  activityEvents ActivityEvent[]
+  activityRollups ActivityRollup[]
+  annotations   SessionAnnotation[]
 
   @@unique([id, tenantId, userId])
   @@index([tenantId, userId, startedAtUtc(sort: Desc)], map: "idx_work_sessions_tenant_user_started")
@@ -420,6 +458,8 @@ model TimeSegment {
   task           Task                @relation(fields: [taskId, tenantId, projectId], references: [id, tenantId, projectId], onDelete: Restrict)
   adjustments    SessionAdjustment[]
   timesheetLines TimesheetLine[]
+  evidenceLinks  EvidenceLink[]
+  annotations    SessionAnnotation[]
 
   @@index([tenantId, userId, workDate], map: "idx_time_segments_tenant_user_date")
   @@index([tenantId, projectId, workDate], map: "idx_time_segments_tenant_project_date")
@@ -692,5 +732,274 @@ model Notification {
   recipient UserProfile @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+// -----------------------------------------------------------------------------
+// 6. Phase 2 — Activity Ingestion, Rollups, IDE Mappings, Webhooks & Evidence (0006–0007)
+// -----------------------------------------------------------------------------
+
+model PrivacyExclusion {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  exclusionPattern String   @map("exclusion_pattern")
+  exclusionType    String   @default("app_identifier") @map("exclusion_type")
+  reason           String?
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, exclusionPattern])
+  @@map("privacy_exclusions")
+}
+
+model ActivityEventBatch {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  deviceId         String    @map("device_id") @db.Uuid
+  sessionId        String    @map("session_id") @db.Uuid
+  source           String    @default("desktop")
+  batchSequence    Int       @default(1) @map("batch_sequence")
+  eventCount       Int       @default(0) @map("event_count")
+  agentBuild       String    @default("0.2.0") @map("agent_build")
+  receivedAtUtc    DateTime  @default(now()) @map("received_at_utc") @db.Timestamptz(6)
+  processedAtUtc   DateTime? @map("processed_at_utc") @db.Timestamptz(6)
+  processingStatus String    @default("queued") @map("processing_status")
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    UserProfile     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device  Device          @relation(fields: [deviceId, tenantId, userId], references: [id, tenantId, userId], onDelete: Restrict)
+  session WorkSession     @relation(fields: [sessionId, tenantId, userId], references: [id, tenantId, userId], onDelete: Cascade)
+  events  ActivityEvent[]
+
+  @@unique([deviceId, id])
+  @@index([tenantId, userId, receivedAtUtc(sort: Desc)], map: "idx_activity_event_batches_user_received")
+  @@map("activity_event_batches")
+}
+
+model ActivityEvent {
+  eventId              String   @default(dbgenerated("gen_random_uuid()")) @map("event_id") @db.Uuid
+  schemaVersion        Int      @default(1) @map("schema_version") @db.SmallInt
+  tenantId             String   @map("tenant_id") @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  deviceId             String   @map("device_id") @db.Uuid
+  sessionId            String   @map("session_id") @db.Uuid
+  batchId              String?  @map("batch_id") @db.Uuid
+  source               String
+  eventType            String   @map("event_type")
+  occurredAtUtc        DateTime @map("occurred_at_utc") @db.Timestamptz(6)
+  receivedAtUtc        DateTime @default(now()) @map("received_at_utc") @db.Timestamptz(6)
+  localSequence        BigInt   @default(1) @map("local_sequence")
+  monotonicElapsedMs   BigInt   @default(0) @map("monotonic_elapsed_ms")
+  clockDriftSeconds    Int      @default(0) @map("clock_drift_seconds")
+  consentPolicyVersion String   @map("consent_policy_version")
+  metadata             Json     @default("{}")
+
+  tenant  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    UserProfile         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device  Device              @relation(fields: [deviceId, tenantId, userId], references: [id, tenantId, userId], onDelete: Restrict)
+  session WorkSession         @relation(fields: [sessionId, tenantId, userId], references: [id, tenantId, userId], onDelete: Cascade)
+  batch   ActivityEventBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@id([tenantId, occurredAtUtc, source, eventId])
+  @@unique([tenantId, eventId], map: "idx_activity_events_idempotent_event_id")
+  @@index([tenantId, sessionId, occurredAtUtc], map: "idx_activity_events_session_occurred")
+  @@map("activity_events")
+}
+
+model ActivityRollup {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  userId               String    @map("user_id") @db.Uuid
+  sessionId            String    @map("session_id") @db.Uuid
+  bucketStartUtc       DateTime  @map("bucket_start_utc") @db.Timestamptz(6)
+  bucketMinutes        Int       @default(5) @map("bucket_minutes") @db.SmallInt
+  appCategory          String    @default("ide") @map("app_category")
+  workMode             String    @default("coding") @map("work_mode")
+  hasInputSignal       Boolean   @default(true) @map("has_input_signal")
+  concurrentSources    String[]  @default(["desktop"]) @map("concurrent_sources")
+  isObservationGap     Boolean   @default(false) @map("is_observation_gap")
+  reconciliationChoice String?   @map("reconciliation_choice")
+  reconciliationNote   String?   @map("reconciliation_note")
+  reconciledAtUtc      DateTime? @map("reconciled_at_utc") @db.Timestamptz(6)
+  displayCount         Int       @default(1) @map("display_count") @db.SmallInt
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session WorkSession @relation(fields: [sessionId, tenantId, userId], references: [id, tenantId, userId], onDelete: Cascade)
+
+  @@unique([tenantId, sessionId, bucketStartUtc, bucketMinutes])
+  @@index([tenantId, sessionId, bucketStartUtc], map: "idx_activity_rollups_session_bucket")
+  @@map("activity_rollups")
+}
+
+model ConnectedIntegration {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String    @map("tenant_id") @db.Uuid
+  provider                String
+  installationId          String    @map("installation_id")
+  displayName             String    @map("display_name")
+  status                  String    @default("connected")
+  config                  Json      @default("{}")
+  encryptedCredentialsRef String?   @map("encrypted_credentials_ref")
+  retentionDaysOverride   Int?      @map("retention_days_override")
+  connectedBy             String?   @map("connected_by") @db.Uuid
+  lastSyncedAt            DateTime? @map("last_synced_at") @db.Timestamptz(6)
+  disconnectedAt          DateTime? @map("disconnected_at") @db.Timestamptz(6)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  connectedByUser UserProfile?     @relation(fields: [connectedBy], references: [id])
+  repositoryLinks RepositoryLink[]
+
+  @@unique([tenantId, provider, installationId])
+  @@unique([id, tenantId])
+  @@index([tenantId, provider, status], map: "idx_connected_integrations_tenant_status")
+  @@map("connected_integrations")
+}
+
+model RepositoryLink {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  integrationId  String   @map("integration_id") @db.Uuid
+  provider       String   @default("github")
+  providerRepoId String   @map("provider_repo_id")
+  repoFullName   String   @map("repo_full_name")
+  defaultBranch  String   @default("main") @map("default_branch")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project     Project              @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  integration ConnectedIntegration @relation(fields: [integrationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, provider, repoFullName])
+  @@index([tenantId, projectId, isActive], map: "idx_repository_links_project")
+  @@map("repository_links")
+}
+
+model IdeWorkspaceMapping {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  projectId           String   @map("project_id") @db.Uuid
+  taskId              String   @map("task_id") @db.Uuid
+  ideType             String   @default("vscode") @map("ide_type")
+  workspaceIdentifier String   @map("workspace_identifier")
+  repoFullName        String?  @map("repo_full_name")
+  branchName          String   @map("branch_name")
+  suggestedTaskCode   String?  @map("suggested_task_code")
+  confidenceScore     Decimal  @default(0.90) @map("confidence_score") @db.Decimal(3, 2)
+  confirmedByUser     Boolean  @default(false) @map("confirmed_by_user")
+  overriddenByUser    Boolean  @default(false) @map("overridden_by_user")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task   Task        @relation(fields: [taskId, tenantId, projectId], references: [id, tenantId, projectId], onDelete: Cascade)
+
+  @@unique([tenantId, userId, workspaceIdentifier, branchName])
+  @@index([tenantId, userId, updatedAt(sort: Desc)], map: "idx_ide_workspace_mappings_user")
+  @@map("ide_workspace_mappings")
+}
+
+model WebhookReceipt {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  provider             String
+  deliveryId           String    @map("delivery_id")
+  eventType            String    @map("event_type")
+  signatureVerified    Boolean   @default(false) @map("signature_verified")
+  payloadSha256        String    @map("payload_sha256")
+  deliveryAttemptCount Int       @default(1) @map("delivery_attempt_count")
+  status               String    @default("queued")
+  receivedAtUtc        DateTime  @default(now()) @map("received_at_utc") @db.Timestamptz(6)
+  processedAtUtc       DateTime? @map("processed_at_utc") @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, deliveryId])
+  @@index([tenantId, provider, receivedAtUtc(sort: Desc)], map: "idx_webhook_receipts_tenant_received")
+  @@map("webhook_receipts")
+}
+
+model EvidenceArtifact {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  projectId         String   @map("project_id") @db.Uuid
+  sourceType        String   @map("source_type")
+  captureMode       String   @default("webhook") @map("capture_mode")
+  externalId        String   @map("external_id")
+  occurredAtUtc     DateTime @map("occurred_at_utc") @db.Timestamptz(6)
+  actorUserId       String?  @map("actor_user_id") @db.Uuid
+  summaryTitle      String   @map("summary_title")
+  metadata          Json     @default("{}")
+  reliabilityStatus String   @default("verified_webhook") @map("reliability_status")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project   Project        @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  actorUser UserProfile?   @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  links     EvidenceLink[]
+
+  @@unique([tenantId, sourceType, externalId])
+  @@unique([id, tenantId, projectId])
+  @@index([tenantId, projectId, occurredAtUtc(sort: Desc)], map: "idx_evidence_artifacts_project_occurred")
+  @@map("evidence_artifacts")
+}
+
+model EvidenceLink {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  projectId        String   @map("project_id") @db.Uuid
+  taskId           String   @map("task_id") @db.Uuid
+  artifactId       String   @map("artifact_id") @db.Uuid
+  sessionId        String?  @map("session_id") @db.Uuid
+  timeSegmentId    String?  @map("time_segment_id") @db.Uuid
+  linkType         String   @default("contemporaneous") @map("link_type")
+  linkConfidence   Decimal  @default(0.90) @map("link_confidence") @db.Decimal(3, 2)
+  linkRationale    String   @map("link_rationale")
+  confirmedByUser  Boolean  @default(false) @map("confirmed_by_user")
+  overriddenByUser Boolean  @default(false) @map("overridden_by_user")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  task        Task             @relation(fields: [taskId, tenantId, projectId], references: [id, tenantId, projectId], onDelete: Cascade)
+  artifact    EvidenceArtifact @relation(fields: [artifactId, tenantId, projectId], references: [id, tenantId, projectId], onDelete: Cascade)
+  timeSegment TimeSegment?     @relation(fields: [timeSegmentId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, taskId, artifactId])
+  @@index([tenantId, taskId, linkType], map: "idx_evidence_links_task")
+  @@map("evidence_links")
+}
+
+model SessionAnnotation {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  sessionId        String   @map("session_id") @db.Uuid
+  timeSegmentId    String?  @map("time_segment_id") @db.Uuid
+  annotationType   String   @default("thinking_note") @map("annotation_type")
+  title            String
+  contentMarkdown  String   @map("content_markdown")
+  startMinuteOfDay Int?     @map("start_minute_of_day")
+  endMinuteOfDay   Int?     @map("end_minute_of_day")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        UserProfile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session     WorkSession  @relation(fields: [sessionId, tenantId, userId], references: [id, tenantId, userId], onDelete: Cascade)
+  timeSegment TimeSegment? @relation(fields: [timeSegmentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, sessionId, createdAt], map: "idx_session_annotations_session")
+  @@map("session_annotations")
 }
 

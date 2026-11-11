@@ -6,7 +6,7 @@
 BEGIN;
 SELECT plan(14);
 
--- 1. Verify RLS is enabled on all Phase 1 public tables (18 from 0001-0004 + 2 from 0005)
+-- 1. Verify RLS is enabled on every public table (0 unprotected tables)
 SELECT results_eq(
   $$
     SELECT count(*)::int
@@ -14,10 +14,10 @@ SELECT results_eq(
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public'
       AND c.relkind = 'r'
-      AND c.relrowsecurity = true
+      AND c.relrowsecurity = false
   $$,
-  ARRAY[20],
-  'All 20 Phase 1 tables in public schema have Row Level Security (RLS) enabled'
+  ARRAY[0],
+  'Zero tables in public schema have Row Level Security (RLS) disabled'
 );
 
 -- 2. Verify audit_entries and review_decisions forbid UPDATE/DELETE

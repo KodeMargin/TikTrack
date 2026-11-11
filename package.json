@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "node --experimental-strip-types --test src/lib/time-engine/__tests__/timeEngineAndSchemas.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/time-engine/__tests__/*.test.ts",
     "preview": "vite preview",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

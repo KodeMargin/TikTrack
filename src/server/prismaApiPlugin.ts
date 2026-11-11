@@ -16,6 +16,10 @@ import {
   handleRecordSession,
   isValidUuid,
 } from './prismaPhase1Handlers.ts'
+import {
+  handleCreateSessionAnnotationPrisma,
+  handleIngestWebhookPrisma,
+} from './prismaPhase2Handlers.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -457,6 +461,16 @@ export function prismaSupabaseApiPlugin(): Plugin {
                 },
               })
               return sendJson(res, 201, { ok: true })
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase2/webhook')) {
+              const body = await readJsonBody<Parameters<typeof handleIngestWebhookPrisma>[0]>(req)
+              return sendJson(res, 202, await handleIngestWebhookPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase2/annotation')) {
+              const body = await readJsonBody<Parameters<typeof handleCreateSessionAnnotationPrisma>[0]>(req)
+              return sendJson(res, 201, await handleCreateSessionAnnotationPrisma(body))
             }
 
             return sendJson(res, 404, { error: 'Unknown Prisma API endpoint' })

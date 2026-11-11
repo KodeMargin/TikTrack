@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
+import { Phase2StoreProvider } from '@/context/Phase2Store'
 import { AuthAndOnboardingView } from '@/features/auth-tenancy/AuthAndOnboardingView'
 import { ProjectsTasksView } from '@/features/projects-tasks/ProjectsTasksView'
 import { WorkSessionTimerView } from '@/features/sessions-timer/WorkSessionTimerView'
 import { TimesheetsAndReviewView } from '@/features/timesheets-review/TimesheetsAndReviewView'
 import { BillingAndAdminView } from '@/features/billing-contracts/BillingAndAdminView'
+import { UnifiedTimelineView } from '@/features/timeline-evidence/UnifiedTimelineView'
+import { PrivacyAuditView } from '@/features/timeline-evidence/PrivacyAuditView'
+import { IntegrationsAndDevicesView } from '@/features/integrations/IntegrationsAndDevicesView'
 import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
 import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaInspector'
 
 type NavSection =
   | 'timer-sessions'
   | 'projects-tasks'
+  | 'timeline-evidence'
+  | 'integrations-devices'
+  | 'privacy-audit'
   | 'timesheets-review'
   | 'billing-admin'
   | 'auth-privacy'
@@ -36,6 +43,27 @@ const NAV_ITEMS: {
     badge: 'F1-010..016',
     label: 'Projects & Task Board',
     subtitle: 'Kanban/list views, acceptance criteria & task assignments',
+  },
+  {
+    id: 'timeline-evidence',
+    path: '/timeline',
+    badge: 'F2-030..034',
+    label: 'Unified Developer Timeline',
+    subtitle: '3-track UTC timeline, idle gap reconciliation & annotations',
+  },
+  {
+    id: 'integrations-devices',
+    path: '/integrations',
+    badge: 'F2-006..026',
+    label: 'IDE, GitHub & Devices',
+    subtitle: 'VS Code mappings, webhook replay deduplication & clock drift',
+  },
+  {
+    id: 'privacy-audit',
+    path: '/privacy/audit-log',
+    badge: 'F2-005 / F2-035',
+    label: 'Local Privacy Audit Log',
+    subtitle: 'Per-app denylist, privacy pause & transmitted JSON batches',
   },
   {
     id: 'timesheets-review',
@@ -189,7 +217,7 @@ function DevProofShell() {
                     DevProof <span className="text-slate-400 font-normal">(TikTrack)</span>
                   </h1>
                   <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                    Phase 1 — Commercially Usable MVP
+                    Phase 1 + Phase 2 — Evidence & Integrations
                   </span>
                 </div>
                 <p className="text-xs text-slate-400">
@@ -291,7 +319,7 @@ function DevProofShell() {
             </div>
           </div>
 
-          <nav className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+          <nav className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
             {NAV_ITEMS.map((item) => {
               const selected = item.id === activeSection
               return (
@@ -335,6 +363,9 @@ function DevProofShell() {
             }}
           />
         )}
+        {activeSection === 'timeline-evidence' && <UnifiedTimelineView />}
+        {activeSection === 'integrations-devices' && <IntegrationsAndDevicesView />}
+        {activeSection === 'privacy-audit' && <PrivacyAuditView />}
         {activeSection === 'timesheets-review' && <TimesheetsAndReviewView />}
         {activeSection === 'billing-admin' && <BillingAndAdminView />}
         {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
@@ -352,7 +383,9 @@ function DevProofShell() {
 export function App() {
   return (
     <Phase1StoreProvider>
-      <DevProofShell />
+      <Phase2StoreProvider>
+        <DevProofShell />
+      </Phase2StoreProvider>
     </Phase1StoreProvider>
   )
 }
