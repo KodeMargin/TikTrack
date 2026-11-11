@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { isSupabaseAuthConfigured, supabase } from '@/lib/supabaseClient'
 
@@ -19,9 +19,25 @@ export function AuthAndOnboardingView() {
   const [authPassword, setAuthPassword] = useState('')
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'recovery'>('login')
   const [authNotice, setAuthNotice] = useState<string | null>(null)
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null)
   const [mfaQrCode, setMfaQrCode] = useState<string | null>(null)
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
   const [mfaCode, setMfaCode] = useState('')
+
+  useEffect(() => {
+    if (!supabase || !isSupabaseAuthConfigured) return
+    let active = true
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active) setSignedInEmail(data.session?.user?.email ?? null)
+    })
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedInEmail(session?.user?.email ?? null)
+    })
+    return () => {
+      active = false
+      subscription.subscription.unsubscribe()
+    }
+  }, [])
 
   // Tenant Onboarding State (F1-001)
   const [wsName, setWsName] = useState('')
@@ -141,6 +157,26 @@ export function AuthAndOnboardingView() {
               {isSupabaseAuthConfigured ? 'Supabase Auth Ready' : 'Preview Mode'}
             </span>
           </div>
+
+          {signedInEmail && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-700/60 bg-emerald-950/50 px-3 py-2 text-xs text-emerald-200">
+              <span>
+                Signed in via Supabase Auth: <strong>{signedInEmail}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  void supabase?.auth.signOut().then(() => {
+                    setSignedInEmail(null)
+                    setAuthNotice('Signed out from Supabase Auth.')
+                  })
+                }}
+                className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 font-medium cursor-pointer"
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
 
           <div className="flex gap-2 text-xs">
             {(['login', 'signup', 'recovery'] as const).map((mode) => (

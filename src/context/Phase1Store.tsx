@@ -34,6 +34,7 @@ import {
   updateTaskStatusViaPrisma,
   updateTenantSettingsViaPrisma,
   type PrismaConnectionStatus,
+  type PrismaPhase2BootstrapPayload,
 } from '@/lib/prismaApiClient'
 
 export interface PolicyVersionRecord {
@@ -296,394 +297,64 @@ interface Phase1StoreContextValue {
   markNotificationRead: (notificationId: string) => void
   auditLogs: AuditLogEntry[]
   prismaStatus: PrismaConnectionStatus
+  bootstrapLoaded: boolean
+  hasWorkspace: boolean
+  phase2Bootstrap: PrismaPhase2BootstrapPayload | null
   refreshPrismaConnection: () => Promise<void>
 }
 
-const INITIAL_TENANTS: TenantWorkspace[] = [
-  {
-    id: 'tenant-northstar',
-    name: 'Northstar Labs',
-    slug: 'northstar-labs',
-    timezone: 'America/New_York',
-    currency: 'USD',
-    planTier: 'team',
-    roundingRule: 'none',
-    paidBreakMinutesPerDay: 15,
-    weeklyCapMinutes: 2400,
-    policyVersion: 'v1.0-2026-11',
-    policyVersions: [
-      {
-        id: 'pv-1',
-        versionCode: 'v1.0-2026-11',
-        summaryMarkdown:
-          'Privacy-first baseline: collects session lifecycle, declared work mode & opt-in IDE/Git metadata; hard-denies keystrokes, clipboard, and default screenshots.',
-        effectiveFrom: '2026-11-01T00:00:00Z',
-      },
-    ],
-  },
-  {
-    id: 'tenant-vertex',
-    name: 'Vertex Cloud Agency',
-    slug: 'vertex-agency',
-    timezone: 'Europe/Berlin',
-    currency: 'EUR',
-    planTier: 'agency',
-    roundingRule: 'nearest_5m',
-    paidBreakMinutesPerDay: 15,
-    weeklyCapMinutes: 2400,
-    policyVersion: 'v1.0-2026-11',
-    policyVersions: [
-      {
-        id: 'pv-2',
-        versionCode: 'v1.0-2026-11',
-        summaryMarkdown: 'GDPR-compliant European agency tracking baseline.',
-        effectiveFrom: '2026-11-01T00:00:00Z',
-      },
-    ],
-  },
-]
-
-const INITIAL_MEMBERS: WorkspaceMember[] = [
-  {
-    id: 'usr-aria',
-    tenantId: 'tenant-northstar',
-    name: 'Aria Chen',
-    email: 'aria@northstar.dev',
-    role: 'developer',
-    status: 'active',
-    mfaEnabled: true,
-    consentedPolicyVersion: 'v1.0-2026-11',
-    assignedProjectIds: ['proj-settle', 'proj-vault'],
-  },
-  {
-    id: 'usr-marcus',
-    tenantId: 'tenant-northstar',
-    name: 'Marcus Vance',
-    email: 'marcus@northstar.dev',
-    role: 'project_manager',
-    status: 'active',
-    mfaEnabled: true,
-    consentedPolicyVersion: 'v1.0-2026-11',
-    assignedProjectIds: ['proj-settle', 'proj-vault'],
-  },
-  {
-    id: 'usr-elena',
-    tenantId: 'tenant-northstar',
-    name: 'Elena Rostova',
-    email: 'finance@northstar.dev',
-    role: 'finance',
-    status: 'active',
-    mfaEnabled: true,
-    consentedPolicyVersion: 'v1.0-2026-11',
-    assignedProjectIds: ['proj-settle', 'proj-vault'],
-  },
-  {
-    id: 'usr-devon',
-    tenantId: 'tenant-northstar',
-    name: 'Devon Brooks',
-    email: 'owner@northstar.dev',
-    role: 'tenant_owner',
-    status: 'active',
-    mfaEnabled: true,
-    consentedPolicyVersion: 'v1.0-2026-11',
-    assignedProjectIds: ['proj-settle', 'proj-vault'],
-  },
-  {
-    id: 'usr-lukas',
-    tenantId: 'tenant-vertex',
-    name: 'Lukas Weber',
-    email: 'lukas@vertex-agency.eu',
-    role: 'tenant_owner',
-    status: 'active',
-    mfaEnabled: true,
-    consentedPolicyVersion: 'v1.0-2026-11',
-    assignedProjectIds: ['proj-vertex-1'],
-  },
-]
-
-const INITIAL_PROJECTS: ProjectRecord[] = [
-  {
-    id: 'proj-settle',
-    tenantId: 'tenant-northstar',
-    code: 'SETTLE-CORE',
-    name: 'Multi-Region Settlement Ledger',
-    clientName: 'Acme FinTech Global',
-    status: 'active',
-    description: 'High-integrity PostgreSQL ledger, RLS policies, and webhook settlement pipeline.',
-  },
-  {
-    id: 'proj-vault',
-    tenantId: 'tenant-northstar',
-    code: 'VAULT-SDK',
-    name: 'Zero-Knowledge Tokenization SDK',
-    clientName: 'Horizon Banking Group',
-    status: 'active',
-    description: 'Rust/Tauri local encryption queue and key-rotation client SDK.',
-  },
-  {
-    id: 'proj-vertex-1',
-    tenantId: 'tenant-vertex',
-    code: 'EU-COMPLY',
-    name: 'GDPR Retention & Audit Service',
-    clientName: 'EuroBank AG',
-    status: 'active',
-    description: 'Isolated tenant project belonging to Vertex Cloud Agency.',
-  },
-]
-
-const INITIAL_TASKS: TaskRecord[] = [
-  {
-    id: 'tsk-104',
-    tenantId: 'tenant-northstar',
-    projectId: 'proj-settle',
-    code: 'DEV-104',
-    title: 'Design & Implement GiST Non-Overlap Time Ledger Constraint',
-    acceptanceCriteria:
-      '1. Exclude overlapping intervals per (tenant_id, user_id). 2. Pass pgTAP negative tests.',
-    status: 'active',
-    priority: 'high',
-    estimateMinutes: 240,
-    isBillable: true,
-    defaultWorkMode: 'thinking',
-    assignedMemberIds: ['usr-aria'],
-    dueDate: '2026-11-16',
-    attachments: ['ADR-003-GiST-Constraints.md', 'schema-diagram.svg'],
-  },
-  {
-    id: 'tsk-104-sub1',
-    tenantId: 'tenant-northstar',
-    projectId: 'proj-settle',
-    parentTaskId: 'tsk-104',
-    code: 'DEV-104.1',
-    title: 'Write pgTAP Negative & Role-Boundary RLS Suite',
-    acceptanceCriteria: 'Verify developer vs finance vs cross-tenant isolation in pgTAP.',
-    status: 'active',
-    priority: 'medium',
-    estimateMinutes: 90,
-    isBillable: true,
-    defaultWorkMode: 'testing',
-    assignedMemberIds: ['usr-aria'],
-    dueDate: '2026-11-16',
-    attachments: [],
-  },
-  {
-    id: 'tsk-209',
-    tenantId: 'tenant-northstar',
-    projectId: 'proj-settle',
-    code: 'DEV-209',
-    title: 'Investigate Queue Worker Visibility Timeout Race Condition',
-    acceptanceCriteria:
-      '1. Reproduce deadlock in local test runner. 2. Ensure idempotent batch acknowledgment.',
-    status: 'review',
-    priority: 'urgent',
-    estimateMinutes: 180,
-    isBillable: true,
-    defaultWorkMode: 'debugging',
-    assignedMemberIds: ['usr-aria', 'usr-marcus'],
-    dueDate: '2026-11-14',
-    attachments: ['deadlock-trace.log'],
-  },
-  {
-    id: 'tsk-301',
-    tenantId: 'tenant-northstar',
-    projectId: 'proj-vault',
-    code: 'VAULT-12',
-    title: 'Implement AES-256-GCM Offline Event Buffer in Tauri Agent',
-    acceptanceCriteria:
-      '1. Persist unacknowledged batches across app restarts. 2. Deduplicate on reconnect.',
-    status: 'backlog',
-    priority: 'medium',
-    estimateMinutes: 300,
-    isBillable: true,
-    defaultWorkMode: 'coding',
-    assignedMemberIds: ['usr-aria'],
-    dueDate: '2026-11-20',
-    attachments: [],
-  },
-]
-
-const INITIAL_CONTRACT_POLICY: ContractBillingPolicy = {
-  id: 'cnt-acme-2026',
-  tenantId: 'tenant-northstar',
-  projectName: 'Multi-Region Settlement Ledger',
-  clientName: 'Acme FinTech Global',
+const EMPTY_CONTRACT_POLICY: ContractBillingPolicy = {
+  id: '',
+  tenantId: '',
+  projectName: 'No active contract',
+  clientName: '—',
   roundingRule: 'none',
   paidBreakAllowanceMinutesPerDay: 15,
   weeklyCapMinutes: 2400,
   deepWorkNoInputWindowMinutes: 90,
   idleClarificationThresholdMinutes: 15,
-  rateVersions: [
-    {
-      id: 'rv-1',
-      effectiveFrom: '2026-10-01',
-      effectiveTo: '2026-11-14',
-      hourlyRate: 85,
-      currency: 'USD',
-      label: 'Q4 Standard Rate ($85/hr)',
-    },
-    {
-      id: 'rv-2',
-      effectiveFrom: '2026-11-15',
-      effectiveTo: null,
-      hourlyRate: 100,
-      currency: 'USD',
-      label: 'Senior Architecture Uplift ($100/hr)',
-    },
-  ],
+  rateVersions: [],
 }
 
-const INITIAL_TIMESHEET_LINES: TimesheetLineItem[] = [
-  {
-    id: 'tsl-1',
-    timesheetId: 'ts-nov10-settle',
-    timesheetStatus: 'submitted',
-    tenantId: 'tenant-northstar',
-    projectId: 'proj-settle',
-    taskId: 'tsk-104',
-    taskCode: 'DEV-104',
-    taskTitle: 'Design & Implement GiST Non-Overlap Time Ledger Constraint',
-    developerId: 'usr-aria',
-    developerName: 'Aria Chen',
-    workDate: '2026-11-10',
-    startTime: '09:00',
-    endTime: '10:30',
-    workMode: 'thinking',
-    provenance: 'desktop_timer',
-    elapsedMinutes: 90,
-    claimedMinutes: 90,
-    observedMinutes: 0,
-    supportedMinutes: 90,
-    approvedBillableMinutes: 90,
-    evidenceStatus: 'approved',
-    snapshotHourlyRate: 85,
-    rateLabel: 'Q4 Standard Rate ($85/hr)',
-    developerNote:
-      '90m declared architectural thinking: modeled PostgreSQL btree_gist exclusion constraints and composite FKs on whiteboard (Acceptance Scenario 1).',
-    managerComment: 'Approved — ADR-003 architecture note clearly substantiates the 90m design block.',
-    disputeMessages: [],
-    isLocked: false,
-  },
-  {
-    id: 'tsl-2',
-    timesheetId: 'ts-nov10-settle',
-    timesheetStatus: 'needs_clarification',
-    tenantId: 'tenant-northstar',
-    projectId: 'proj-settle',
-    taskId: 'tsk-209',
-    taskCode: 'DEV-209',
-    taskTitle: 'Investigate Queue Worker Visibility Timeout Race Condition',
-    developerId: 'usr-aria',
-    developerName: 'Aria Chen',
-    workDate: '2026-11-11',
-    startTime: '14:00',
-    endTime: '15:30',
-    workMode: 'debugging',
-    provenance: 'desktop_timer',
-    elapsedMinutes: 90,
-    claimedMinutes: 90,
-    observedMinutes: 65,
-    supportedMinutes: 65,
-    approvedBillableMinutes: 0,
-    evidenceStatus: 'needs_clarification',
-    snapshotHourlyRate: 85,
-    rateLabel: 'Q4 Standard Rate ($85/hr)',
-    developerNote: 'Stepped through queue consumer visibility timeout handling.',
-    managerComment:
-      'Clarification requested (Rule R-01): 25m unobserved interval between 14:40 and 15:05—was this log inspection or a break?',
-    disputeMessages: [],
-    isLocked: false,
-  },
-  {
-    id: 'tsl-3',
-    timesheetId: 'ts-nov10-settle',
-    timesheetStatus: 'submitted',
-    tenantId: 'tenant-northstar',
-    projectId: 'proj-settle',
-    taskId: 'tsk-104',
-    taskCode: 'DEV-104',
-    taskTitle: 'Design & Implement GiST Non-Overlap Time Ledger Constraint',
-    developerId: 'usr-aria',
-    developerName: 'Aria Chen',
-    workDate: '2026-11-15',
-    startTime: '10:00',
-    endTime: '12:00',
-    workMode: 'coding',
-    provenance: 'desktop_timer',
-    elapsedMinutes: 120,
-    claimedMinutes: 120,
-    observedMinutes: 120,
-    supportedMinutes: 120,
-    approvedBillableMinutes: 120,
-    evidenceStatus: 'approved',
-    snapshotHourlyRate: 100,
-    rateLabel: 'Senior Architecture Uplift ($100/hr)',
-    developerNote:
-      'Wrote 0003_time_ledger_and_sessions.sql and verified historical rate transition on Nov 15 ($100/hr — Acceptance Scenario 6).',
-    managerComment: 'Approved under Nov 15 uplift rate card.',
-    disputeMessages: [],
-    isLocked: false,
-  },
-]
+const EMPTY_TENANT_PLACEHOLDER: TenantWorkspace = {
+  id: '',
+  name: '',
+  slug: '',
+  timezone: 'UTC',
+  currency: 'USD',
+  planTier: 'starter',
+  roundingRule: 'none',
+  paidBreakMinutesPerDay: 15,
+  weeklyCapMinutes: 2400,
+  policyVersion: 'v1.0-2026-11',
+  policyVersions: [],
+}
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'notif-1',
-    tenantId: 'tenant-northstar',
-    recipientUserId: 'usr-aria',
-    type: 'clarification_requested',
-    title: 'Clarification Requested on DEV-209 (Nov 11)',
-    body: 'Marcus Vance asked for context on the 25m unobserved interval (14:40–15:05).',
-    readAt: null,
-    createdAt: '2026-11-11T17:15:00Z',
-  },
-]
-
-const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
-  {
-    id: 'aud-1',
-    tenantId: 'tenant-northstar',
-    actorName: 'Devon Brooks',
-    actorRole: 'tenant_owner',
-    actionType: 'POLICY_PUBLISHED',
-    targetEntity: 'policy_versions:v1.0-2026-11',
-    reason: 'Published privacy-first tracking policy v1.0 with hard-deny on keystrokes and screenshots.',
-    timestamp: '2026-11-01T08:00:00Z',
-  },
-  {
-    id: 'aud-2',
-    tenantId: 'tenant-northstar',
-    actorName: 'Aria Chen',
-    actorRole: 'developer',
-    actionType: 'POLICY_CONSENT_ACKNOWLEDGED',
-    targetEntity: 'policy_consents:usr-aria',
-    reason: 'Developer acknowledged v1.0-2026-11 collection scope prior to starting timer.',
-    timestamp: '2026-11-10T08:58:00Z',
-  },
-  {
-    id: 'aud-3',
-    tenantId: 'tenant-northstar',
-    actorName: 'Marcus Vance',
-    actorRole: 'project_manager',
-    actionType: 'TIMESHEET_LINE_CLARIFICATION_REQUESTED',
-    targetEntity: 'timesheet_lines:tsl-2',
-    reason: 'Requested context on 25m unobserved interval instead of auto-rejecting (Acceptance Scenario 4).',
-    timestamp: '2026-11-11T17:15:00Z',
-  },
-]
+const EMPTY_MEMBER_PLACEHOLDER: WorkspaceMember = {
+  id: '',
+  tenantId: '',
+  name: '',
+  email: '',
+  role: 'tenant_owner',
+  status: 'active',
+  mfaEnabled: true,
+  consentedPolicyVersion: null,
+  assignedProjectIds: [],
+}
 
 function loadRecoveredTimerState(): ActiveTimerState {
   const defaultState: ActiveTimerState = {
     isRunning: false,
     lifecycle: 'paused',
-    projectId: 'proj-settle',
-    taskId: 'tsk-104',
-    workMode: 'thinking',
+    projectId: '',
+    taskId: '',
+    workMode: 'coding',
     startedAtIso: new Date().toISOString(),
     elapsedSeconds: 0,
     breakSeconds: 0,
     isOfflineQueueActive: false,
     queuedOfflineBatches: [],
-    sessionNote: 'Reviewing pgTAP negative RLS test matrix for multi-tenant isolation.',
+    sessionNote: '',
     recoveredFromCrash: false,
   }
 
@@ -707,24 +378,26 @@ function loadRecoveredTimerState(): ActiveTimerState {
 const Phase1StoreContext = createContext<Phase1StoreContextValue | null>(null)
 
 export function Phase1StoreProvider({ children }: { children: ReactNode }) {
-  const [tenants, setTenants] = useState<TenantWorkspace[]>(INITIAL_TENANTS)
-  const [activeTenantId, setActiveTenantIdState] = useState<string>('tenant-northstar')
-  const [members, setMembers] = useState<WorkspaceMember[]>(INITIAL_MEMBERS)
-  const [activeUserId, setActiveUserId] = useState<string>('usr-aria')
-  const [projects, setProjects] = useState<ProjectRecord[]>(INITIAL_PROJECTS)
-  const [tasks, setTasks] = useState<TaskRecord[]>(INITIAL_TASKS)
+  const [tenants, setTenants] = useState<TenantWorkspace[]>([])
+  const [activeTenantId, setActiveTenantIdState] = useState<string>('')
+  const [members, setMembers] = useState<WorkspaceMember[]>([])
+  const [activeUserId, setActiveUserId] = useState<string>('')
+  const [projects, setProjects] = useState<ProjectRecord[]>([])
+  const [tasks, setTasks] = useState<TaskRecord[]>([])
   const [contractPolicy, setContractPolicy] =
-    useState<ContractBillingPolicy>(INITIAL_CONTRACT_POLICY)
-  const [timesheetLines, setTimesheetLines] =
-    useState<TimesheetLineItem[]>(INITIAL_TIMESHEET_LINES)
+    useState<ContractBillingPolicy>(EMPTY_CONTRACT_POLICY)
+  const [timesheetLines, setTimesheetLines] = useState<TimesheetLineItem[]>([])
   const [invoices, setInvoices] = useState<InvoiceDraftRecord[]>([])
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS)
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([])
+  const [phase2Bootstrap, setPhase2Bootstrap] =
+    useState<PrismaPhase2BootstrapPayload | null>(null)
+  const [bootstrapLoaded, setBootstrapLoaded] = useState(false)
   const [prismaStatus, setPrismaStatus] = useState<PrismaConnectionStatus>({
     connected: false,
     configured: false,
     projectRef: null,
-    message: 'Checking Prisma ORM -> Supabase connection...',
+    message: 'Connecting to Supabase PostgreSQL...',
   })
   const [timer, setTimer] = useState<ActiveTimerState>(loadRecoveredTimerState)
 
@@ -734,35 +407,63 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     setPrismaStatus(payload.status)
 
     if (payload.status.connected) {
-      if (payload.tenants.length > 0) {
-        setTenants(payload.tenants)
-        setActiveTenantIdState(payload.tenants[0].id)
+      setTenants(payload.tenants)
+      setActiveTenantIdState((prev) =>
+        payload.tenants.some((t) => t.id === prev)
+          ? prev
+          : (payload.tenants[0]?.id ?? '')
+      )
+      setMembers(payload.members)
+      setActiveUserId((prev) =>
+        payload.members.some((m) => m.id === prev)
+          ? prev
+          : (payload.members[0]?.id ?? '')
+      )
+      setProjects(payload.projects)
+      setTasks(payload.tasks)
+      setTimesheetLines(payload.timesheetLines)
+      setInvoices(payload.invoices)
+      setNotifications(payload.notifications ?? [])
+      setAuditLogs(payload.auditLogs)
+      if (payload.contracts && payload.contracts.length > 0) {
+        setContractPolicy(payload.contracts[0])
+      } else {
+        setContractPolicy(EMPTY_CONTRACT_POLICY)
       }
-      if (payload.members.length > 0) {
-        setMembers(payload.members)
-        setActiveUserId(payload.members[0].id)
-      }
-      if (payload.projects.length > 0) setProjects(payload.projects)
-      if (payload.tasks.length > 0) setTasks(payload.tasks)
-      if (payload.timesheetLines.length > 0) setTimesheetLines(payload.timesheetLines)
-      if (payload.invoices.length > 0) setInvoices(payload.invoices)
-      if (payload.notifications && payload.notifications.length > 0) {
-        setNotifications(payload.notifications)
-      }
-      if (payload.auditLogs.length > 0) setAuditLogs(payload.auditLogs)
+      setPhase2Bootstrap(payload.phase2 ?? null)
+    } else {
+      setTenants([])
+      setMembers([])
+      setProjects([])
+      setTasks([])
+      setTimesheetLines([])
+      setInvoices([])
+      setNotifications([])
+      setAuditLogs([])
+      setContractPolicy(EMPTY_CONTRACT_POLICY)
+      setPhase2Bootstrap(null)
     }
+
+    setBootstrapLoaded(true)
   }
 
   async function refreshPrismaConnection() {
     const payload = await fetchPrismaBootstrap()
-    if (!payload) return
+    if (!payload) {
+      setBootstrapLoaded(true)
+      return
+    }
     applyBootstrapPayload(payload)
   }
 
   useEffect(() => {
     let active = true
     void fetchPrismaBootstrap().then((payload) => {
-      if (!active || !payload) return
+      if (!active) return
+      if (!payload) {
+        setBootstrapLoaded(true)
+        return
+      }
       applyBootstrapPayload(payload)
     })
     return () => {
@@ -794,11 +495,18 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(intervalId)
   }, [timer.lifecycle])
 
-  const activeTenant = tenants.find((t) => t.id === activeTenantId) ?? tenants[0]
+  const hasWorkspace = tenants.length > 0 && members.length > 0
+  const activeTenant =
+    tenants.find((t) => t.id === activeTenantId) ??
+    tenants[0] ??
+    EMPTY_TENANT_PLACEHOLDER
   const activeEntitlement = PLAN_ENTITLEMENTS[activeTenant.planTier]
   const tenantMembers = members.filter((m) => m.tenantId === activeTenant.id)
   const activeUser =
-    tenantMembers.find((m) => m.id === activeUserId) ?? tenantMembers[0] ?? members[0]
+    tenantMembers.find((m) => m.id === activeUserId) ??
+    tenantMembers[0] ??
+    members[0] ??
+    EMPTY_MEMBER_PLACEHOLDER
 
   function appendAudit(actionType: string, targetEntity: string, reason: string) {
     setAuditLogs((prev) => [
@@ -906,7 +614,13 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     setActiveUserId(newOwnerId)
 
     if (prismaStatus.connected) {
-      void createTenantViaPrisma(input)
+      void createTenantViaPrisma(input).then((res) => {
+        if (res?.ok && res.tenantId && res.ownerId) {
+          setActiveTenantIdState(res.tenantId)
+          setActiveUserId(res.ownerId)
+          void refreshPrismaConnection()
+        }
+      })
     }
 
     return { ok: true, message: `Workspace "${input.name}" provisioned cleanly.` }
@@ -989,7 +703,13 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       `Invited ${name} (${email}) with role ${role}`
     )
     if (prismaStatus.connected) {
-      void inviteMemberViaPrisma({ tenantId: activeTenant.id, name, email, role })
+      void inviteMemberViaPrisma({ tenantId: activeTenant.id, name, email, role }).then((res) => {
+        if (res?.ok && res.userId) {
+          setMembers((prev) =>
+            prev.map((m) => (m.id === newMember.id ? { ...m, id: res.userId! } : m))
+          )
+        }
+      })
     }
     return { ok: true, message: `Invited ${name} (${role}) to ${activeTenant.name}.` }
   }
@@ -1269,6 +989,13 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
 
     const netClaimedMinutes = Math.max(0, durationMinutes - breakMinutes)
     const task = tasks.find((t) => t.id === timer.taskId) ?? tasks[0]
+    if (!task) {
+      return {
+        ok: false,
+        message: 'Create a project and task before recording a work session.',
+      }
+    }
+    const targetProjectId = timer.projectId || task.projectId
     const rate = resolveEffectiveRate(workDate, contractPolicy.rateVersions)
     const isDeepWork =
       timer.workMode === 'thinking' ||
@@ -1281,7 +1008,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       timesheetId: `ts-week-${activeTenant.id}`,
       timesheetStatus: 'draft',
       tenantId: activeTenant.id,
-      projectId: timer.projectId,
+      projectId: targetProjectId,
       taskId: task.id,
       taskCode: task.code,
       taskTitle: task.title,
@@ -1375,6 +1102,12 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     }
 
     const task = tasks.find((t) => t.id === input.taskId) ?? tasks[0]
+    if (!task) {
+      return {
+        ok: false,
+        message: 'Create a project and task before submitting manual time.',
+      }
+    }
     const rate = resolveEffectiveRate(input.workDate, contractPolicy.rateVersions)
 
     const newLine: TimesheetLineItem = {
@@ -1852,6 +1585,9 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         markNotificationRead,
         auditLogs: auditLogs.filter((a) => a.tenantId === activeTenant.id),
         prismaStatus,
+        bootstrapLoaded,
+        hasWorkspace,
+        phase2Bootstrap,
         refreshPrismaConnection,
       }}
     >

@@ -10,8 +10,13 @@
  * browser-only components; browser code uses `src/lib/prismaApiClient.ts`.
  */
 
+import path from 'node:path'
+import dotenv from 'dotenv'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
+dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined

@@ -7,6 +7,7 @@
  */
 
 import { prisma, checkPrismaConnection } from '../lib/prisma.ts'
+import { handleBootstrapPhase2Data } from './prismaPhase2Handlers.ts'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -44,6 +45,7 @@ export async function handleBootstrap() {
     dbNotifications,
     dbEntitlements,
     dbAudits,
+    phase2,
   ] = await Promise.all([
     prisma.tenant.findMany({
       include: {
@@ -107,6 +109,7 @@ export async function handleBootstrap() {
       orderBy: { occurredAtUtc: 'desc' },
       take: 60,
     }),
+    handleBootstrapPhase2Data(),
   ])
 
   const taskById = new Map(dbTasks.map((t) => [t.id, t]))
@@ -299,6 +302,7 @@ export async function handleBootstrap() {
       reason: a.reason ?? '',
       timestamp: a.occurredAtUtc.toISOString(),
     })),
+    phase2,
   }
 }
 

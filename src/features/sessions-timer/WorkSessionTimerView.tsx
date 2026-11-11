@@ -99,14 +99,14 @@ export function WorkSessionTimerView() {
   const [manualEnd, setManualEnd] = useState('17:00')
   const [manualDuration, setManualDuration] = useState(60)
   const [manualMode, setManualMode] = useState<WorkMode>('thinking')
-  const [manualReason, setManualReason] = useState(
-    'Whiteboarded database partitioning strategy with lead architect away from workstation.'
-  )
-  const [manualNote, setManualNote] = useState(
-    'Documented monthly partition boundaries for activity_events table.'
-  )
+  const [manualReason, setManualReason] = useState('')
+  const [manualNote, setManualNote] = useState('')
 
-  const currentTask = tasks.find((t) => t.id === timer.taskId) ?? tasks[0]
+  const activeProjectId = projects.some((p) => p.id === timer.projectId)
+    ? timer.projectId
+    : (projects[0]?.id ?? '')
+  const projectTasks = tasks.filter((t) => t.projectId === activeProjectId)
+  const currentTask = projectTasks.find((t) => t.id === timer.taskId) ?? projectTasks[0]
   const currentModeInfo =
     WORK_MODE_DETAILS.find((m) => m.mode === timer.workMode) ??
     WORK_MODE_DETAILS[0]
@@ -127,7 +127,13 @@ export function WorkSessionTimerView() {
 
   function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!currentTask) return
+    if (!currentTask) {
+      setFeedbackBanner({
+        ok: false,
+        text: 'Create a project and task first before submitting manual time.',
+      })
+      return
+    }
     const res = addManualTimeEntry({
       projectId: currentTask.projectId,
       taskId: currentTask.id,
@@ -231,7 +237,7 @@ export function WorkSessionTimerView() {
                   Assigned Project (Tenant: {activeTenant.slug})
                 </label>
                 <select
-                  value={timer.projectId}
+                  value={activeProjectId}
                   onChange={(e) => {
                     const nextProjId = e.target.value
                     const firstTask = tasks.find((t) => t.projectId === nextProjId)
@@ -243,6 +249,9 @@ export function WorkSessionTimerView() {
                   }}
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
                 >
+                  {projects.length === 0 && (
+                    <option value="">No projects yet — create one in Projects &amp; Tasks</option>
+                  )}
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.code} — {p.name} ({p.clientName})
@@ -259,20 +268,21 @@ export function WorkSessionTimerView() {
                   value={currentTask?.id ?? ''}
                   onChange={(e) =>
                     setTimerTaskAndMode(
-                      timer.projectId,
+                      activeProjectId,
                       e.target.value,
                       timer.workMode
                     )
                   }
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
                 >
-                  {tasks
-                    .filter((t) => t.projectId === timer.projectId)
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.code}: {t.title}
-                      </option>
-                    ))}
+                  {projectTasks.length === 0 && (
+                    <option value="">No tasks yet for this project</option>
+                  )}
+                  {projectTasks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.code}: {t.title}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

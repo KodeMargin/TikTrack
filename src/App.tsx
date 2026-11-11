@@ -142,11 +142,22 @@ function DevProofShell() {
     setTimerTaskAndMode,
     transitionTimer,
     prismaStatus,
+    bootstrapLoaded,
+    hasWorkspace,
+    createTenantWorkspace,
     refreshPrismaConnection,
     notifications,
     unreadNotificationCount,
     markNotificationRead,
   } = usePhase1Store()
+
+  const [setupName, setSetupName] = useState('')
+  const [setupSlug, setSetupSlug] = useState('')
+  const [setupCurrency, setSetupCurrency] = useState('USD')
+  const [setupTimezone, setSetupTimezone] = useState('Asia/Colombo')
+  const [setupOwnerName, setSetupOwnerName] = useState('')
+  const [setupOwnerEmail, setSetupOwnerEmail] = useState('')
+  const [setupError, setSetupError] = useState<string | null>(null)
 
   const [activeSection, setActiveSection] = useState<NavSection>(() =>
     typeof window !== 'undefined'
@@ -202,6 +213,215 @@ function DevProofShell() {
       })}
     </div>
   )
+
+  if (!bootstrapLoaded) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#090c14] dark:text-slate-100 flex items-center justify-center p-6">
+        <div className="text-center space-y-3">
+          <div className="h-10 w-10 mx-auto rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-sm font-bold text-white shadow-sm">
+            DP
+          </div>
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Loading workspace from Supabase PostgreSQL...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hasWorkspace) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#090c14] dark:text-slate-100 flex flex-col">
+        <header className="h-14 border-b border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-[#0d111b]/80 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-xs font-bold text-white">
+              DP
+            </div>
+            <span className="text-sm font-semibold">DevProof</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void refreshPrismaConnection()}
+              className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5 cursor-pointer"
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  prismaStatus.connected ? 'bg-emerald-500' : 'bg-rose-500'
+                }`}
+              />
+              <span>
+                {prismaStatus.connected ? 'Supabase Connected' : 'DB Disconnected (Retry)'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 text-xs font-medium cursor-pointer"
+            >
+              {theme === 'dark' ? 'Light' : 'Dark'}
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white dark:border-white/10 dark:bg-[#111623] p-6 sm:p-8 shadow-sm space-y-5">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                Clean Supabase Database (0 Rows)
+              </span>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
+                Create Your Workspace
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                All dummy data has been removed. Set up your company workspace and Owner account to start tracking developers in live PostgreSQL.
+              </p>
+            </div>
+
+            {!prismaStatus.connected && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-950/40 p-3 text-xs text-amber-800 dark:text-amber-200">
+                {prismaStatus.message}
+              </div>
+            )}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const slug =
+                  setupSlug.trim() ||
+                  setupName
+                    .trim()
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '')
+                const res = createTenantWorkspace({
+                  name: setupName.trim(),
+                  slug,
+                  timezone: setupTimezone,
+                  currency: setupCurrency,
+                  ownerName: setupOwnerName.trim(),
+                  ownerEmail: setupOwnerEmail.trim(),
+                })
+                if (!res.ok) setSetupError(res.message)
+                else setSetupError(null)
+              }}
+              className="space-y-3 text-sm"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Workspace / Company Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Acme Studio"
+                    value={setupName}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSetupName(val)
+                      setSetupSlug(
+                        val
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]+/g, '-')
+                          .replace(/^-|-$/g, '')
+                      )
+                    }}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    URL Slug
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. acme-studio"
+                    value={setupSlug}
+                    onChange={(e) => setSetupSlug(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Your Name (Owner)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Your full name"
+                    value={setupOwnerName}
+                    onChange={(e) => setSetupOwnerName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Owner Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="you@company.com"
+                    value={setupOwnerEmail}
+                    onChange={(e) => setSetupOwnerEmail(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Currency
+                  </label>
+                  <select
+                    value={setupCurrency}
+                    onChange={(e) => setSetupCurrency(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm"
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="LKR">LKR (Rs)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="AUD">AUD (A$)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Timezone
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={setupTimezone}
+                    onChange={(e) => setSetupTimezone(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              {setupError && (
+                <div className="text-xs text-rose-600 dark:text-rose-400">{setupError}</div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!prismaStatus.connected}
+                className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition cursor-pointer"
+              >
+                Create Live Workspace in Supabase
+              </button>
+            </form>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#090c14] dark:text-slate-100 flex">
@@ -266,7 +486,7 @@ function DevProofShell() {
                 }`}
               />
               <span className="truncate">
-                {prismaStatus.connected ? 'Database Synced' : 'Local Demo Store'}
+                {prismaStatus.connected ? 'Database Synced' : 'DB Disconnected'}
               </span>
             </span>
             <span className="text-[10px] font-mono opacity-75">

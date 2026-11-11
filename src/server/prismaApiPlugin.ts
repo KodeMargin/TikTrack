@@ -17,8 +17,12 @@ import {
   isValidUuid,
 } from './prismaPhase1Handlers.ts'
 import {
+  handleAddPrivacyExclusionPrisma,
   handleCreateSessionAnnotationPrisma,
   handleIngestWebhookPrisma,
+  handleReconcileGapPrisma,
+  handleRemovePrivacyExclusionPrisma,
+  handleToggleDeviceRevocationPrisma,
 } from './prismaPhase2Handlers.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
@@ -471,6 +475,26 @@ export function prismaSupabaseApiPlugin(): Plugin {
             if (req.method === 'POST' && url.startsWith('/api/prisma/phase2/annotation')) {
               const body = await readJsonBody<Parameters<typeof handleCreateSessionAnnotationPrisma>[0]>(req)
               return sendJson(res, 201, await handleCreateSessionAnnotationPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase2/exclusions')) {
+              const body = await readJsonBody<Parameters<typeof handleAddPrivacyExclusionPrisma>[0]>(req)
+              return sendJson(res, 201, await handleAddPrivacyExclusionPrisma(body))
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/phase2/exclusions')) {
+              const body = await readJsonBody<Parameters<typeof handleRemovePrivacyExclusionPrisma>[0]>(req)
+              return sendJson(res, 200, await handleRemovePrivacyExclusionPrisma(body))
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase2/devices/revoke')) {
+              const body = await readJsonBody<Parameters<typeof handleToggleDeviceRevocationPrisma>[0]>(req)
+              return sendJson(res, 200, await handleToggleDeviceRevocationPrisma(body))
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase2/reconcile-gap')) {
+              const body = await readJsonBody<Parameters<typeof handleReconcileGapPrisma>[0]>(req)
+              return sendJson(res, 200, await handleReconcileGapPrisma(body))
             }
 
             return sendJson(res, 404, { error: 'Unknown Prisma API endpoint' })

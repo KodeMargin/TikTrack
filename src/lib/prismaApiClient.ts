@@ -5,6 +5,7 @@
  * React frontend persists Phase 1 data through Prisma ORM without exposing DATABASE_URL.
  */
 
+import type { ContractBillingPolicy } from '@/types/domain.types'
 import type {
   AuditLogEntry,
   InvoiceDraftRecord,
@@ -15,6 +16,29 @@ import type {
   TimesheetLineItem,
   WorkspaceMember,
 } from '@/context/Phase1Store'
+import type {
+  ActivityRollupBucket,
+  ConnectedIntegrationRecord,
+  EnrolledDeviceRecord,
+  IdeWorkspaceMappingRecord,
+  LocalPrivacyAuditBatch,
+  LocalPrivacyExclusionItem,
+  Phase2EvidenceArtifact,
+  SessionAnnotationItem,
+  WebhookReceiptRecord,
+} from '@/context/Phase2Store'
+
+export interface PrismaPhase2BootstrapPayload {
+  activityRollups: ActivityRollupBucket[]
+  evidenceArtifacts: Phase2EvidenceArtifact[]
+  sessionAnnotations: SessionAnnotationItem[]
+  ideMappings: IdeWorkspaceMappingRecord[]
+  integrations: ConnectedIntegrationRecord[]
+  webhookReceipts: WebhookReceiptRecord[]
+  devices: EnrolledDeviceRecord[]
+  privacyExclusions: LocalPrivacyExclusionItem[]
+  privacyAuditBatches: LocalPrivacyAuditBatch[]
+}
 
 export interface PrismaConnectionStatus {
   connected: boolean
@@ -30,9 +54,11 @@ export interface PrismaBootstrapPayload {
   projects: ProjectRecord[]
   tasks: TaskRecord[]
   timesheetLines: TimesheetLineItem[]
+  contracts?: ContractBillingPolicy[]
   invoices: InvoiceDraftRecord[]
   notifications: NotificationItem[]
   auditLogs: AuditLogEntry[]
+  phase2?: PrismaPhase2BootstrapPayload
 }
 
 async function postJson<T>(url: string, body: unknown, method = 'POST'): Promise<T | null> {
@@ -219,3 +245,25 @@ export const createSessionAnnotationViaPrisma = (input: {
   startMinuteOfDay?: number
   endMinuteOfDay?: number
 }) => postJson<{ ok: boolean; annotationId?: string }>('/api/prisma/phase2/annotation', input)
+
+export const addPrivacyExclusionViaPrisma = (input: {
+  tenantId: string
+  userId: string
+  exclusionPattern: string
+  exclusionType: string
+  reason: string
+}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase2/exclusions', input)
+
+export const removePrivacyExclusionViaPrisma = (input: { id: string }) =>
+  postJson<{ ok: boolean }>('/api/prisma/phase2/exclusions', input, 'DELETE')
+
+export const toggleDeviceRevocationViaPrisma = (input: {
+  deviceId: string
+  revoked: boolean
+}) => postJson<{ ok: boolean }>('/api/prisma/phase2/devices/revoke', input, 'PATCH')
+
+export const reconcileGapViaPrisma = (input: {
+  rollupId: string
+  choice: string
+  note: string
+}) => postJson<{ ok: boolean }>('/api/prisma/phase2/reconcile-gap', input, 'PATCH')
