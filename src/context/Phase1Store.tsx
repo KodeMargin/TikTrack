@@ -190,13 +190,13 @@ export interface NotificationItem {
   tenantId: string
   recipientUserId: string
   type:
-    | 'missing_timesheet'
-    | 'clarification_requested'
-    | 'clarification_replied'
-    | 'timesheet_approved'
-    | 'timesheet_adjusted'
-    | 'dispute_opened'
-    | 'invoice_locked'
+  | 'missing_timesheet'
+  | 'clarification_requested'
+  | 'clarification_replied'
+  | 'timesheet_approved'
+  | 'timesheet_adjusted'
+  | 'dispute_opened'
+  | 'invoice_locked'
   title: string
   body: string
   readAt: string | null
@@ -644,8 +644,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
 
   const sessionMember = rawSessionMember
     ? (SUPER_ADMIN_EMAILS_SET.has(rawSessionMember.email.toLowerCase().trim())
-        ? { ...rawSessionMember, role: 'super_admin' as const }
-        : rawSessionMember)
+      ? { ...rawSessionMember, role: 'super_admin' as const }
+      : rawSessionMember)
     : undefined
 
   const isSuperAdminSession = sessionMember
@@ -655,16 +655,16 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   const superAdminFallbackMember: WorkspaceMember | undefined =
     isSuperAdminSession && sessionUserEmail
       ? {
-          id: 'super-admin',
-          tenantId: activeTenant.id,
-          name: sessionMember?.name || sessionUserEmail.split('@')[0] || 'Super Admin',
-          email: sessionUserEmail,
-          role: 'super_admin' as const,
-          status: 'active' as const,
-          mfaEnabled: true,
-          consentedPolicyVersion: activeTenant.policyVersion,
-          assignedProjectIds: [],
-        }
+        id: 'super-admin',
+        tenantId: activeTenant.id,
+        name: sessionMember?.name || sessionUserEmail.split('@')[0] || 'Super Admin',
+        email: sessionUserEmail,
+        role: 'super_admin' as const,
+        status: 'active' as const,
+        mfaEnabled: true,
+        consentedPolicyVersion: activeTenant.policyVersion,
+        assignedProjectIds: [],
+      }
       : undefined
 
   const activeUser: WorkspaceMember = useMemo(() => {
@@ -872,10 +872,10 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       prev.map((t) =>
         t.id === activeTenant.id
           ? {
-              ...t,
-              policyVersion: versionCode,
-              policyVersions: [newPolicy, ...(t.policyVersions ?? [])],
-            }
+            ...t,
+            policyVersion: versionCode,
+            policyVersions: [newPolicy, ...(t.policyVersions ?? [])],
+          }
           : t
       )
     )
@@ -910,13 +910,13 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         prev.map((m, idx) =>
           idx === existingIndex
             ? {
-                ...m,
-                name: name.trim(),
-                role,
-                status: 'invited',
-                mustChangePassword: true,
-                temporaryPassword,
-              }
+              ...m,
+              name: name.trim(),
+              role,
+              status: 'invited',
+              mustChangePassword: true,
+              temporaryPassword,
+            }
             : m
         )
       )
@@ -957,11 +957,11 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
             prev.map((m) =>
               m.email.toLowerCase().trim() === normalizedEmail
                 ? {
-                    ...m,
-                    id: res.userId!,
-                    mustChangePassword: true,
-                    temporaryPassword,
-                  }
+                  ...m,
+                  id: res.userId!,
+                  mustChangePassword: true,
+                  temporaryPassword,
+                }
                 : m
             )
           )
@@ -1536,8 +1536,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     setTimesheetLines((prev) =>
       prev.map((l) =>
         l.tenantId === activeTenant.id &&
-        l.projectId === projectId &&
-        (l.timesheetStatus === 'draft' || !l.timesheetStatus)
+          l.projectId === projectId &&
+          (l.timesheetStatus === 'draft' || !l.timesheetStatus)
           ? { ...l, timesheetStatus: 'submitted' }
           : l
       )
@@ -1573,20 +1573,20 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       prev.map((line) =>
         line.id === lineId
           ? {
-              ...line,
-              developerNote: `${line.developerNote} | Clarification: ${explanation}`,
-              supportedMinutes: line.claimedMinutes,
-              evidenceStatus: 'context_added',
-              disputeMessages: [
-                ...line.disputeMessages,
-                {
-                  author: activeUser.name,
-                  role: activeUser.role,
-                  text: explanation,
-                  timestamp: new Date().toLocaleTimeString(),
-                },
-              ],
-            }
+            ...line,
+            developerNote: `${line.developerNote} | Clarification: ${explanation}`,
+            supportedMinutes: line.claimedMinutes,
+            evidenceStatus: 'context_added',
+            disputeMessages: [
+              ...line.disputeMessages,
+              {
+                author: activeUser.name,
+                role: activeUser.role,
+                text: explanation,
+                timestamp: new Date().toLocaleTimeString(),
+              },
+            ],
+          }
           : line
       )
     )
@@ -1608,19 +1608,19 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       prev.map((line) =>
         line.id === lineId
           ? {
-              ...line,
-              evidenceStatus: 'disputed',
-              disputeReason,
-              disputeMessages: [
-                ...line.disputeMessages,
-                {
-                  author: activeUser.name,
-                  role: activeUser.role,
-                  text: `DISPUTE OPENED: ${disputeReason}`,
-                  timestamp: new Date().toLocaleTimeString(),
-                },
-              ],
-            }
+            ...line,
+            evidenceStatus: 'disputed',
+            disputeReason,
+            disputeMessages: [
+              ...line.disputeMessages,
+              {
+                author: activeUser.name,
+                role: activeUser.role,
+                text: `DISPUTE OPENED: ${disputeReason}`,
+                timestamp: new Date().toLocaleTimeString(),
+              },
+            ],
+          }
           : line
       )
     )
@@ -1669,21 +1669,21 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       prev.map((line) =>
         line.id === lineId
           ? {
-              ...line,
-              approvedBillableMinutes: roundedApproved,
-              evidenceStatus: nextStatus,
-              managerComment: `${decision.toUpperCase()} by ${activeUser.name}: ${reason}`,
-              isLocked: Boolean(lockLine && nextStatus === 'approved'),
-              disputeMessages: [
-                ...line.disputeMessages,
-                {
-                  author: activeUser.name,
-                  role: activeUser.role,
-                  text: `[${decision.toUpperCase()}] ${reason}`,
-                  timestamp: new Date().toLocaleTimeString(),
-                },
-              ],
-            }
+            ...line,
+            approvedBillableMinutes: roundedApproved,
+            evidenceStatus: nextStatus,
+            managerComment: `${decision.toUpperCase()} by ${activeUser.name}: ${reason}`,
+            isLocked: Boolean(lockLine && nextStatus === 'approved'),
+            disputeMessages: [
+              ...line.disputeMessages,
+              {
+                author: activeUser.name,
+                role: activeUser.role,
+                text: `[${decision.toUpperCase()}] ${reason}`,
+                timestamp: new Date().toLocaleTimeString(),
+              },
+            ],
+          }
           : line
       )
     )
@@ -1849,11 +1849,11 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       prev.map((l) =>
         l.id === lineId
           ? {
-              ...l,
-              approvedBillableMinutes: rounded,
-              evidenceStatus: rounded > 0 ? 'approved' : 'disputed',
-              managerComment: `Dispute resolved by ${activeUser.name}: ${resolutionNote}`,
-            }
+            ...l,
+            approvedBillableMinutes: rounded,
+            evidenceStatus: rounded > 0 ? 'approved' : 'disputed',
+            managerComment: `Dispute resolved by ${activeUser.name}: ${resolutionNote}`,
+          }
           : l
       )
     )

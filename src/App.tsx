@@ -416,11 +416,10 @@ function DevProofShell() {
               key={item.id}
               type="button"
               onClick={() => navigateToSection(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition cursor-pointer ${
-                selected
-                  ? 'bg-indigo-50 text-indigo-700 font-semibold dark:bg-indigo-500/15 dark:text-indigo-300'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200'
-              }`}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition cursor-pointer ${selected
+                ? 'bg-indigo-50 text-indigo-700 font-semibold dark:bg-indigo-500/15 dark:text-indigo-300'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200'
+                }`}
             >
               <span className={selected ? 'text-indigo-600 dark:text-indigo-400' : 'opacity-75'}>
                 {item.icon}
@@ -470,9 +469,8 @@ function DevProofShell() {
               className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5 cursor-pointer"
             >
               <span
-                className={`h-2 w-2 rounded-full ${
-                  prismaStatus.connected ? 'bg-emerald-500' : 'bg-rose-500'
-                }`}
+                className={`h-2 w-2 rounded-full ${prismaStatus.connected ? 'bg-emerald-500' : 'bg-rose-500'
+                  }`}
               />
               <span>
                 {prismaStatus.connected ? 'Supabase Connected' : 'DB Disconnected (Retry)'}
@@ -669,9 +667,8 @@ function DevProofShell() {
 
       {/* Clean Left Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200/80 dark:bg-[#0d111b] dark:border-white/10 flex flex-col transition-transform duration-200 lg:static lg:translate-x-0 ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200/80 dark:bg-[#0d111b] dark:border-white/10 flex flex-col transition-transform duration-200 lg:static lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         {/* Brand */}
         <div className="h-14 px-4 flex items-center justify-between border-b border-slate-200/70 dark:border-white/10">
@@ -715,9 +712,8 @@ function DevProofShell() {
           >
             <span className="flex items-center gap-2 truncate">
               <span
-                className={`h-2 w-2 rounded-full shrink-0 ${
-                  prismaStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'
-                }`}
+                className={`h-2 w-2 rounded-full shrink-0 ${prismaStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`}
               />
               <span className="truncate">
                 {prismaStatus.connected ? 'Database Synced' : 'DB Disconnected'}
@@ -758,18 +754,16 @@ function DevProofShell() {
             <button
               type="button"
               onClick={() => navigateToSection('timer-sessions')}
-              className={`hidden md:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer ${
-                timer.lifecycle === 'running'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-300'
-                  : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300'
-              }`}
+              className={`hidden md:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer ${timer.lifecycle === 'running'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-300'
+                : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300'
+                }`}
             >
               <span
-                className={`h-2 w-2 rounded-full ${
-                  timer.lifecycle === 'running'
-                    ? 'bg-emerald-500 animate-pulse'
-                    : 'bg-amber-500'
-                }`}
+                className={`h-2 w-2 rounded-full ${timer.lifecycle === 'running'
+                  ? 'bg-emerald-500 animate-pulse'
+                  : 'bg-amber-500'
+                  }`}
               />
               <span>
                 {timer.lifecycle === 'running'
@@ -893,11 +887,10 @@ function DevProofShell() {
                       <div
                         key={n.id}
                         onClick={() => markNotificationRead(n.id)}
-                        className={`p-2.5 rounded-lg border text-xs cursor-pointer space-y-0.5 transition ${
-                          n.readAt
-                            ? 'border-slate-200/70 bg-slate-50 text-slate-500 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-400'
-                            : 'border-indigo-200 bg-indigo-50/70 text-slate-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-slate-100'
-                        }`}
+                        className={`p-2.5 rounded-lg border text-xs cursor-pointer space-y-0.5 transition ${n.readAt
+                          ? 'border-slate-200/70 bg-slate-50 text-slate-500 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-400'
+                          : 'border-indigo-200 bg-indigo-50/70 text-slate-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-slate-100'
+                          }`}
                       >
                         <div className="flex items-center justify-between font-semibold">
                           <span>{n.title}</span>
