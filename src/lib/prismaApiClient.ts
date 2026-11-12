@@ -194,13 +194,41 @@ export const inviteMemberViaPrisma = (input: {
   name: string
   email: string
   role: string
-}) => postJson<{ ok: boolean; userId?: string }>('/api/prisma/members', input)
+  temporaryPassword?: string
+}) =>
+  postJson<{
+    ok: boolean
+    userId?: string
+    emailSent?: boolean
+    emailMessage?: string
+    error?: string
+  }>('/api/prisma/members', input)
+
+export const resendMemberInviteViaPrisma = (input: {
+  tenantId: string
+  userId: string
+}) =>
+  postJson<{
+    ok: boolean
+    message?: string
+    error?: string
+  }>('/api/prisma/members/resend-invite', input)
 
 export const updateMemberStatusViaPrisma = (input: {
   tenantId: string
   userId: string
   status: string
 }) => postJson<{ ok: boolean }>('/api/prisma/members/status', input, 'PATCH')
+
+export const deleteMemberViaPrisma = (input: {
+  tenantId: string
+  userId: string
+}) =>
+  postJson<{
+    ok: boolean
+    message?: string
+    error?: string
+  }>('/api/prisma/members', input, 'DELETE')
 
 export const createProjectViaPrisma = (input: {
   tenantId: string

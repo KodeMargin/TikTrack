@@ -3,9 +3,11 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react'
+import { supabase, isSupabaseAuthConfigured } from '@/lib/supabaseClient'
 import type {
   ContractBillingPolicy,
   ContractRateVersion,
@@ -24,6 +26,7 @@ import {
   createTenantViaPrisma,
   fetchPrismaBootstrap,
   inviteMemberViaPrisma,
+  resendMemberInviteViaPrisma,
   lockInvoiceViaPrisma,
   markNotificationReadViaPrisma,
   partialApproveTimesheetViaPrisma,
@@ -32,6 +35,7 @@ import {
   reviewTimesheetLineViaPrisma,
   submitTimesheetViaPrisma,
   updateMemberStatusViaPrisma,
+  deleteMemberViaPrisma,
   updateTaskStatusViaPrisma,
   updateTenantSettingsViaPrisma,
   type PrismaConnectionStatus,
@@ -88,6 +92,8 @@ export interface WorkspaceMember {
   mfaEnabled: boolean
   consentedPolicyVersion: string | null
   assignedProjectIds: string[]
+  mustChangePassword?: boolean
+  temporaryPassword?: string
 }
 
 export interface ProjectRecord {
@@ -242,9 +248,23 @@ interface Phase1StoreContextValue {
   publishPolicyVersion: (versionCode: string, summaryMarkdown: string) => void
   members: WorkspaceMember[]
   activeUser: WorkspaceMember
+  isSuperAdminSession: boolean
+  authChecking: boolean
+  sessionUserEmail: string | null
+  signOut: () => Promise<void>
   setActiveUserId: (id: string) => void
-  inviteMember: (name: string, email: string, role: UserRole) => { ok: boolean; message: string }
+  inviteMember: (
+    name: string,
+    email: string,
+    role: UserRole,
+    temporaryPassword?: string
+  ) => { ok: boolean; message: string }
+  completeFirstTimePasswordChange: (
+    newPassword: string
+  ) => Promise<{ ok: boolean; message: string }>
+  resendMemberInvite: (memberId: string) => { ok: boolean; message: string }
   toggleMemberStatus: (memberId: string, nextStatus: WorkspaceMember['status']) => void
+  deleteMember: (memberId: string) => { ok: boolean; message: string }
   acknowledgeCurrentPolicy: () => void
   projects: ProjectRecord[]
   createProject: (code: string, name: string, clientName: string, description: string) => { ok: boolean; message: string }
@@ -399,11 +419,25 @@ function loadRecoveredTimerState(): ActiveTimerState {
 
 const Phase1StoreContext = createContext<Phase1StoreContextValue | null>(null)
 
+const SUPER_ADMIN_EMAILS_SET = new Set([
+  ...(
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPER_ADMIN_EMAILS) ||
+    'iamartseeker@gmail.com'
+  )
+    .toLowerCase()
+    .split(',')
+    .map((e: string) => e.trim())
+    .filter(Boolean),
+  'iamartseeker@gmail.com',
+])
+
 export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   const [tenants, setTenants] = useState<TenantWorkspace[]>([])
   const [activeTenantId, setActiveTenantIdState] = useState<string>('')
   const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [activeUserId, setActiveUserId] = useState<string>('')
+  const [authChecking, setAuthChecking] = useState(isSupabaseAuthConfigured)
+  const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(null)
   const [projects, setProjects] = useState<ProjectRecord[]>([])
   const [tasks, setTasks] = useState<TaskRecord[]>([])
   const [contractPolicy, setContractPolicy] =
@@ -441,12 +475,23 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
           ? prev
           : (payload.tenants[0]?.id ?? '')
       )
-      setMembers(payload.members)
-      setActiveUserId((prev) =>
-        payload.members.some((m) => m.id === prev)
-          ? prev
-          : (payload.members[0]?.id ?? '')
+      const upgradedMembers = payload.members.map((m) =>
+        SUPER_ADMIN_EMAILS_SET.has(m.email.toLowerCase().trim())
+          ? { ...m, role: 'super_admin' as const }
+          : m
       )
+      setMembers(upgradedMembers)
+      setActiveUserId((prev) => {
+        if (prev && payload.members.some((m) => m.id === prev)) return prev
+        if (sessionUserEmail) {
+          const match = payload.members.find(
+            (m) => m.email.toLowerCase().trim() === sessionUserEmail
+          )
+          if (match) return match.id
+          if (SUPER_ADMIN_EMAILS_SET.has(sessionUserEmail.toLowerCase().trim())) return 'super-admin'
+        }
+        return payload.members[0]?.id ?? ''
+      })
       setProjects(payload.projects)
       setTasks(payload.tasks)
       setTimesheetLines(payload.timesheetLines)
@@ -529,18 +574,154 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(intervalId)
   }, [timer.lifecycle])
 
+  // Sync Supabase Auth Session (F1-002) -> active session user
+  useEffect(() => {
+    if (!supabase || !isSupabaseAuthConfigured) {
+      setAuthChecking(false)
+      return
+    }
+    let active = true
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return
+      const email = data.session?.user?.email?.toLowerCase().trim() ?? null
+      setSessionUserEmail(email)
+      setAuthChecking(false)
+    })
+
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const email = session?.user?.email?.toLowerCase().trim() ?? null
+      setSessionUserEmail(email)
+      setAuthChecking(false)
+    })
+
+    return () => {
+      active = false
+      authSub.subscription.unsubscribe()
+    }
+  }, [])
+
+  // When session user or members change, ensure active user matches the logged-in email
+  useEffect(() => {
+    if (!sessionUserEmail || members.length === 0) return
+    const isSuper = SUPER_ADMIN_EMAILS_SET.has(sessionUserEmail.toLowerCase().trim())
+    const matchingMember = members.find(
+      (m) => m.email.toLowerCase().trim() === sessionUserEmail
+    )
+    if (matchingMember) {
+      setActiveUserId(matchingMember.id)
+      setActiveTenantIdState((prev) => {
+        const belongsToCurrent = members.some(
+          (m) => m.tenantId === prev && m.email.toLowerCase().trim() === sessionUserEmail
+        )
+        return belongsToCurrent ? prev : matchingMember.tenantId
+      })
+    } else if (isSuper) {
+      setActiveUserId('super-admin')
+    }
+  }, [sessionUserEmail, members])
+
   const hasWorkspace = tenants.length > 0 && members.length > 0
   const activeTenant =
     tenants.find((t) => t.id === activeTenantId) ??
     tenants[0] ??
     EMPTY_TENANT_PLACEHOLDER
   const activeEntitlement = PLAN_ENTITLEMENTS[activeTenant.planTier]
-  const tenantMembers = members.filter((m) => m.tenantId === activeTenant.id)
-  const activeUser =
-    tenantMembers.find((m) => m.id === activeUserId) ??
-    tenantMembers[0] ??
-    members[0] ??
-    EMPTY_MEMBER_PLACEHOLDER
+
+  const normalizedMembers: WorkspaceMember[] = useMemo(() => {
+    return members.map((m: WorkspaceMember): WorkspaceMember =>
+      SUPER_ADMIN_EMAILS_SET.has(m.email.toLowerCase().trim())
+        ? { ...m, role: 'super_admin' as const }
+        : m
+    )
+  }, [members])
+
+  const tenantMembers = normalizedMembers.filter((m) => m.tenantId === activeTenant.id)
+
+  const rawSessionMember = sessionUserEmail
+    ? normalizedMembers.find((m) => m.email.toLowerCase().trim() === sessionUserEmail)
+    : undefined
+
+  const sessionMember = rawSessionMember
+    ? (SUPER_ADMIN_EMAILS_SET.has(rawSessionMember.email.toLowerCase().trim())
+        ? { ...rawSessionMember, role: 'super_admin' as const }
+        : rawSessionMember)
+    : undefined
+
+  const isSuperAdminSession = sessionMember
+    ? sessionMember.role === 'super_admin'
+    : (sessionUserEmail ? SUPER_ADMIN_EMAILS_SET.has(sessionUserEmail.toLowerCase().trim()) : false)
+
+  const superAdminFallbackMember: WorkspaceMember | undefined =
+    isSuperAdminSession && sessionUserEmail
+      ? {
+          id: 'super-admin',
+          tenantId: activeTenant.id,
+          name: sessionMember?.name || sessionUserEmail.split('@')[0] || 'Super Admin',
+          email: sessionUserEmail,
+          role: 'super_admin' as const,
+          status: 'active' as const,
+          mfaEnabled: true,
+          consentedPolicyVersion: activeTenant.policyVersion,
+          assignedProjectIds: [],
+        }
+      : undefined
+
+  const activeUser: WorkspaceMember = useMemo(() => {
+    if (isSuperAdminSession) {
+      if (activeUserId && activeUserId !== 'super-admin' && activeUserId !== sessionMember?.id) {
+        const simulated = tenantMembers.find((m) => m.id === activeUserId)
+        if (simulated) {
+          return simulated
+        }
+      }
+      return sessionMember ?? superAdminFallbackMember ?? EMPTY_MEMBER_PLACEHOLDER
+    }
+
+    if (sessionUserEmail) {
+      const match = tenantMembers.find(
+        (m) => m.email.toLowerCase().trim() === sessionUserEmail
+      )
+      if (match) return match
+      if (sessionMember) return sessionMember
+    }
+
+    if (activeUserId) {
+      const match = tenantMembers.find((m) => m.id === activeUserId)
+      if (match) return match
+    }
+
+    return tenantMembers[0] ?? normalizedMembers[0] ?? EMPTY_MEMBER_PLACEHOLDER
+  }, [
+    isSuperAdminSession,
+    activeUserId,
+    sessionMember,
+    superAdminFallbackMember,
+    tenantMembers,
+    sessionUserEmail,
+    normalizedMembers,
+  ])
+
+  async function signOut(): Promise<void> {
+    if (supabase) {
+      try {
+        await supabase.auth.signOut()
+      } catch (err) {
+        console.warn('Sign out warning:', err)
+      }
+    }
+    setSessionUserEmail(null)
+    setActiveUserId('')
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('sb-') || key.includes('supabase.auth')) {
+          localStorage.removeItem(key)
+        }
+      })
+    } catch {
+      // ignore
+    }
+  }
 
   function appendAudit(actionType: string, targetEntity: string, reason: string) {
     setAuditLogs((prev) => [
@@ -630,12 +811,13 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       ],
     }
 
+    const isSuper = SUPER_ADMIN_EMAILS_SET.has(input.ownerEmail.toLowerCase().trim())
     const newOwner: WorkspaceMember = {
       id: newOwnerId,
       tenantId: newTenantId,
       name: input.ownerName,
       email: input.ownerEmail,
-      role: 'tenant_owner',
+      role: isSuper ? 'super_admin' : 'tenant_owner',
       status: 'active',
       mfaEnabled: true,
       consentedPolicyVersion: 'v1.0-2026-11',
@@ -707,7 +889,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   function inviteMember(
     name: string,
     email: string,
-    role: UserRole
+    role: UserRole,
+    temporaryPassword?: string
   ): { ok: boolean; message: string } {
     const activeSeatCount = tenantMembers.filter((m) => m.status === 'active').length
     if (activeSeatCount >= activeEntitlement.maxSeats) {
@@ -717,35 +900,135 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const newMember: WorkspaceMember = {
-      id: `usr-${Date.now()}`,
-      tenantId: activeTenant.id,
-      name,
-      email,
-      role,
-      status: 'active',
-      mfaEnabled: false,
-      consentedPolicyVersion: activeTenant.policyVersion,
-      assignedProjectIds: projects
-        .filter((p) => p.tenantId === activeTenant.id)
-        .map((p) => p.id),
+    const normalizedEmail = email.toLowerCase().trim()
+    const existingIndex = members.findIndex(
+      (m) => m.tenantId === activeTenant.id && m.email.toLowerCase().trim() === normalizedEmail
+    )
+
+    if (existingIndex >= 0) {
+      setMembers((prev) =>
+        prev.map((m, idx) =>
+          idx === existingIndex
+            ? {
+                ...m,
+                name: name.trim(),
+                role,
+                status: 'invited',
+                mustChangePassword: true,
+                temporaryPassword,
+              }
+            : m
+        )
+      )
+    } else {
+      const newMember: WorkspaceMember = {
+        id: `usr-${Date.now()}`,
+        tenantId: activeTenant.id,
+        name: name.trim(),
+        email: normalizedEmail,
+        role,
+        status: 'invited',
+        mustChangePassword: true,
+        temporaryPassword,
+        mfaEnabled: false,
+        consentedPolicyVersion: activeTenant.policyVersion,
+        assignedProjectIds: projects
+          .filter((p) => p.tenantId === activeTenant.id)
+          .map((p) => p.id),
+      }
+      setMembers((prev) => [...prev, newMember])
     }
-    setMembers((prev) => [...prev, newMember])
+
     appendAudit(
       'MEMBER_INVITED',
-      `memberships:${email}`,
-      `Invited ${name} (${email}) with role ${role}`
+      `memberships:${normalizedEmail}`,
+      `Invited ${name} (${normalizedEmail}) with role ${role}`
     )
     if (prismaStatus.connected) {
-      void inviteMemberViaPrisma({ tenantId: activeTenant.id, name, email, role }).then((res) => {
+      void inviteMemberViaPrisma({
+        tenantId: activeTenant.id,
+        name: name.trim(),
+        email: normalizedEmail,
+        role,
+        temporaryPassword,
+      }).then((res) => {
         if (res?.ok && res.userId) {
           setMembers((prev) =>
-            prev.map((m) => (m.id === newMember.id ? { ...m, id: res.userId! } : m))
+            prev.map((m) =>
+              m.email.toLowerCase().trim() === normalizedEmail
+                ? {
+                    ...m,
+                    id: res.userId!,
+                    mustChangePassword: true,
+                    temporaryPassword,
+                  }
+                : m
+            )
           )
         }
       })
     }
-    return { ok: true, message: `Invited ${name} (${role}) to ${activeTenant.name}.` }
+    return {
+      ok: true,
+      message: `Invited ${name} (${role}) to ${activeTenant.name}. Credentials dispatched via email!`,
+    }
+  }
+
+  async function completeFirstTimePasswordChange(
+    newPassword: string
+  ): Promise<{ ok: boolean; message: string }> {
+    if (!newPassword || newPassword.length < 6) {
+      return { ok: false, message: 'Password must be at least 6 characters long.' }
+    }
+
+    if (supabase) {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+        data: { mustChangePassword: false },
+      })
+      if (error) {
+        return { ok: false, message: error.message }
+      }
+    }
+
+    // Update member status to active
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === activeUser.id
+          ? { ...m, status: 'active', mustChangePassword: false, temporaryPassword: undefined }
+          : m
+      )
+    )
+
+    if (prismaStatus.connected && activeUser.tenantId && activeUser.id) {
+      void updateMemberStatusViaPrisma({
+        tenantId: activeUser.tenantId,
+        userId: activeUser.id,
+        status: 'active',
+      })
+    }
+
+    appendAudit(
+      'FIRST_LOGIN_PASSWORD_CHANGED',
+      `memberships:${activeUser.email}`,
+      `User ${activeUser.name} (${activeUser.email}) replaced initial temporary password.`
+    )
+
+    return { ok: true, message: 'Password successfully updated! Your workspace is ready.' }
+  }
+
+  function resendMemberInvite(memberId: string): { ok: boolean; message: string } {
+    const member = members.find((m) => m.id === memberId)
+    if (!member) return { ok: false, message: 'Member not found' }
+    appendAudit(
+      'INVITE_RESENT',
+      `memberships:${member.email}`,
+      `Resent invitation email to ${member.name} (${member.email})`
+    )
+    if (prismaStatus.connected) {
+      void resendMemberInviteViaPrisma({ tenantId: activeTenant.id, userId: member.id })
+    }
+    return { ok: true, message: `Invitation email resent to ${member.email} via Resend.` }
   }
 
   function toggleMemberStatus(memberId: string, nextStatus: WorkspaceMember['status']) {
@@ -763,6 +1046,38 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         userId: memberId,
         status: nextStatus,
       })
+    }
+  }
+
+  function deleteMember(memberId: string): { ok: boolean; message: string } {
+    const member = members.find((m) => m.id === memberId)
+    if (!member) return { ok: false, message: 'Member not found' }
+    if (member.id === activeUser.id) {
+      return { ok: false, message: 'You cannot delete your own active account.' }
+    }
+
+    setMembers((prev) => prev.filter((m) => m.id !== memberId))
+    setTasks((prev) =>
+      prev.map((t) => ({
+        ...t,
+        assignedMemberIds: t.assignedMemberIds.filter((id) => id !== memberId),
+      }))
+    )
+    setTimesheetLines((prev) => prev.filter((l) => l.developerId !== memberId))
+
+    appendAudit(
+      'MEMBER_CASCADE_DELETED',
+      `memberships:${member.email}`,
+      `Deleted member ${member.name} (${member.email}) and purged associated timesheet and session records.`
+    )
+
+    if (prismaStatus.connected) {
+      void deleteMemberViaPrisma({ tenantId: activeTenant.id, userId: memberId })
+    }
+
+    return {
+      ok: true,
+      message: `Permanently deleted member ${member.name} (${member.email}) and purged all associated data.`,
     }
   }
 
@@ -1729,9 +2044,16 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         publishPolicyVersion,
         members: tenantMembers,
         activeUser,
+        isSuperAdminSession,
+        authChecking,
+        sessionUserEmail,
+        signOut,
         setActiveUserId,
         inviteMember,
+        completeFirstTimePasswordChange,
+        resendMemberInvite,
         toggleMemberStatus,
+        deleteMember,
         acknowledgeCurrentPolicy,
         projects: projects.filter((p) => p.tenantId === activeTenant.id),
         createProject,

@@ -10,6 +10,7 @@ import path from 'node:path'
 import dotenv from 'dotenv'
 import type { Plugin } from 'vite'
 import { checkPrismaConnection, prisma } from '../lib/prisma.ts'
+import { sendWorkspaceInviteEmail } from './emailService.ts'
 import {
   handleBootstrap,
   handleCreateTenant,
@@ -122,7 +123,18 @@ export function prismaSupabaseApiPlugin(): Plugin {
                 ownerName: string
                 ownerEmail: string
               }>(req)
-              return sendJson(res, 201, await handleCreateTenant(body))
+              const tenantResult = await handleCreateTenant(body)
+              // Dispatch welcome/invite email to the owner via Supabase + Resend
+              void sendWorkspaceInviteEmail({
+                email: body.ownerEmail,
+                name: body.ownerName,
+                role: 'tenant_owner',
+                tenantId: tenantResult.tenantId,
+                tenantName: body.name,
+              }).catch((err) => {
+                console.warn('[EmailService] Owner welcome email dispatch error:', err)
+              })
+              return sendJson(res, 201, tenantResult)
             }
 
             if (req.method === 'PATCH' && url.startsWith('/api/prisma/tenant/settings')) {
@@ -150,47 +162,150 @@ export function prismaSupabaseApiPlugin(): Plugin {
               return sendJson(res, 200, { ok: true })
             }
 
-            if (req.method === 'POST' && url.startsWith('/api/prisma/members') && !url.includes('/status')) {
+            if (req.method === 'POST' && url.startsWith('/api/prisma/members/resend-invite')) {
+              const body = await readJsonBody<{
+                tenantId: string
+                userId: string
+              }>(req)
+              if (!isValidUuid(body.tenantId) || !isValidUuid(body.userId)) {
+                return sendJson(res, 200, { ok: false, message: 'Invalid tenant or user ID' })
+              }
+              const member = await prisma.membership.findUnique({
+                where: {
+                  tenantId_userId: { tenantId: body.tenantId, userId: body.userId },
+                },
+                include: { user: true, roleGrants: true },
+              })
+              if (!member || !member.user) {
+                return sendJson(res, 404, { ok: false, message: 'Member not found' })
+              }
+              const role = member.roleGrants[0]?.role || 'developer'
+              const emailResult = await sendWorkspaceInviteEmail({
+                email: member.user.email,
+                name: member.user.fullName,
+                role,
+                tenantId: body.tenantId,
+              })
+              await prisma.auditEntry.create({
+                data: {
+                  tenantId: body.tenantId,
+                  actionType: 'INVITE_RESENT',
+                  targetEntity: `memberships:${member.user.email}`,
+                  reason: `Resent invitation email to ${member.user.email}`,
+                },
+              })
+              return sendJson(res, 200, { ok: emailResult.ok, message: emailResult.message })
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/members') && !url.includes('/status') && !url.includes('/resend-invite')) {
               const body = await readJsonBody<{
                 tenantId: string
                 name: string
                 email: string
                 role: string
+                temporaryPassword?: string
               }>(req)
-              if (!isValidUuid(body.tenantId)) {
-                return sendJson(res, 200, { ok: false })
+              if (!isValidUuid(body.tenantId) || !body.email?.trim() || !body.name?.trim()) {
+                return sendJson(res, 200, { ok: false, error: 'Valid tenantId, name, and email are required.' })
               }
-              const userId = crypto.randomUUID()
-              await prisma.$transaction(async (tx) => {
-                await tx.userProfile.create({
-                  data: { id: userId, email: body.email, fullName: body.name },
+              const normalizedEmail = body.email.toLowerCase().trim()
+              try {
+                let resolvedUserId = ''
+                await prisma.$transaction(async (tx) => {
+                  const existingUser = await tx.userProfile.findFirst({
+                    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+                  })
+
+                  if (existingUser) {
+                    resolvedUserId = existingUser.id
+                    if (body.name.trim() && existingUser.fullName !== body.name.trim()) {
+                      await tx.userProfile.update({
+                        where: { id: existingUser.id },
+                        data: { fullName: body.name.trim() },
+                      })
+                    }
+                  } else {
+                    resolvedUserId = crypto.randomUUID()
+                    await tx.userProfile.create({
+                      data: { id: resolvedUserId, email: normalizedEmail, fullName: body.name.trim() },
+                    })
+                  }
+
+                  const existingMem = await tx.membership.findFirst({
+                    where: {
+                      tenantId: body.tenantId,
+                      userId: resolvedUserId,
+                    },
+                    include: { roleGrants: true },
+                  })
+
+                  if (existingMem) {
+                    await tx.membership.update({
+                      where: { id: existingMem.id },
+                      data: {
+                        status: 'invited',
+                        invitedEmail: normalizedEmail,
+                      },
+                    })
+                    const existingGrant = existingMem.roleGrants.find((rg) => rg.role === body.role)
+                    if (!existingGrant) {
+                      await tx.roleGrant.create({
+                        data: {
+                          tenantId: body.tenantId,
+                          membershipId: existingMem.id,
+                          role: body.role,
+                        },
+                      })
+                    }
+                  } else {
+                    const mem = await tx.membership.create({
+                      data: {
+                        tenantId: body.tenantId,
+                        userId: resolvedUserId,
+                        status: 'invited',
+                        invitedEmail: normalizedEmail,
+                        joinedAt: new Date(),
+                      },
+                    })
+                    await tx.roleGrant.create({
+                      data: {
+                        tenantId: body.tenantId,
+                        membershipId: mem.id,
+                        role: body.role,
+                      },
+                    })
+                  }
+
+                  await tx.auditEntry.create({
+                    data: {
+                      tenantId: body.tenantId,
+                      actionType: 'MEMBER_INVITED',
+                      targetEntity: `memberships:${normalizedEmail}`,
+                      reason: `Invited ${body.name} with role ${body.role}${body.temporaryPassword ? ' (temporary password issued)' : ''}`,
+                    },
+                  })
                 })
-                const mem = await tx.membership.create({
-                  data: {
-                    tenantId: body.tenantId,
-                    userId,
-                    status: 'active',
-                    invitedEmail: body.email,
-                    joinedAt: new Date(),
-                  },
+
+                // Dispatch real invitation email via Supabase Auth + Resend SMTP
+                const emailResult = await sendWorkspaceInviteEmail({
+                  email: normalizedEmail,
+                  name: body.name.trim(),
+                  role: body.role,
+                  tenantId: body.tenantId,
+                  temporaryPassword: body.temporaryPassword,
                 })
-                await tx.roleGrant.create({
-                  data: {
-                    tenantId: body.tenantId,
-                    membershipId: mem.id,
-                    role: body.role,
-                  },
+
+                return sendJson(res, 201, {
+                  ok: true,
+                  userId: resolvedUserId,
+                  emailSent: emailResult.ok,
+                  emailMessage: emailResult.message,
                 })
-                await tx.auditEntry.create({
-                  data: {
-                    tenantId: body.tenantId,
-                    actionType: 'MEMBER_INVITED',
-                    targetEntity: `memberships:${body.email}`,
-                    reason: `Invited ${body.name} with role ${body.role}`,
-                  },
-                })
-              })
-              return sendJson(res, 201, { ok: true, userId })
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err)
+                console.error('[API] /api/prisma/members error:', message)
+                return sendJson(res, 500, { ok: false, error: message })
+              }
             }
 
             if (req.method === 'PATCH' && url.startsWith('/api/prisma/members/status')) {
@@ -209,6 +324,116 @@ export function prismaSupabaseApiPlugin(): Plugin {
                 data: { status: body.status },
               })
               return sendJson(res, 200, { ok: true })
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/members')) {
+              const body = await readJsonBody<{
+                tenantId: string
+                userId: string
+              }>(req)
+              if (!isValidUuid(body.tenantId) || !isValidUuid(body.userId)) {
+                return sendJson(res, 400, { ok: false, error: 'Valid tenantId and userId are required.' })
+              }
+              try {
+                await prisma.$transaction(async (tx) => {
+                  // 1. Task Assignments & Notes
+                  await tx.taskAssignment.deleteMany({
+                    where: { userId: body.userId, task: { tenantId: body.tenantId } },
+                  })
+                  await tx.taskNote.deleteMany({
+                    where: { authorId: body.userId, task: { tenantId: body.tenantId } },
+                  })
+
+                  // 2. Time Segments & Work Sessions
+                  await tx.timeSegment.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+                  await tx.workSession.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+
+                  // 3. Dispute Messages & Disputes
+                  await tx.disputeMessage.deleteMany({
+                    where: { authorUserId: body.userId },
+                  })
+                  await tx.dispute.deleteMany({
+                    where: { openedByUserId: body.userId, timesheetLine: { tenantId: body.tenantId } },
+                  })
+
+                  // 4. Timesheet Lines & Timesheets
+                  await tx.timesheetLine.deleteMany({
+                    where: { timesheet: { userId: body.userId, tenantId: body.tenantId } },
+                  })
+                  await tx.timesheet.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+
+                  // 5. Activity Events & Batches
+                  await tx.activityEvent.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+                  await tx.activityEventBatch.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+
+                  // 6. Notifications
+                  await tx.notification.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+
+                  // 7. Policy Consents
+                  await tx.policyConsent.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+
+                  // 8. IDE Mappings & Devices
+                  await tx.ideWorkspaceMapping.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+                  await tx.device.deleteMany({
+                    where: { userId: body.userId, tenantId: body.tenantId },
+                  })
+
+                  // 9. Role Grants & Membership
+                  const mem = await tx.membership.findFirst({
+                    where: { tenantId: body.tenantId, userId: body.userId },
+                  })
+                  if (mem) {
+                    await tx.roleGrant.deleteMany({
+                      where: { membershipId: mem.id },
+                    })
+                    await tx.membership.delete({
+                      where: { id: mem.id },
+                    })
+                  }
+
+                  // 10. If user has no other memberships in any workspace, purge UserProfile
+                  const remainingMemberships = await tx.membership.count({
+                    where: { userId: body.userId },
+                  })
+                  if (remainingMemberships === 0) {
+                    await tx.userProfile.deleteMany({
+                      where: { id: body.userId },
+                    })
+                  }
+
+                  // 11. Audit log
+                  await tx.auditEntry.create({
+                    data: {
+                      tenantId: body.tenantId,
+                      actionType: 'MEMBER_CASCADE_DELETED',
+                      targetEntity: `users:${body.userId}`,
+                      reason: `Permanently removed member and cascade-deleted all associated timesheets, sessions, and activity events.`,
+                    },
+                  })
+                })
+
+                return sendJson(res, 200, { ok: true, message: 'Member and all associated data permanently deleted with cascade cleanup.' })
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err)
+                console.error('[API] DELETE /api/prisma/members error:', message)
+                return sendJson(res, 500, { ok: false, error: message })
+              }
             }
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/projects')) {

@@ -123,6 +123,21 @@ export async function handleBootstrap() {
 
   const taskById = new Map(dbTasks.map((t) => [t.id, t]))
 
+  const superAdminEmails = Array.from(
+    new Set([
+      ...(
+        process.env.SUPER_ADMIN_EMAILS ||
+        process.env.VITE_SUPER_ADMIN_EMAILS ||
+        'iamartseeker@gmail.com'
+      )
+        .toLowerCase()
+        .split(',')
+        .map((e) => e.trim())
+        .filter(Boolean),
+      'iamartseeker@gmail.com',
+    ])
+  )
+
   return {
     status,
     tenants: dbTenants.map((t) => ({
@@ -149,27 +164,31 @@ export async function handleBootstrap() {
         effectiveFrom: pv.effectiveFrom.toISOString(),
       })),
     })),
-    members: dbMemberships.map((m) => ({
-      id: m.userId,
-      membershipId: m.id,
-      tenantId: m.tenantId,
-      name: m.user.fullName,
-      email: m.user.email,
-      role: (m.roleGrants[0]?.role ?? 'developer') as
-        | 'tenant_owner'
-        | 'project_manager'
-        | 'developer'
-        | 'finance'
-        | 'client_reviewer'
-        | 'auditor',
-      status: m.status as 'active' | 'invited' | 'suspended' | 'revoked',
-      mfaEnabled: true,
-      consentedPolicyVersion:
-        m.user.policyConsents[0]?.policyVersion.versionCode ?? null,
-      assignedProjectIds: m.user.projectMemberships
-        .filter((pm) => pm.tenantId === m.tenantId)
-        .map((pm) => pm.projectId),
-    })),
+    members: dbMemberships.map((m) => {
+      const isSuper = superAdminEmails.includes(m.user.email.toLowerCase().trim())
+      return {
+        id: m.userId,
+        membershipId: m.id,
+        tenantId: m.tenantId,
+        name: m.user.fullName,
+        email: m.user.email,
+        role: (isSuper ? 'super_admin' : (m.roleGrants[0]?.role ?? 'developer')) as
+          | 'super_admin'
+          | 'tenant_owner'
+          | 'project_manager'
+          | 'developer'
+          | 'finance'
+          | 'client_reviewer'
+          | 'auditor',
+        status: m.status as 'active' | 'invited' | 'suspended' | 'revoked',
+        mfaEnabled: true,
+        consentedPolicyVersion:
+          m.user.policyConsents[0]?.policyVersion.versionCode ?? null,
+        assignedProjectIds: m.user.projectMemberships
+          .filter((pm) => pm.tenantId === m.tenantId)
+          .map((pm) => pm.projectId),
+      }
+    }),
     projects: dbProjects.map((p) => ({
       id: p.id,
       tenantId: p.tenantId,

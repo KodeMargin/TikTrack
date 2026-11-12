@@ -10,6 +10,7 @@ export function AuthAndOnboardingView() {
     publishPolicyVersion,
     members,
     activeUser,
+    signOut,
     acknowledgeCurrentPolicy,
     projects,
   } = usePhase1Store()
@@ -17,21 +18,34 @@ export function AuthAndOnboardingView() {
   // Supabase Auth State (F1-002)
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
-  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'recovery'>('login')
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'magiclink' | 'recovery'>('login')
   const [authNotice, setAuthNotice] = useState<string | null>(null)
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null)
   const [mfaQrCode, setMfaQrCode] = useState<string | null>(null)
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
   const [mfaCode, setMfaCode] = useState('')
+  const [isRecoverySession, setIsRecoverySession] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
   useEffect(() => {
     if (!supabase || !isSupabaseAuthConfigured) return
     let active = true
+
+    if (window.location.hash.includes('type=recovery')) {
+      setIsRecoverySession(true)
+    }
+
     void supabase.auth.getSession().then(({ data }) => {
       if (active) setSignedInEmail(data.session?.user?.email ?? null)
     })
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       setSignedInEmail(session?.user?.email ?? null)
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoverySession(true)
+        setAuthNotice('Password recovery link verified. Enter your new password below.')
+      }
     })
     return () => {
       active = false
@@ -63,6 +77,8 @@ export function AuthAndOnboardingView() {
       return
     }
 
+    const appRedirect = `${window.location.origin}/auth-privacy`
+
     if (authMode === 'login') {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: authEmail,
@@ -73,17 +89,51 @@ export function AuthAndOnboardingView() {
       const { data, error } = await supabase.auth.signUp({
         email: authEmail,
         password: authPassword,
+        options: {
+          emailRedirectTo: appRedirect,
+        },
       })
       setAuthNotice(
         error
           ? `Signup error: ${error.message}`
-          : `Verification email sent to ${data.user?.email ?? authEmail}`
+          : `Verification email sent to ${data.user?.email ?? authEmail} via Resend. Please check your inbox!`
+      )
+    } else if (authMode === 'magiclink') {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: authEmail,
+        options: {
+          emailRedirectTo: appRedirect,
+        },
+      })
+      setAuthNotice(
+        error
+          ? `Magic link error: ${error.message}`
+          : `Magic link dispatched to ${authEmail} via Resend. Check your inbox to sign in with one click!`
       )
     } else {
-      const { error } = await supabase.auth.resetPasswordForEmail(authEmail)
+      const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+        redirectTo: appRedirect,
+      })
       setAuthNotice(
-        error ? `Recovery error: ${error.message}` : `Password recovery link sent to ${authEmail}`
+        error
+          ? `Recovery error: ${error.message}`
+          : `Password recovery link sent to ${authEmail} via Resend. Check your inbox!`
       )
+    }
+  }
+
+  async function handleUpdatePassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!supabase || !newPassword.trim()) return
+    setIsUpdatingPassword(true)
+    const { error } = await supabase.auth.updateUser({ password: newPassword.trim() })
+    setIsUpdatingPassword(false)
+    if (error) {
+      setAuthNotice(`Update password error: ${error.message}`)
+    } else {
+      setAuthNotice('Password updated successfully! You are now logged in with your new password.')
+      setIsRecoverySession(false)
+      setNewPassword('')
     }
   }
 
@@ -166,7 +216,7 @@ export function AuthAndOnboardingView() {
               <button
                 type="button"
                 onClick={() => {
-                  void supabase?.auth.signOut().then(() => {
+                  void signOut().then(() => {
                     setSignedInEmail(null)
                     setAuthNotice('Signed out from Supabase Auth.')
                   })
@@ -178,8 +228,36 @@ export function AuthAndOnboardingView() {
             </div>
           )}
 
-          <div className="flex gap-2 text-xs">
-            {(['login', 'signup', 'recovery'] as const).map((mode) => (
+          {isRecoverySession && (
+            <form
+              onSubmit={(e) => void handleUpdatePassword(e)}
+              className="p-3 rounded-lg border border-amber-500/50 bg-amber-950/30 space-y-2 text-xs"
+            >
+              <div className="font-semibold text-amber-300">Set New Password</div>
+              <p className="text-[11px] text-slate-300">
+                You have authenticated via a secure email recovery link. Enter your new password below.
+              </p>
+              <input
+                type="password"
+                placeholder="New Password (min 6 characters)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-lg border border-amber-700/60 bg-slate-950 px-3 py-2 text-white"
+                required
+                minLength={6}
+              />
+              <button
+                type="submit"
+                disabled={isUpdatingPassword}
+                className="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 font-semibold text-white cursor-pointer disabled:opacity-50"
+              >
+                {isUpdatingPassword ? 'Updating Password...' : 'Save New Password'}
+              </button>
+            </form>
+          )}
+
+          <div className="flex flex-wrap gap-2 text-xs">
+            {(['signup', 'login', 'recovery'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -190,7 +268,11 @@ export function AuthAndOnboardingView() {
                     : 'bg-slate-950 border border-slate-800 text-slate-300'
                 }`}
               >
-                {mode === 'recovery' ? 'Password Recovery' : mode}
+                {mode === 'recovery'
+                  ? 'Reset Password'
+                  : mode === 'signup'
+                    ? 'Sign Up'
+                    : 'Log In'}
               </button>
             ))}
           </div>
@@ -204,7 +286,7 @@ export function AuthAndOnboardingView() {
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
               required
             />
-            {authMode !== 'recovery' && (
+            {authMode !== 'recovery' && authMode !== 'magiclink' && (
               <input
                 type="password"
                 placeholder="Password"
@@ -221,8 +303,10 @@ export function AuthAndOnboardingView() {
               {authMode === 'login'
                 ? 'Sign In via Supabase Auth'
                 : authMode === 'signup'
-                  ? 'Create Verified Account'
-                  : 'Send Recovery Email'}
+                  ? 'Create Verified Account (Email Verification)'
+                  : authMode === 'magiclink'
+                    ? 'Send One-Click Magic Link Email'
+                    : 'Send Password Reset Email'}
             </button>
           </form>
 
