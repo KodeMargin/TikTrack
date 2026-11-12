@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
 import { Phase2StoreProvider } from '@/context/Phase2Store'
 import { Phase3StoreProvider } from '@/context/Phase3Store'
@@ -362,6 +362,29 @@ function DevProofShell() {
   )
   const [notifOpen, setNotifOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false)
+  const [personaMenuOpen, setPersonaMenuOpen] = useState(false)
+  const workspaceMenuRef = useRef<HTMLDivElement>(null)
+  const personaMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        workspaceMenuRef.current &&
+        !workspaceMenuRef.current.contains(event.target as Node)
+      ) {
+        setWorkspaceMenuOpen(false)
+      }
+      if (
+        personaMenuRef.current &&
+        !personaMenuRef.current.contains(event.target as Node)
+      ) {
+        setPersonaMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const visibleNavItems = NAV_ITEMS.filter((item) =>
     item.allowedRoles.includes(activeUser.role)
@@ -772,56 +795,248 @@ function DevProofShell() {
               </span>
             </button>
 
-            {/* Tenant Switcher: Only Super Admin can change across all tenants */}
+            {/* Workspace Switcher: Custom Sleek Dropdown */}
             {isSuperAdminSession || activeUser.role === 'super_admin' ? (
-              <select
-                aria-label="Active workspace"
-                value={activeTenant.id}
-                onChange={(e) => setActiveTenantId(e.target.value)}
-                className="hidden sm:block bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
-              >
-                {tenants.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+              <div className="relative" ref={workspaceMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWorkspaceMenuOpen((prev) => !prev)
+                    setPersonaMenuOpen(false)
+                    setNotifOpen(false)
+                  }}
+                  aria-label="Switch workspace"
+                  className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] hover:bg-slate-50 dark:hover:bg-white/5 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition cursor-pointer"
+                >
+                  <span className="h-2 w-2 rounded-full bg-indigo-500 shrink-0" />
+                  <span className="truncate max-w-[130px]">{activeTenant.name}</span>
+                  <svg
+                    className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${workspaceMenuOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+
+                {workspaceMenuOpen && (
+                  <div className="absolute left-0 mt-2 w-64 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] shadow-2xl p-1.5 z-50 animate-in fade-in duration-100">
+                    <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+                      <span>Workspaces</span>
+                      <span className="bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[9px] font-mono">
+                        {tenants.length}
+                      </span>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto py-1 space-y-0.5">
+                      {tenants.map((t) => {
+                        const isSelected = t.id === activeTenant.id
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveTenantId(t.id)
+                              setWorkspaceMenuOpen(false)
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-left ${
+                              isSelected
+                                ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold'
+                                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className={`h-2 w-2 rounded-full shrink-0 ${
+                                  isSelected ? 'bg-indigo-600 dark:bg-indigo-400' : 'bg-slate-300 dark:bg-slate-600'
+                                }`}
+                              />
+                              <div className="truncate">
+                                <div className="truncate">{t.name}</div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate font-mono">
+                                  {t.slug} • {t.currency}
+                                </div>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <svg
+                                className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 ml-2"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.2}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs font-semibold text-slate-700 dark:text-slate-200">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs font-semibold text-slate-700 dark:text-slate-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                 {activeTenant.name}
               </span>
             )}
 
-            {/* Role / Persona Switcher */}
+            {/* Custom Super Admin Identity & Persona Simulation Dropdown */}
             {isSuperAdminSession ? (
-              <div className="flex items-center gap-1.5">
-                <div
-                  title={`Signed in as Platform Super Admin (${sessionUserEmail})`}
-                  className="bg-amber-500/10 border border-amber-500/30 dark:bg-amber-500/20 dark:border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-1.5"
+              <div className="relative" ref={personaMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPersonaMenuOpen((prev) => !prev)
+                    setWorkspaceMenuOpen(false)
+                    setNotifOpen(false)
+                  }}
+                  aria-label="User role and simulation menu"
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-sm transition cursor-pointer ${
+                    activeUser.role === 'super_admin'
+                      ? 'bg-amber-500/10 border-amber-500/30 dark:bg-amber-500/20 dark:border-amber-500/40 text-amber-800 dark:text-amber-200 hover:bg-amber-500/15'
+                      : 'bg-violet-500/10 border-violet-500/30 dark:bg-violet-500/20 dark:border-violet-500/40 text-violet-800 dark:text-violet-200 hover:bg-violet-500/15'
+                  }`}
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-                  <span className="truncate max-w-[130px]">{activeUser.name || 'Super Admin'}</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-amber-500/20 dark:bg-amber-500/30 text-amber-800 dark:text-amber-200 shrink-0 font-bold tracking-wider">
-                    {activeUser.role === 'super_admin' ? 'SUPER ADMIN' : `PREVIEW: ${activeUser.role.replace('_', ' ')}`}
+                  <span
+                    className={`h-2 w-2 rounded-full shrink-0 ${
+                      activeUser.role === 'super_admin' ? 'bg-amber-500' : 'bg-violet-500'
+                    }`}
+                  />
+                  <span className="truncate max-w-[120px] font-bold">
+                    {activeUser.name || 'Super Admin'}
                   </span>
-                </div>
-                {members.length > 0 && (
-                  <select
-                    aria-label="Active user role"
-                    value={activeUser.id}
-                    onChange={(e) => setActiveUserId(e.target.value)}
-                    className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer max-w-[150px]"
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase shrink-0 font-bold tracking-wider ${
+                      activeUser.role === 'super_admin'
+                        ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-800 dark:text-amber-200'
+                        : 'bg-violet-500/20 dark:bg-violet-500/30 text-violet-800 dark:text-violet-200'
+                    }`}
                   >
-                    <option value="super-admin">Super Admin (System)</option>
-                    {members
-                      .filter((m) => m.email.toLowerCase().trim() !== (sessionUserEmail || '').toLowerCase().trim())
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>
-                          Simulate: {m.name} ({m.role.replace('_', ' ')})
-                        </option>
-                      ))}
-                  </select>
+                    {activeUser.role === 'super_admin'
+                      ? 'SUPER ADMIN'
+                      : `PREVIEW: ${activeUser.role.replace('_', ' ')}`}
+                  </span>
+                  <svg
+                    className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${personaMenuOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+
+                {personaMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] shadow-2xl p-2 z-50 animate-in fade-in duration-100">
+                    {/* Identity card */}
+                    <div className="px-3 py-2.5 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-100 dark:border-white/5 mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
+                          {(sessionUserEmail?.[0] || 'A').toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                            {sessionUserEmail?.split('@')[0]}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono">
+                            {sessionUserEmail}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-800 dark:text-amber-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        System Super Admin • Full Access
+                      </div>
+                    </div>
+
+                    {/* Simulation Section */}
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      Simulate Workspace View
+                    </div>
+
+                    <div className="space-y-0.5">
+                      {/* Default Super Admin option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveUserId('super-admin')
+                          setPersonaMenuOpen(false)
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${
+                          activeUser.role === 'super_admin'
+                            ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-200 font-semibold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                          <div>
+                            <span className="font-semibold">Super Admin</span>
+                            <span className="text-[11px] text-slate-400 ml-1">(System-wide)</span>
+                          </div>
+                        </div>
+                        {activeUser.role === 'super_admin' && (
+                          <svg
+                            className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.2}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        )}
+                      </button>
+
+                      {/* Members simulation list */}
+                      {members
+                        .filter((m) => m.email.toLowerCase().trim() !== (sessionUserEmail || '').toLowerCase().trim())
+                        .map((m) => {
+                          const isSimulating = activeUser.id === m.id
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveUserId(m.id)
+                                setPersonaMenuOpen(false)
+                              }}
+                              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${
+                                isSimulating
+                                  ? 'bg-violet-50 dark:bg-violet-500/15 text-violet-800 dark:text-violet-200 font-semibold'
+                                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`h-2 w-2 rounded-full shrink-0 ${isSimulating ? 'bg-violet-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                                <div className="truncate">
+                                  <div className="truncate font-medium">{m.name}</div>
+                                  <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate capitalize font-mono">
+                                    {m.role.replace('_', ' ')}
+                                  </div>
+                                </div>
+                              </div>
+                              {isSimulating && (
+                                <svg
+                                  className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0 ml-1.5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2.2}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              )}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  </div>
                 )}
               </div>
             ) : sessionUserEmail ? (
@@ -836,18 +1051,37 @@ function DevProofShell() {
                 </span>
               </div>
             ) : (
-              <select
-                aria-label="Active user role"
-                value={activeUser.id}
-                onChange={(e) => setActiveUserId(e.target.value)}
-                className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer max-w-[180px]"
-              >
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({m.role.replace('_', ' ')})
-                  </option>
-                ))}
-              </select>
+              <div className="relative" ref={personaMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setPersonaMenuOpen((prev) => !prev)}
+                  className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="truncate max-w-[120px]">{activeUser.name}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-mono">({activeUser.role.replace('_', ' ')})</span>
+                </button>
+                {personaMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] shadow-xl p-1 z-50">
+                    {members.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveUserId(m.id)
+                          setPersonaMenuOpen(false)
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition ${
+                          activeUser.id === m.id
+                            ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 font-semibold'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        {m.name} ({m.role.replace('_', ' ')})
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Notifications Bell */}
