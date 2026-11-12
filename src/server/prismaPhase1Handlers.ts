@@ -348,16 +348,28 @@ export async function handleCreateTenant(body: {
   ownerEmail: string
 }) {
   const slug = body.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+  const normalizedOwnerEmail = body.ownerEmail.toLowerCase().trim()
   const created = await prisma.$transaction(async (tx) => {
-    const ownerId = crypto.randomUUID()
-    const user = await tx.userProfile.create({
-      data: {
-        id: ownerId,
-        email: body.ownerEmail,
-        fullName: body.ownerName,
-        defaultTimezone: body.timezone,
-      },
+    const existingUser = await tx.userProfile.findFirst({
+      where: { email: { equals: normalizedOwnerEmail, mode: 'insensitive' } },
     })
+
+    const user = existingUser
+      ? await tx.userProfile.update({
+          where: { id: existingUser.id },
+          data: {
+            fullName: body.ownerName.trim(),
+            defaultTimezone: body.timezone,
+          },
+        })
+      : await tx.userProfile.create({
+          data: {
+            id: crypto.randomUUID(),
+            email: normalizedOwnerEmail,
+            fullName: body.ownerName.trim(),
+            defaultTimezone: body.timezone,
+          },
+        })
 
     const tenant = await tx.tenant.create({
       data: {
