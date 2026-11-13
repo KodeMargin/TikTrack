@@ -1,5 +1,5 @@
 -- =============================================================================
--- DevProof (TikTrack) — Idempotent Live Supabase Security & Integrity Guards
+-- DevProof (TikTrack) - Idempotent Live Supabase Security & Integrity Guards
 -- Applies extensions, GiST non-overlap constraint, immutability triggers,
 -- anti-surveillance DB guards, auth profile sync, and multi-tenant RLS
 -- policies onto a Prisma-pushed Supabase PostgreSQL database.
@@ -117,17 +117,23 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  INSERT INTO public.user_profiles (id, email, full_name)
+  INSERT INTO public.user_profiles (id, email, full_name, default_timezone)
   VALUES (
     NEW.id,
     COALESCE(NEW.email, 'user@devproof.local'),
     COALESCE(
       NULLIF(trim(NEW.raw_user_meta_data ->> 'full_name'), ''),
       split_part(COALESCE(NEW.email, 'member'), '@', 1)
+    ),
+    COALESCE(
+      NULLIF(trim(NEW.raw_user_meta_data ->> 'timezone'), ''),
+      'UTC'
     )
   )
   ON CONFLICT (id) DO UPDATE
     SET email = EXCLUDED.email,
+        full_name = EXCLUDED.full_name,
+        default_timezone = EXCLUDED.default_timezone,
         updated_at = now();
   RETURN NEW;
 END;

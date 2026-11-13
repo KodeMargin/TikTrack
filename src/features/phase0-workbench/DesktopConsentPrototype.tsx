@@ -188,34 +188,32 @@ export function DesktopConsentPrototype() {
         <div className="rounded-xl border border-slate-800 bg-slate-900/90 shadow-xl overflow-hidden">
           {/* Persistent System Tray / Top Bar Indicator (F1-027) */}
           <div
-            className={`px-4 py-2.5 flex items-center justify-between text-xs font-medium border-b ${
-              !policyConsented
+            className={`px-4 py-2.5 flex items-center justify-between text-xs font-medium border-b ${!policyConsented
                 ? 'bg-rose-950/80 border-rose-800 text-rose-200'
                 : lifecycle === 'running'
                   ? 'bg-emerald-950/70 border-emerald-800/70 text-emerald-200'
                   : lifecycle === 'on_break'
                     ? 'bg-amber-950/70 border-amber-800/70 text-amber-200'
                     : 'bg-slate-800 border-slate-700 text-slate-300'
-            }`}
+              }`}
           >
             <div className="flex items-center gap-2">
               <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  !policyConsented
+                className={`h-2.5 w-2.5 rounded-full ${!policyConsented
                     ? 'bg-rose-400'
                     : lifecycle === 'running'
                       ? 'bg-emerald-400 animate-pulse'
                       : 'bg-amber-400'
-                }`}
+                  }`}
               />
               <span>
                 {!policyConsented
-                  ? 'TRACKING BLOCKED — CONSENT REQUIRED'
+                  ? 'TRACKING BLOCKED - CONSENT REQUIRED'
                   : lifecycle === 'running'
                     ? `VISIBLE TRACKING ACTIVE • ${activeModeObj.label.toUpperCase()}`
                     : lifecycle === 'on_break'
-                      ? 'ON BREAK — EXCLUDED FROM BILLABLE CLAIM'
-                      : 'SESSION PAUSED — NO METADATA COLLECTED'}
+                      ? 'ON BREAK - EXCLUDED FROM BILLABLE CLAIM'
+                      : 'SESSION PAUSED - NO METADATA COLLECTED'}
               </span>
             </div>
             <span className="font-mono text-[11px] opacity-80">
@@ -255,11 +253,10 @@ export function DesktopConsentPrototype() {
                   setLifecycle('running')
                   emitPrototypeEvent('session_resumed', { state: 'running' })
                 }}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  lifecycle === 'running'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${lifecycle === 'running'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                } disabled:opacity-40`}
+                  } disabled:opacity-40`}
               >
                 ● Active Session
               </button>
@@ -269,11 +266,10 @@ export function DesktopConsentPrototype() {
                   setLifecycle('paused')
                   emitPrototypeEvent('session_paused', { state: 'paused' })
                 }}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  lifecycle === 'paused'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${lifecycle === 'paused'
                     ? 'bg-amber-600 text-white'
                     : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 ❚❚ Pause Tracking
               </button>
@@ -283,11 +279,10 @@ export function DesktopConsentPrototype() {
                   setLifecycle('on_break')
                   emitPrototypeEvent('break_started', { break_type: 'paid_15m_allowance' })
                 }}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  lifecycle === 'on_break'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${lifecycle === 'on_break'
                     ? 'bg-indigo-600 text-white'
                     : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 ☕ Take Break
               </button>
@@ -300,11 +295,10 @@ export function DesktopConsentPrototype() {
                     setIsOffline(true)
                   }
                 }}
-                className={`ml-auto px-3 py-2 rounded-lg text-xs font-medium border transition cursor-pointer ${
-                  isOffline
+                className={`ml-auto px-3 py-2 rounded-lg text-xs font-medium border transition cursor-pointer ${isOffline
                     ? 'border-amber-500/60 bg-amber-950/50 text-amber-200'
                     : 'border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 {isOffline ? '⚡ Reconnect & Flush Queue' : 'Simulate Offline Mode'}
               </button>
@@ -330,11 +324,10 @@ export function DesktopConsentPrototype() {
                       key={item.mode}
                       type="button"
                       onClick={() => handleModeSelect(item.mode)}
-                      className={`text-left p-2.5 rounded-lg border transition cursor-pointer ${
-                        selected
+                      className={`text-left p-2.5 rounded-lg border transition cursor-pointer ${selected
                           ? 'border-indigo-500 bg-indigo-950/50 text-white'
                           : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold">{item.label}</span>
@@ -483,7 +476,7 @@ export function DesktopConsentPrototype() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-white">
-                Developer Local Privacy Audit Log — "What Was Captured & Queued" (F2-035)
+                Developer Local Privacy Audit Log - "What Was Captured & Queued" (F2-035)
               </h3>
               <p className="text-xs text-slate-400">
                 Every event envelope is inspectable locally before and after batch upload.

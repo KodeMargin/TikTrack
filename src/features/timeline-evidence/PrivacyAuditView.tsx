@@ -87,11 +87,10 @@ export function PrivacyAuditView() {
             <button
               type="button"
               onClick={togglePrivacyPause}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer transition ${
-                privacyPauseActive
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer transition ${privacyPauseActive
                   ? 'bg-amber-600 hover:bg-amber-500 text-white'
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-              }`}
+                }`}
             >
               {privacyPauseActive
                 ? '⏸ Personal Privacy Pause ACTIVE (Click to Resume)'
@@ -205,7 +204,7 @@ export function PrivacyAuditView() {
                 Transmitted Telemetry Batch Log (F2-035)
               </h3>
               <p className="text-xs text-slate-400">
-                Every payload sent by your devices—verify zero keystrokes, zero screenshots, and
+                Every payload sent by your devices-verify zero keystrokes, zero screenshots, and
                 zero source code.
               </p>
             </div>
@@ -222,11 +221,10 @@ export function PrivacyAuditView() {
                   key={batch.batchId}
                   type="button"
                   onClick={() => setSelectedBatchId(batch.batchId)}
-                  className={`text-left rounded-xl p-3 border transition cursor-pointer ${
-                    active
+                  className={`text-left rounded-xl p-3 border transition cursor-pointer ${active
                       ? 'border-indigo-500 bg-indigo-950/40'
                       : 'border-slate-800 bg-slate-950/80 hover:border-slate-700'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-indigo-300">

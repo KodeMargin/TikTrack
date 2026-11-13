@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Browser-to-Prisma API Client
+ * DevProof (TikTrack) - Browser-to-Prisma API Client
  *
  * Communicates with the Vite server Prisma middleware (`/api/prisma/*`) so the
  * React frontend persists Phase 1 data through Prisma ORM without exposing DATABASE_URL.
@@ -53,6 +53,10 @@ import type {
   SecurityAssessmentRecord,
   TenantAccessibilityConfigRecord,
   SupportedLocale,
+  CustomRole,
+  GranularPermissionDef,
+  PermissionModule,
+  PermissionModuleId,
 } from '@/types/domain.types'
 import type {
   AuditLogEntry,
@@ -133,6 +137,22 @@ export interface PrismaPhase5BootstrapPayload {
   accessibilityConfigs: TenantAccessibilityConfigRecord[]
 }
 
+export interface PrismaRbacBootstrapPayload {
+  seedStatus: {
+    seeded: boolean
+    firstTime: boolean
+    checksum: string
+    moduleCount: number
+    permissionCount: number
+    systemRoleCount: number
+  }
+  modules: PermissionModule[]
+  permissions: GranularPermissionDef[]
+  roles: CustomRole[]
+  tenantOwnerPermissions: Record<string, string[]>
+  memberGrantsByMembershipId: Record<string, string[]>
+}
+
 export interface PrismaBootstrapPayload {
   status: PrismaConnectionStatus
   tenants: TenantWorkspace[]
@@ -148,6 +168,7 @@ export interface PrismaBootstrapPayload {
   phase3?: PrismaPhase3BootstrapPayload
   phase4?: PrismaPhase4BootstrapPayload
   phase5?: PrismaPhase5BootstrapPayload
+  rbac?: PrismaRbacBootstrapPayload
 }
 
 async function postJson<T>(url: string, body: unknown, method = 'POST'): Promise<T | null> {
@@ -195,6 +216,7 @@ export const inviteMemberViaPrisma = (input: {
   email: string
   role: string
   temporaryPassword?: string
+  customPermissions?: string[]
 }) =>
   postJson<{
     ok: boolean
@@ -714,10 +736,10 @@ export const createWarehouseExportViaPrisma = (input: {
 export const recordDrExerciseViaPrisma = (input: {
   tenantId: string
   exerciseType:
-    | 'backup_restore_drill'
-    | 'region_failover_tabletop'
-    | 'load_test_1000_devs'
-    | 'pen_test_remediation'
+  | 'backup_restore_drill'
+  | 'region_failover_tabletop'
+  | 'load_test_1000_devs'
+  | 'pen_test_remediation'
   targetRpoMinutes: number
   measuredRpoMinutes: number
   targetRtoMinutes: number
@@ -748,3 +770,92 @@ export const updateAccessibilityConfigViaPrisma = (input: {
   keyboardShortcutsEnabled: boolean
   wcagTargetLevel: 'AA' | 'AAA'
 }) => postJson<{ ok: boolean }>('/api/prisma/phase5/accessibility', input, 'PATCH')
+
+// -----------------------------------------------------------------------------
+// Granular RBAC (Permissions Seed, Custom Roles, Member Grants & Owner Policy)
+// -----------------------------------------------------------------------------
+
+export const runPermissionsSeedViaPrisma = () =>
+  postJson<{
+    ok: boolean
+    seeded: boolean
+    firstTime: boolean
+    checksum: string
+    moduleCount: number
+    permissionCount: number
+    systemRoleCount: number
+  }>('/api/prisma/rbac/seed', {})
+
+export const createCustomRoleViaPrisma = (input: {
+  tenantId: string
+  name: string
+  code: string
+  description: string
+  permissions: string[]
+  createdBy?: string
+}) =>
+  postJson<{ ok: boolean; role?: CustomRole; error?: string }>(
+    '/api/prisma/rbac/roles',
+    input,
+    'POST'
+  )
+
+export const updateCustomRoleViaPrisma = (input: {
+  roleId: string
+  tenantId: string
+  name?: string
+  description?: string
+  permissions?: string[]
+}) =>
+  postJson<{ ok: boolean; error?: string }>(
+    '/api/prisma/rbac/roles',
+    input,
+    'PATCH'
+  )
+
+export const deleteCustomRoleViaPrisma = (input: {
+  roleId: string
+  tenantId: string
+}) =>
+  postJson<{ ok: boolean; error?: string }>(
+    '/api/prisma/rbac/roles',
+    input,
+    'DELETE'
+  )
+
+export const updateMemberRoleViaPrisma = (input: {
+  tenantId: string
+  userId: string
+  role: string
+  customPermissions?: string[]
+  grantedBy?: string
+}) =>
+  postJson<{ ok: boolean; error?: string }>(
+    '/api/prisma/rbac/member-role',
+    input,
+    'PATCH'
+  )
+
+export const updateTenantOwnerPermissionsViaPrisma = (input: {
+  tenantId: string
+  permissions: string[]
+  updatedBy?: string
+}) =>
+  postJson<{ ok: boolean; error?: string }>(
+    '/api/prisma/rbac/tenant-owner-permissions',
+    input,
+    'PUT'
+  )
+
+export const registerPermissionViaPrisma = (input: {
+  key: string
+  module: PermissionModuleId
+  label: string
+  description: string
+  isSuperAdminOnly?: boolean
+}) =>
+  postJson<{ ok: boolean; permission?: GranularPermissionDef; error?: string }>(
+    '/api/prisma/rbac/permissions',
+    input,
+    'POST'
+  )

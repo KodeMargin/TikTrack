@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Prisma ORM Phase 3 Handlers
+ * DevProof (TikTrack) - Prisma ORM Phase 3 Handlers
  *
  * Persists Phase 3 workflows:
  *  - Versioned Verification Rule Sets & Segment Rule Evaluations (F3-001..F3-010)
@@ -269,10 +269,10 @@ export async function handleDecideAiGenerationPrisma(body: {
       status: body.status,
       ...(body.status === 'edited_approved'
         ? {
-            humanApprovedMarkdown: body.humanApprovedMarkdown ?? null,
-            approvedByUserId: isValidUuid(body.approvedByUserId) ? body.approvedByUserId : null,
-            approvedAt: new Date(),
-          }
+          humanApprovedMarkdown: body.humanApprovedMarkdown ?? null,
+          approvedByUserId: isValidUuid(body.approvedByUserId) ? body.approvedByUserId : null,
+          approvedAt: new Date(),
+        }
         : {}),
     },
   })

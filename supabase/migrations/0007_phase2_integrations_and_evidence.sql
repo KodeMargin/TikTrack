@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0007: Phase 2 Milestones 2.2–2.4 — IDE Workspace Mappings,
+-- Migration 0007: Phase 2 Milestones 2.2–2.4 - IDE Workspace Mappings,
 -- GitHub/GitLab Webhooks, Evidence Artifacts, Evidence Links & Annotations
 -- Covers F2-010 through F2-035
 -- =============================================================================
@@ -185,7 +185,7 @@ CREATE INDEX IF NOT EXISTS idx_evidence_links_segment
   WHERE time_segment_id IS NOT NULL;
 
 -- -----------------------------------------------------------------------------
--- 5. Work-Session Annotations (Thinking Notes, Research Outcomes, Investigation Logs — F2-033)
+-- 5. Work-Session Annotations (Thinking Notes, Research Outcomes, Investigation Logs - F2-033)
 -- -----------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS public.session_annotations (

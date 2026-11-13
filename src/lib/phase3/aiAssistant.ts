@@ -191,7 +191,7 @@ export function generateGuardrailedAiDraft(
         `**Daily Work Summary Draft (${c.taskCode ?? 'Workspace'})**\n` +
         `- Recorded **${c.claimedMinutes ?? 0}m** claimed (**${c.supportedMinutes ?? 0}m** supported) across modes: ${(c.workModes ?? ['coding']).join(', ')}.\n` +
         `- Corroborating artifacts: ${(c.artifactTitles && c.artifactTitles.length > 0 ? c.artifactTitles : ['Session context notes']).join('; ')}.\n` +
-        `- Private draft — review and edit before attaching to your timesheet.` +
+        `- Private draft - review and edit before attaching to your timesheet.` +
         citationFooter
       break
 
@@ -215,7 +215,7 @@ export function generateGuardrailedAiDraft(
     case 'task_mapping':
       draftMarkdown =
         `**Suggested Task Mapping**\n` +
-        `- Repository \`${c.repoName ?? 'workspace'}\` on branch \`${c.branchName ?? 'main'}\` matches task **${c.taskCode ?? 'DEV-101'} — ${c.taskTitle ?? 'Assigned Task'}**.\n` +
+        `- Repository \`${c.repoName ?? 'workspace'}\` on branch \`${c.branchName ?? 'main'}\` matches task **${c.taskCode ?? 'DEV-101'} - ${c.taskTitle ?? 'Assigned Task'}**.\n` +
         `- Developer confirmation required before attributing intervals.` +
         citationFooter
       break

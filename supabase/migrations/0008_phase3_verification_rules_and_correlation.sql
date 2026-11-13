@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0008: Phase 3 Milestone 3.1 — Versioned Verification Rules Engine
+-- Migration 0008: Phase 3 Milestone 3.1 - Versioned Verification Rules Engine
 -- & Evidence Correlation Graph
 -- Covers F3-001 through F3-010 and Rules R-01 through R-08
 -- =============================================================================

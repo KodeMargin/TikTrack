@@ -81,11 +81,10 @@ export function TimesheetsAndReviewView() {
     <div className="space-y-6">
       {banner && (
         <div
-          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
-            banner.ok
+          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${banner.ok
               ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
               : 'border-rose-700 bg-rose-950/60 text-rose-200'
-          }`}
+            }`}
         >
           <span>{banner.text}</span>
           <button
@@ -110,7 +109,7 @@ export function TimesheetsAndReviewView() {
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             {isFinance
-              ? 'Approved hours and locked contract rates only — workstation context is hidden.'
+              ? 'Approved hours and locked contract rates only - workstation context is hidden.'
               : 'Elapsed, claimed, observed, supported, and approved hours tracked transparently.'}
           </p>
         </div>
@@ -207,11 +206,10 @@ export function TimesheetsAndReviewView() {
           </div>
           <div className="h-2 w-full rounded-full bg-slate-950 overflow-hidden border border-slate-800">
             <div
-              className={`h-full transition-all ${
-                totals.claimed > activeTenant.weeklyCapMinutes
+              className={`h-full transition-all ${totals.claimed > activeTenant.weeklyCapMinutes
                   ? 'bg-rose-500'
                   : 'bg-indigo-500'
-              }`}
+                }`}
               style={{
                 width: `${Math.min(100, Math.round((totals.claimed / Math.max(1, activeTenant.weeklyCapMinutes)) * 100))}%`,
               }}
@@ -227,7 +225,7 @@ export function TimesheetsAndReviewView() {
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.code} — {p.name}
+                {p.code} - {p.name}
               </option>
             ))}
           </select>
@@ -292,11 +290,10 @@ export function TimesheetsAndReviewView() {
                       Provenance: {line.provenance}
                     </span>
                     <span
-                      className={`text-[11px] px-2 py-0.5 rounded font-mono uppercase border ${
-                        line.timesheetStatus === 'submitted'
+                      className={`text-[11px] px-2 py-0.5 rounded font-mono uppercase border ${line.timesheetStatus === 'submitted'
                           ? 'bg-indigo-950 text-indigo-300 border-indigo-700'
                           : 'bg-slate-900 text-slate-400 border-slate-700'
-                      }`}
+                        }`}
                     >
                       Period: {line.timesheetStatus ?? 'draft'}
                     </span>
@@ -319,15 +316,14 @@ export function TimesheetsAndReviewView() {
                 {/* Status Badge & 5-Time Metrics Pill */}
                 <div className="flex flex-wrap items-center gap-3">
                   <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                      line.evidenceStatus === 'approved'
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${line.evidenceStatus === 'approved'
                         ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
                         : line.evidenceStatus === 'needs_clarification'
                           ? 'bg-amber-950 text-amber-300 border-amber-700'
                           : line.evidenceStatus === 'disputed'
                             ? 'bg-rose-950 text-rose-300 border-rose-700'
                             : 'bg-teal-950 text-teal-300 border-teal-700'
-                    }`}
+                      }`}
                   >
                     {line.evidenceStatus.replace('_', ' ').toUpperCase()}
                   </span>

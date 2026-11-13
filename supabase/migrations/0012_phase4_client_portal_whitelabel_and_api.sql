@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0012: Phase 4 — Client Read-Only Portal Views, White-Label Boundaries,
+-- Migration 0012: Phase 4 - Client Read-Only Portal Views, White-Label Boundaries,
 -- Scoped Public API Keys & Outbound Signed Webhooks
 -- Covers F4-005, F4-006, F4-007, F4-012
 -- =============================================================================

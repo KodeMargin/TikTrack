@@ -1,4 +1,4 @@
-# DevProof (TikTrack) — Supabase Local Development Configuration
+# DevProof (TikTrack) - Supabase Local Development Configuration
 project_id = "devproof-tiktrack"
 
 [api]

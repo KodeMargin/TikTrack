@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0014: Phase 5 — Enterprise SSO, SCIM Provisioning,
+-- Migration 0014: Phase 5 - Enterprise SSO, SCIM Provisioning,
 -- Two-Person Policy Governance & Sensitive Access Logs
 -- Covers F5-001, F5-002 (access logs), F5-006
 -- =============================================================================

@@ -1,5 +1,5 @@
 // =============================================================================
-// DevProof (TikTrack) — Prisma ORM Schema for Supabase PostgreSQL
+// DevProof (TikTrack) - Prisma ORM Schema for Supabase PostgreSQL
 // Maps Phase 1 & Phase 2 Migrations 0001..0007 (Multi-Tenant Identity, Projects,
 // Tasks, Work Sessions, Time Segments, Contracts, Timesheets, Reviews, Invoices,
 // Activity Ingestion, IDE Mappings, GitHub/GitLab Webhooks & Evidence Links)
@@ -87,6 +87,10 @@ model Tenant {
   drExercises               DrExercise[]
   securityAssessments       SecurityAssessment[]
   accessibilityConfig       TenantAccessibilityConfig?
+
+  // Granular RBAC relations
+  roles                     Role[]
+  tenantOwnerPolicy         TenantOwnerPermissionPolicy?
 
   @@unique([id, slug])
   @@map("tenants")
@@ -183,6 +187,7 @@ model Membership {
   user          UserProfile  @relation("UserMemberships", fields: [userId], references: [id], onDelete: Cascade)
   invitedByUser UserProfile? @relation("InvitedByUser", fields: [invitedBy], references: [id])
   roleGrants    RoleGrant[]
+  permissionGrants MemberPermissionGrant[]
 
   @@unique([tenantId, userId])
   @@unique([id, tenantId])
@@ -839,7 +844,7 @@ model Notification {
 }
 
 // -----------------------------------------------------------------------------
-// 6. Phase 2 — Activity Ingestion, Rollups, IDE Mappings, Webhooks & Evidence (0006–0007)
+// 6. Phase 2 - Activity Ingestion, Rollups, IDE Mappings, Webhooks & Evidence (0006–0007)
 // -----------------------------------------------------------------------------
 
 model PrivacyExclusion {
@@ -1108,7 +1113,7 @@ model SessionAnnotation {
 }
 
 // -----------------------------------------------------------------------------
-// 7. Phase 3 — Verification Rules Engine, Correlation Graph & Guardrailed AI (0008–0010)
+// 7. Phase 3 - Verification Rules Engine, Correlation Graph & Guardrailed AI (0008–0010)
 // -----------------------------------------------------------------------------
 
 model VerificationRuleSet {
@@ -1210,7 +1215,7 @@ model AiGeneration {
 }
 
 // -----------------------------------------------------------------------------
-// 8. Phase 4 — Commercial SaaS Subscriptions, Usage Metering, Public API,
+// 8. Phase 4 - Commercial SaaS Subscriptions, Usage Metering, Public API,
 //    Outbound Webhooks, Ecosystem Connectors & Developer Portable Reports (0011–0013)
 // -----------------------------------------------------------------------------
 
@@ -1426,7 +1431,7 @@ model PortableWorkReport {
 
 
 // -----------------------------------------------------------------------------
-// 9. Phase 5 — Enterprise SSO, SCIM, Two-Person Policy Governance,
+// 9. Phase 5 - Enterprise SSO, SCIM, Two-Person Policy Governance,
 //    Legal Holds, Retention, Data Residency, SIEM, Fleet, Warehouse, DR & A11y (0014–0016)
 // -----------------------------------------------------------------------------
 
@@ -1766,4 +1771,123 @@ model TenantAccessibilityConfig {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("tenant_accessibility_configs")
+}
+
+
+// -----------------------------------------------------------------------------
+// Granular RBAC: Permission Catalog, Roles, Tenant Owner Policy & Member Grants (0017)
+// Seeded by prisma/seeds/permissions.seed.ts on first application start.
+// -----------------------------------------------------------------------------
+
+model PermissionModule {
+  id          String   @id
+  name        String
+  description String   @default("")
+  icon        String   @default("")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  permissions Permission[]
+
+  @@map("permission_modules")
+}
+
+model Permission {
+  key              String   @id
+  moduleId         String   @map("module_id")
+  label            String
+  description      String   @default("")
+  isSuperAdminOnly Boolean  @default(false) @map("is_super_admin_only")
+  isActive         Boolean  @default(true) @map("is_active")
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  module                 PermissionModule        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  rolePermissions        RolePermission[]
+  tenantOwnerPermissions TenantOwnerPermission[]
+  memberGrants           MemberPermissionGrant[]
+
+  @@index([moduleId, sortOrder], map: "idx_permissions_module_sort")
+  @@map("permissions")
+}
+
+model Role {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String?  @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  description  String   @default("")
+  isSystemRole Boolean  @default(false) @map("is_system_role")
+  createdBy    String?  @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId], map: "idx_roles_tenant")
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId        String   @map("role_id") @db.Uuid
+  permissionKey String   @map("permission_key")
+  grantedAt     DateTime @default(now()) @map("granted_at") @db.Timestamptz(6)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([roleId, permissionKey])
+  @@map("role_permissions")
+}
+
+model TenantOwnerPermissionPolicy {
+  tenantId  String   @id @map("tenant_id") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions TenantOwnerPermission[]
+
+  @@map("tenant_owner_permission_policies")
+}
+
+model TenantOwnerPermission {
+  tenantId      String @map("tenant_id") @db.Uuid
+  permissionKey String @map("permission_key")
+
+  policy     TenantOwnerPermissionPolicy @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  permission Permission                  @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([tenantId, permissionKey])
+  @@map("tenant_owner_permissions")
+}
+
+model MemberPermissionGrant {
+  membershipId  String   @map("membership_id") @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  permissionKey String   @map("permission_key")
+  grantedBy     String?  @map("granted_by") @db.Uuid
+  grantedAt     DateTime @default(now()) @map("granted_at") @db.Timestamptz(6)
+
+  membership Membership @relation(fields: [membershipId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([membershipId, permissionKey])
+  @@index([tenantId], map: "idx_member_permission_grants_tenant")
+  @@map("member_permission_grants")
+}
+
+model SystemSeedRun {
+  seedKey        String   @id @map("seed_key")
+  version        Int      @default(1)
+  checksum       String
+  runCount       Int      @default(1) @map("run_count")
+  firstAppliedAt DateTime @default(now()) @map("first_applied_at") @db.Timestamptz(6)
+  lastAppliedAt  DateTime @default(now()) @map("last_applied_at") @db.Timestamptz(6)
+
+  @@map("system_seed_runs")
 }

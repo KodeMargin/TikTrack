@@ -1,10 +1,12 @@
 /**
- * DevProof (TikTrack) — Vite Server Middleware for Prisma ORM + Supabase PostgreSQL
+ * DevProof (TikTrack) - Vite Server Middleware for Prisma ORM + Supabase PostgreSQL
  *
  * Exposes `/api/prisma/*` endpoints on the Vite dev/preview server so the React
  * application persists all Phase 1 workflows through Prisma ORM.
  */
 
+import type { Buffer } from 'node:buffer'
+import crypto from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'node:path'
 import dotenv from 'dotenv'
@@ -64,6 +66,15 @@ import {
   handleUpsertSecurityAssessmentPrisma,
   handleUpsertSsoProviderPrisma,
 } from './prismaPhase5Handlers.ts'
+import {
+  handleCreateCustomRolePrisma,
+  handleDeleteCustomRolePrisma,
+  handleRegisterPermissionPrisma,
+  handleUpdateCustomRolePrisma,
+  handleUpdateMemberRoleAndPermissionsPrisma,
+  handleUpdateTenantOwnerPermissionsPrisma,
+  seedPermissionsAndRoles,
+} from './prismaRbacHandlers.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -204,6 +215,7 @@ export function prismaSupabaseApiPlugin(): Plugin {
                 email: string
                 role: string
                 temporaryPassword?: string
+                customPermissions?: string[]
               }>(req)
               if (!isValidUuid(body.tenantId) || !body.email?.trim() || !body.name?.trim()) {
                 return sendJson(res, 200, { ok: false, error: 'Valid tenantId, name, and email are required.' })
@@ -239,7 +251,9 @@ export function prismaSupabaseApiPlugin(): Plugin {
                     include: { roleGrants: true },
                   })
 
+                  let targetMembershipId = ''
                   if (existingMem) {
+                    targetMembershipId = existingMem.id
                     await tx.membership.update({
                       where: { id: existingMem.id },
                       data: {
@@ -247,16 +261,20 @@ export function prismaSupabaseApiPlugin(): Plugin {
                         invitedEmail: normalizedEmail,
                       },
                     })
-                    const existingGrant = existingMem.roleGrants.find((rg) => rg.role === body.role)
-                    if (!existingGrant) {
-                      await tx.roleGrant.create({
-                        data: {
-                          tenantId: body.tenantId,
-                          membershipId: existingMem.id,
-                          role: body.role,
-                        },
-                      })
-                    }
+                    await tx.roleGrant.deleteMany({
+                      where: {
+                        tenantId: body.tenantId,
+                        membershipId: existingMem.id,
+                        projectScopeId: null,
+                      },
+                    })
+                    await tx.roleGrant.create({
+                      data: {
+                        tenantId: body.tenantId,
+                        membershipId: existingMem.id,
+                        role: body.role,
+                      },
+                    })
                   } else {
                     const mem = await tx.membership.create({
                       data: {
@@ -267,6 +285,7 @@ export function prismaSupabaseApiPlugin(): Plugin {
                         joinedAt: new Date(),
                       },
                     })
+                    targetMembershipId = mem.id
                     await tx.roleGrant.create({
                       data: {
                         tenantId: body.tenantId,
@@ -274,6 +293,26 @@ export function prismaSupabaseApiPlugin(): Plugin {
                         role: body.role,
                       },
                     })
+                  }
+
+                  if (Array.isArray(body.customPermissions) && body.customPermissions.length > 0 && targetMembershipId) {
+                    const validPerms = await tx.permission.findMany({
+                      where: { key: { in: body.customPermissions }, isSuperAdminOnly: false },
+                      select: { key: true },
+                    })
+                    await tx.memberPermissionGrant.deleteMany({
+                      where: { membershipId: targetMembershipId, tenantId: body.tenantId },
+                    })
+                    if (validPerms.length > 0) {
+                      await tx.memberPermissionGrant.createMany({
+                        data: validPerms.map((p) => ({
+                          membershipId: targetMembershipId,
+                          tenantId: body.tenantId,
+                          permissionKey: p.key,
+                        })),
+                        skipDuplicates: true,
+                      })
+                    }
                   }
 
                   await tx.auditEntry.create({
@@ -378,7 +417,7 @@ export function prismaSupabaseApiPlugin(): Plugin {
 
                   // 6. Notifications
                   await tx.notification.deleteMany({
-                    where: { userId: body.userId, tenantId: body.tenantId },
+                    where: { recipientUserId: body.userId, tenantId: body.tenantId },
                   })
 
                   // 7. Policy Consents
@@ -394,11 +433,14 @@ export function prismaSupabaseApiPlugin(): Plugin {
                     where: { userId: body.userId, tenantId: body.tenantId },
                   })
 
-                  // 9. Role Grants & Membership
+                  // 9. Role Grants, Member Permissions & Membership
                   const mem = await tx.membership.findFirst({
                     where: { tenantId: body.tenantId, userId: body.userId },
                   })
                   if (mem) {
+                    await tx.memberPermissionGrant.deleteMany({
+                      where: { membershipId: mem.id },
+                    })
                     await tx.roleGrant.deleteMany({
                       where: { membershipId: mem.id },
                     })
@@ -924,6 +966,42 @@ export function prismaSupabaseApiPlugin(): Plugin {
             if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase5/accessibility')) {
               const body = await readJsonBody<Parameters<typeof handleUpdateAccessibilityConfigPrisma>[0]>(req)
               return sendJson(res, 200, await handleUpdateAccessibilityConfigPrisma(body))
+            }
+
+            // --- Granular RBAC (Permissions Seed, Roles, Member Grants & Tenant Owner Policy) ---
+            if (req.method === 'POST' && url.startsWith('/api/prisma/rbac/seed')) {
+              const result = await seedPermissionsAndRoles({ force: true })
+              return sendJson(res, 200, { ok: true, ...result })
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/rbac/roles')) {
+              const body = await readJsonBody<Parameters<typeof handleCreateCustomRolePrisma>[0]>(req)
+              return sendJson(res, 201, await handleCreateCustomRolePrisma(body))
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/rbac/roles')) {
+              const body = await readJsonBody<Parameters<typeof handleUpdateCustomRolePrisma>[0]>(req)
+              return sendJson(res, 200, await handleUpdateCustomRolePrisma(body))
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/rbac/roles')) {
+              const body = await readJsonBody<Parameters<typeof handleDeleteCustomRolePrisma>[0]>(req)
+              return sendJson(res, 200, await handleDeleteCustomRolePrisma(body))
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/rbac/member-role')) {
+              const body = await readJsonBody<Parameters<typeof handleUpdateMemberRoleAndPermissionsPrisma>[0]>(req)
+              return sendJson(res, 200, await handleUpdateMemberRoleAndPermissionsPrisma(body))
+            }
+
+            if (req.method === 'PUT' && url.startsWith('/api/prisma/rbac/tenant-owner-permissions')) {
+              const body = await readJsonBody<Parameters<typeof handleUpdateTenantOwnerPermissionsPrisma>[0]>(req)
+              return sendJson(res, 200, await handleUpdateTenantOwnerPermissionsPrisma(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/rbac/permissions')) {
+              const body = await readJsonBody<Parameters<typeof handleRegisterPermissionPrisma>[0]>(req)
+              return sendJson(res, 201, await handleRegisterPermissionPrisma(body))
             }
 
             return sendJson(res, 404, { error: 'Unknown Prisma API endpoint' })

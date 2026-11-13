@@ -71,7 +71,7 @@ export function buildQuickBooksInvoicePayload(invoice: AccountingExportInvoiceIn
       LineNum: index + 1,
       DetailType: 'SalesItemLineDetail',
       Amount: Number(line.amount.toFixed(2)),
-      Description: `${line.taskCode} — ${line.description} (${line.workDate})`,
+      Description: `${line.taskCode} - ${line.description} (${line.workDate})`,
       SalesItemLineDetail: {
         Qty: Number((line.approvedMinutes / 60).toFixed(2)),
         UnitPrice: Number(line.hourlyRate.toFixed(2)),
@@ -128,9 +128,9 @@ export function sanitizeCalendarMeetingEvent(input: {
     input.syncPermissionScope === 'metadata_only'
       ? `Scheduled Project Meeting (${durationMinutes}m)`
       : input.rawTitle
-          .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted-email]')
-          .replace(/https?:\/\/\S+/gi, '[meeting-link]')
-          .trim() || `Scheduled Meeting (${durationMinutes}m)`
+        .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted-email]')
+        .replace(/https?:\/\/\S+/gi, '[meeting-link]')
+        .trim() || `Scheduled Meeting (${durationMinutes}m)`
 
   return {
     id: `cal-${crypto.randomUUID().slice(0, 8)}`,

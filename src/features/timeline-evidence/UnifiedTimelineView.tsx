@@ -58,7 +58,7 @@ export function UnifiedTimelineView() {
           <code className="text-amber-200">activity_events_select</code> &{' '}
           <code className="text-amber-200">evidence_artifacts_select</code>), the{' '}
           <strong>FINANCE</strong> role has access exclusively to approved commercial hours,
-          effective-dated contract rates, and locked invoices—never raw IDE/desktop activity
+          effective-dated contract rates, and locked invoices-never raw IDE/desktop activity
           buckets or developer investigation notes. Switch to <strong>Developer</strong> or{' '}
           <strong>Project Manager</strong> in the top bar to inspect the Unified Developer Timeline.
         </p>
@@ -262,7 +262,7 @@ export function UnifiedTimelineView() {
               Terminal / Tests
             </span>
             <span className="px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-dashed border-amber-500">
-              Observation Gap (Unobserved Signal — F2-034)
+              Observation Gap (Unobserved Signal - F2-034)
             </span>
           </div>
         </div>
@@ -270,7 +270,7 @@ export function UnifiedTimelineView() {
         {/* Track 1: Declared Sessions & 5 Time Metrics */}
         <div className="space-y-2">
           <div className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-            <span>Track 1 — Declared Work Sessions & Work Modes (Elapsed vs. Claimed vs. Observed vs. Supported)</span>
+            <span>Track 1 - Declared Work Sessions & Work Modes (Elapsed vs. Claimed vs. Observed vs. Supported)</span>
             <span className="font-mono text-[11px] text-slate-400">UTC Canonical Intervals</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
@@ -321,7 +321,7 @@ export function UnifiedTimelineView() {
         <div className="space-y-2 pt-2 border-t border-slate-800/80">
           <div className="text-xs font-semibold text-slate-300 flex items-center justify-between">
             <span>
-              Track 2 — Coarse Desktop & IDE Activity Buckets (F2-001, F2-002, F2-003, F2-034)
+              Track 2 - Coarse Desktop & IDE Activity Buckets (F2-001, F2-002, F2-003, F2-034)
             </span>
             <span className="text-[11px] text-slate-400">
               Multi-display: coarse_metadata_only (0 screenshots)
@@ -339,13 +339,12 @@ export function UnifiedTimelineView() {
                 <div
                   key={bucket.id}
                   onClick={() => setSelectedGapBucketId(bucket.id)}
-                  className={`rounded-xl p-3 border transition cursor-pointer space-y-1.5 ${
-                    isUnreconciledGap
+                  className={`rounded-xl p-3 border transition cursor-pointer space-y-1.5 ${isUnreconciledGap
                       ? 'border-dashed border-amber-500 bg-amber-950/25 hover:bg-amber-950/40'
                       : isSelected
                         ? 'border-indigo-500 bg-indigo-950/30'
                         : 'border-slate-800 bg-slate-950/80 hover:border-slate-700'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-white">
@@ -353,15 +352,14 @@ export function UnifiedTimelineView() {
                       {formatMinuteOfDay(bucket.endMinuteOfDay)} ({bucket.durationMinutes}m)
                     </span>
                     <span
-                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                        isUnreconciledGap
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${isUnreconciledGap
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                           : bucket.appCategory === 'ide'
                             ? 'bg-indigo-950 text-indigo-300 border border-indigo-700'
                             : bucket.appCategory === 'docs_browser'
                               ? 'bg-cyan-950 text-cyan-300 border border-cyan-700'
                               : 'bg-emerald-950 text-emerald-300 border border-emerald-700'
-                      }`}
+                        }`}
                     >
                       {bucket.appCategory.toUpperCase()}
                     </span>
@@ -406,7 +404,7 @@ export function UnifiedTimelineView() {
         <div className="space-y-2 pt-2 border-t border-slate-800/80">
           <div className="text-xs font-semibold text-slate-300 flex items-center justify-between">
             <span>
-              Track 3 — Correlated Evidence Artifacts & Provenance Pins (F2-031, F2-032)
+              Track 3 - Correlated Evidence Artifacts & Provenance Pins (F2-031, F2-032)
             </span>
             <span className="text-[11px] text-slate-400">
               Separates Contemporaneous Signals from Retrospective Outcomes (R-05)
@@ -424,11 +422,10 @@ export function UnifiedTimelineView() {
                     setOverrideTaskId(art.taskId)
                     setOverrideLinkType(art.linkType)
                   }}
-                  className={`rounded-xl p-3 border transition cursor-pointer space-y-1.5 ${
-                    selected
+                  className={`rounded-xl p-3 border transition cursor-pointer space-y-1.5 ${selected
                       ? 'border-indigo-500 bg-indigo-950/40'
                       : 'border-slate-800 bg-slate-950/80 hover:border-slate-700'
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-1.5">
@@ -440,11 +437,10 @@ export function UnifiedTimelineView() {
                       </span>
                     </div>
                     <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                        art.linkType === 'retrospective_outcome'
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded ${art.linkType === 'retrospective_outcome'
                           ? 'bg-amber-950/80 text-amber-300 border border-amber-700/60'
                           : 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60'
-                      }`}
+                        }`}
                     >
                       {art.linkType === 'retrospective_outcome'
                         ? 'Retrospective Outcome (R-05)'
@@ -593,7 +589,7 @@ export function UnifiedTimelineView() {
               >
                 {tasks.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.code} — {t.title}
+                    {t.code} - {t.title}
                   </option>
                 ))}
               </select>
@@ -634,7 +630,7 @@ export function UnifiedTimelineView() {
           </button>
         </form>
 
-        {/* Card 3: Work-Session Annotations (Thinking Notes, Research Outcomes, Investigation Logs — F2-033) */}
+        {/* Card 3: Work-Session Annotations (Thinking Notes, Research Outcomes, Investigation Logs - F2-033) */}
         <form
           onSubmit={handleAddAnnotationSubmit}
           className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 space-y-3"

@@ -1,12 +1,14 @@
 /**
- * DevProof (TikTrack) — Canonical Domain Types (Phase 0 Baseline)
+ * DevProof (TikTrack) - Canonical Domain Types (Phase 0 Baseline)
  *
  * Governing Principle:
  * Explicitly separate recorded elapsed time, observed digital activity,
  * claimed work context, supporting evidence, and approved billable hours.
  */
 
-export type UserRole =
+export * from './permissions.types'
+
+export type PredefinedUserRole =
   | 'super_admin'
   | 'tenant_owner'
   | 'project_manager'
@@ -14,6 +16,8 @@ export type UserRole =
   | 'finance'
   | 'client_reviewer'
   | 'auditor'
+
+export type UserRole = PredefinedUserRole | (string & {})
 
 export type WorkMode =
   | 'coding'
@@ -127,18 +131,18 @@ export interface CanonicalEventEnvelope {
   session_id: string
   source: EvidenceSourceType
   event_type:
-    | 'session_started'
-    | 'session_paused'
-    | 'session_resumed'
-    | 'session_stopped'
-    | 'work_mode_changed'
-    | 'break_started'
-    | 'break_ended'
-    | 'activity_rollup_1m'
-    | 'vscode_debug_session'
-    | 'vscode_test_run'
-    | 'idle_gap_reconciled'
-    | 'manual_claimed'
+  | 'session_started'
+  | 'session_paused'
+  | 'session_resumed'
+  | 'session_stopped'
+  | 'work_mode_changed'
+  | 'break_started'
+  | 'break_ended'
+  | 'activity_rollup_1m'
+  | 'vscode_debug_session'
+  | 'vscode_test_run'
+  | 'idle_gap_reconciled'
+  | 'manual_claimed'
   occurred_at_utc: string
   received_at_utc?: string
   local_sequence: number
@@ -716,7 +720,7 @@ export interface PortableWorkReportRecord {
 
 
 // =============================================================================
-// Phase 5 — Enterprise, Compliance & Operational Scale (F5-001 .. F5-011)
+// Phase 5 - Enterprise, Compliance & Operational Scale (F5-001 .. F5-011)
 // =============================================================================
 
 export type SsoProviderType = 'saml' | 'oidc'
@@ -943,10 +947,10 @@ export interface DrExerciseRecord {
   id: string
   tenantId: string
   exerciseType:
-    | 'backup_restore_drill'
-    | 'region_failover_tabletop'
-    | 'load_test_1000_devs'
-    | 'pen_test_remediation'
+  | 'backup_restore_drill'
+  | 'region_failover_tabletop'
+  | 'load_test_1000_devs'
+  | 'pen_test_remediation'
   targetRpoMinutes: number
   measuredRpoMinutes: number
   targetRtoMinutes: number

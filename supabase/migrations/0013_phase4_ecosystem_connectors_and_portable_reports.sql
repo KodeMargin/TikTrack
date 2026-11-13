@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0013: Phase 4 — Ecosystem Connectors (Calendar, Accounting, PM)
+-- Migration 0013: Phase 4 - Ecosystem Connectors (Calendar, Accounting, PM)
 -- & Developer Portable Work Reports
 -- Covers F4-008, F4-009, F4-010, F4-013
 -- =============================================================================

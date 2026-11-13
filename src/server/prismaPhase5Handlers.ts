@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Prisma ORM Phase 5 Handlers
+ * DevProof (TikTrack) - Prisma ORM Phase 5 Handlers
  *
  * Persists Phase 5 Enterprise, Compliance & Operational Scale workflows in
  * Supabase PostgreSQL:
@@ -877,10 +877,10 @@ export async function handleCreateWarehouseExportPrisma(input: {
 export async function handleRecordDrExercisePrisma(input: {
   tenantId: string
   exerciseType:
-    | 'backup_restore_drill'
-    | 'region_failover_tabletop'
-    | 'load_test_1000_devs'
-    | 'pen_test_remediation'
+  | 'backup_restore_drill'
+  | 'region_failover_tabletop'
+  | 'load_test_1000_devs'
+  | 'pen_test_remediation'
   targetRpoMinutes: number
   measuredRpoMinutes: number
   targetRtoMinutes: number

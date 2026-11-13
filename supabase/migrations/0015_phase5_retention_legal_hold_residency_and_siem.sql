@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0015: Phase 5 — Retention Policies, Legal Holds, DSAR Privacy
+-- Migration 0015: Phase 5 - Retention Policies, Legal Holds, DSAR Privacy
 -- Requests, Data Residency & Tenant Isolation, and Sanitized SIEM Exports
 -- Covers F5-002, F5-003, F5-004, F5-005
 -- =============================================================================

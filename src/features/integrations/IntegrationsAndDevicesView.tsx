@@ -98,7 +98,7 @@ export function IntegrationsAndDevicesView() {
             >
               {tasks.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.code} — {t.title}
+                  {t.code} - {t.title}
                 </option>
               ))}
             </select>
@@ -107,11 +107,10 @@ export function IntegrationsAndDevicesView() {
 
         {feedback && (
           <div
-            className={`rounded-xl border px-3.5 py-2 text-xs flex items-center justify-between ${
-              feedback.ok
+            className={`rounded-xl border px-3.5 py-2 text-xs flex items-center justify-between ${feedback.ok
                 ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-200'
                 : 'border-rose-500/40 bg-rose-950/40 text-rose-200'
-            }`}
+              }`}
           >
             <span>{feedback.text}</span>
             <button
@@ -130,7 +129,7 @@ export function IntegrationsAndDevicesView() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-bold text-white">
-              Connected Developer Integrations (One-Click Disconnect Supported — Sec 5.5)
+              Connected Developer Integrations (One-Click Disconnect Supported - Sec 5.5)
             </h3>
             <p className="text-xs text-slate-400">
               Developers and admins can disconnect an IDE or Git integration at any time while
@@ -181,11 +180,10 @@ export function IntegrationsAndDevicesView() {
                     {int.provider}
                   </span>
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      int.status === 'connected'
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${int.status === 'connected'
                         ? 'bg-emerald-950/70 text-emerald-300 border-emerald-600/50'
                         : 'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}
+                      }`}
                   >
                     {int.status.toUpperCase()}
                   </span>
@@ -207,16 +205,14 @@ export function IntegrationsAndDevicesView() {
                     toggleIntegrationConnection(int.id)
                     setFeedback({
                       ok: true,
-                      text: `${int.displayName} is now ${
-                        int.status === 'connected' ? 'disconnected' : 'connected'
-                      }.`,
+                      text: `${int.displayName} is now ${int.status === 'connected' ? 'disconnected' : 'connected'
+                        }.`,
                     })
                   }}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${
-                    int.status === 'connected'
+                  className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${int.status === 'connected'
                       ? 'bg-rose-950/80 text-rose-300 border border-rose-700/60 hover:bg-rose-900/70'
                       : 'bg-emerald-700 text-white hover:bg-emerald-600'
-                  }`}
+                    }`}
                 >
                   {int.status === 'connected' ? 'Disconnect' : 'Connect / Opt-In'}
                 </button>
@@ -278,7 +274,7 @@ export function IntegrationsAndDevicesView() {
                   >
                     {tasks.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {t.code} — {t.title}
+                        {t.code} - {t.title}
                       </option>
                     ))}
                   </select>
@@ -288,9 +284,8 @@ export function IntegrationsAndDevicesView() {
                       confirmOrOverrideIdeMapping(mapping.id, selectedTask)
                       setFeedback({
                         ok: true,
-                        text: `Confirmed workspace mapping "${mapping.branchName}" -> ${
-                          tasks.find((t) => t.id === selectedTask)?.code ?? selectedTask
-                        }.`,
+                        text: `Confirmed workspace mapping "${mapping.branchName}" -> ${tasks.find((t) => t.id === selectedTask)?.code ?? selectedTask
+                          }.`,
                       })
                     }}
                     className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white cursor-pointer"
@@ -343,10 +338,10 @@ export function IntegrationsAndDevicesView() {
                 onChange={(e) =>
                   setWhEventType(
                     e.target.value as
-                      | 'push'
-                      | 'pull_request'
-                      | 'pull_request_review'
-                      | 'check_suite'
+                    | 'push'
+                    | 'pull_request'
+                    | 'pull_request_review'
+                    | 'check_suite'
                   )
                 }
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-white"
@@ -443,13 +438,12 @@ export function IntegrationsAndDevicesView() {
                     {r.provider.toUpperCase()} • {r.deliveryId}
                   </span>
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      r.status === 'processed'
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${r.status === 'processed'
                         ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
                         : r.status === 'duplicate_ignored'
                           ? 'bg-amber-950 text-amber-300 border border-amber-700/50'
                           : 'bg-rose-950 text-rose-300 border border-rose-700/50'
-                    }`}
+                      }`}
                   >
                     {r.status.toUpperCase()} ({r.deliveryAttemptCount}x)
                   </span>
@@ -481,13 +475,12 @@ export function IntegrationsAndDevicesView() {
           {devices.map((dev) => (
             <div
               key={dev.id}
-              className={`rounded-xl border p-4 space-y-2.5 ${
-                dev.revokedAt
+              className={`rounded-xl border p-4 space-y-2.5 ${dev.revokedAt
                   ? 'border-rose-700/60 bg-rose-950/20'
                   : dev.clockAnomalyDetected
                     ? 'border-amber-500/50 bg-amber-950/15'
                     : 'border-slate-800 bg-slate-950/80'
-              }`}
+                }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -497,11 +490,10 @@ export function IntegrationsAndDevicesView() {
                   </div>
                 </div>
                 <span
-                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                    dev.revokedAt
+                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${dev.revokedAt
                       ? 'bg-rose-950 text-rose-300 border border-rose-700'
                       : 'bg-emerald-950 text-emerald-300 border border-emerald-700'
-                  }`}
+                    }`}
                 >
                   {dev.revokedAt ? 'REVOKED' : 'ACTIVE'}
                 </span>
@@ -511,9 +503,8 @@ export function IntegrationsAndDevicesView() {
                 <div className="bg-slate-900 rounded-lg p-2">
                   <div className="text-slate-400">Clock Drift vs Server (F2-007)</div>
                   <div
-                    className={`font-mono font-bold ${
-                      dev.clockAnomalyDetected ? 'text-amber-300' : 'text-emerald-300'
-                    }`}
+                    className={`font-mono font-bold ${dev.clockAnomalyDetected ? 'text-amber-300' : 'text-emerald-300'
+                      }`}
                   >
                     {dev.lastClockDriftSeconds}s{' '}
                     {dev.clockAnomalyDetected ? '(Anomaly Notice R-08)' : '(Synchronized)'}
@@ -562,11 +553,10 @@ export function IntegrationsAndDevicesView() {
                   <button
                     type="button"
                     onClick={() => toggleDeviceRevocation(dev.id)}
-                    className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${
-                      dev.revokedAt
+                    className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${dev.revokedAt
                         ? 'bg-emerald-700 text-white'
                         : 'bg-rose-950/90 text-rose-300 border border-rose-700/60'
-                    }`}
+                      }`}
                   >
                     {dev.revokedAt ? 'Restore Device' : 'Revoke Token'}
                   </button>

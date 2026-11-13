@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { isSupabaseAuthConfigured, supabase } from '@/lib/supabaseClient'
 import { useTheme } from '@/context/ThemeContext'
+import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
+import { detectUserLocation } from '@/lib/countryTimezones'
 
 export function AuthLoginScreen() {
   const { theme, toggleTheme } = useTheme()
@@ -8,6 +10,9 @@ export function AuthLoginScreen() {
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [authCountryCode, setAuthCountryCode] = useState(() => detectUserLocation().countryCode)
+  const [authTimezone, setAuthTimezone] = useState(() => detectUserLocation().timezone)
+  const [authCountryName, setAuthCountryName] = useState('Sri Lanka')
   const [authMode, setAuthMode] = useState<'signup' | 'login' | 'recovery'>('login')
   const [authNotice, setAuthNotice] = useState<{ text: string; error: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -66,6 +71,9 @@ export function AuthLoginScreen() {
             emailRedirectTo: appRedirect,
             data: {
               full_name: authFullName.trim() || authEmail.trim().split('@')[0],
+              timezone: authTimezone,
+              country_code: authCountryCode,
+              country_name: authCountryName,
             },
           },
         })
@@ -274,6 +282,18 @@ export function AuthLoginScreen() {
                     required
                   />
                 </div>
+
+                {authMode === 'signup' && (
+                  <CountryTimezonePicker
+                    countryCode={authCountryCode}
+                    timezone={authTimezone}
+                    onChange={({ countryCode, countryName, timezone }) => {
+                      setAuthCountryCode(countryCode)
+                      setAuthCountryName(countryName)
+                      setAuthTimezone(timezone)
+                    }}
+                  />
+                )}
 
                 {authMode !== 'recovery' && (
                   <div>

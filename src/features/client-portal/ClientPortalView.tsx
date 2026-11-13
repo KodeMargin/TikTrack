@@ -34,7 +34,7 @@ export function ClientPortalView() {
 
   const planSupportsPortal = PHASE4_PLAN_CATALOG[subscription.planTier].clientPortalEnabled
 
-  // Strictly approved commercial lines only — never observedMinutes, developerNote,
+  // Strictly approved commercial lines only - never observedMinutes, developerNote,
   // managerComment, activity rollups, AI drafts, or internal dispute threads.
   const approvedLines = timesheetLines.filter(
     (l) =>
@@ -48,7 +48,7 @@ export function ClientPortalView() {
     (t) => t.status === 'done' || t.status === 'review'
   )
 
-  // Deliverable summaries only (PRs, Commits, CI, Reviews) — never workstation buckets
+  // Deliverable summaries only (PRs, Commits, CI, Reviews) - never workstation buckets
   const deliverableArtifacts = evidenceArtifacts.filter(
     (a) =>
       a.projectId === activeProjectId &&
@@ -114,7 +114,7 @@ export function ClientPortalView() {
               >
                 {scopedProjects.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.code} — {p.name} ({p.clientName})
+                    {p.code} - {p.name} ({p.clientName})
                   </option>
                 ))}
               </select>
@@ -156,7 +156,7 @@ export function ClientPortalView() {
             {activeProject ? `${activeProject.code} · ${activeProject.name}` : 'No project'}
           </div>
           <div className="text-xs text-slate-400 mt-0.5">
-            Client: {activeProject?.clientName ?? '—'}
+            Client: {activeProject?.clientName ?? '-'}
           </div>
         </div>
 

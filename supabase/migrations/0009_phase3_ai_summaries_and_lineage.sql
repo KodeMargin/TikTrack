@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0009: Phase 3 Milestone 3.2 — Guardrailed AI Assistance & Lineage
+-- Migration 0009: Phase 3 Milestone 3.2 - Guardrailed AI Assistance & Lineage
 -- Covers F3-020 through F3-027 and Section 6.5 AI/ML Guardrails
 -- =============================================================================
 

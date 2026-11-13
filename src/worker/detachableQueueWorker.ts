@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Detachable Horizontally Scalable Queue Worker (F5-008)
+ * DevProof (TikTrack) - Detachable Horizontally Scalable Queue Worker (F5-008)
  *
  * Extracted background worker service for high-volume Enterprise tenants:
  *  - Polls queued `activity_event_batches` (and optional pgmq queues when enabled)

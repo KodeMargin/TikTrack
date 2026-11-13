@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — System Reference Seed Script for Supabase PostgreSQL
+ * DevProof (TikTrack) - System Reference Seed Script for Supabase PostgreSQL
  *
  * Ensures system-level PlanEntitlement reference tiers exist without inserting
  * any dummy companies, fake users, or synthetic activity records.
@@ -11,6 +11,7 @@
 import path from 'node:path'
 import dotenv from 'dotenv'
 import { prisma } from '../src/lib/prisma.ts'
+import { seedPermissionsAndRoles } from './seeds/permissions.seed.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -106,6 +107,12 @@ async function main() {
   }
 
   console.log('System plan entitlements ready (0 dummy workspace records inserted).')
+
+  console.log('Seeding granular permissions catalog & pre-defined system roles...')
+  const rbacResult = await seedPermissionsAndRoles({ force: true })
+  console.log(
+    `Granular RBAC seed complete: ${rbacResult.moduleCount} modules, ${rbacResult.permissionCount} permissions, ${rbacResult.systemRoleCount} system roles (checksum=${rbacResult.checksum.slice(0, 12)}).`
+  )
 }
 
 main()

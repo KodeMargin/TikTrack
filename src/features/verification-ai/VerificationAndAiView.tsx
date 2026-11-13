@@ -66,7 +66,7 @@ export function VerificationAndAiView() {
         </h2>
         <p className="text-xs text-slate-300 max-w-2xl">
           Finance and Client Reviewer roles see only approved commercial hours, locked rates,
-          and finalized deliverables—never segment rule evaluations, correlation graphs, or
+          and finalized deliverables-never segment rule evaluations, correlation graphs, or
           private developer AI drafts. Switch to Developer, Project Manager, or Tenant Owner.
         </p>
       </div>
@@ -105,11 +105,10 @@ export function VerificationAndAiView() {
     <div className="space-y-6">
       {banner && (
         <div
-          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
-            banner.ok
+          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${banner.ok
               ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
               : 'border-rose-700 bg-rose-950/60 text-rose-200'
-          }`}
+            }`}
         >
           <span>{banner.text}</span>
           <button
@@ -141,33 +140,30 @@ export function VerificationAndAiView() {
           <button
             type="button"
             onClick={() => setTab('rules')}
-            className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${
-              tab === 'rules'
+            className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${tab === 'rules'
                 ? 'bg-indigo-600 border-indigo-500 text-white'
                 : 'bg-slate-950 border-slate-700 text-slate-300'
-            }`}
+              }`}
           >
             Rules & Policy Simulator (F3-001..010)
           </button>
           <button
             type="button"
             onClick={() => setTab('correlation')}
-            className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${
-              tab === 'correlation'
+            className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${tab === 'correlation'
                 ? 'bg-indigo-600 border-indigo-500 text-white'
                 : 'bg-slate-950 border-slate-700 text-slate-300'
-            }`}
+              }`}
           >
             Correlation Graph & Variance ({correlationEdges.length})
           </button>
           <button
             type="button"
             onClick={() => setTab('ai')}
-            className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${
-              tab === 'ai'
+            className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${tab === 'ai'
                 ? 'bg-indigo-600 border-indigo-500 text-white'
                 : 'bg-slate-950 border-slate-700 text-slate-300'
-            }`}
+              }`}
           >
             AI Draft Studio ({aiGenerations.length})
           </button>
@@ -255,7 +251,7 @@ export function VerificationAndAiView() {
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
                   Test threshold changes before activation. Rule changes apply strictly to future
-                  sessions—never silently mutating historical locked periods.
+                  sessions-never silently mutating historical locked periods.
                 </p>
               </div>
 
@@ -453,7 +449,7 @@ export function VerificationAndAiView() {
                   >
                     <div>
                       <div className="font-semibold text-white">
-                        v{rs.versionNumber} — {rs.versionLabel}
+                        v{rs.versionNumber} - {rs.versionLabel}
                       </div>
                       <div className="text-[11px] text-slate-400 font-mono">
                         Idle: {rs.rulesConfig.idleClarificationThresholdMinutes}m • DeepWork:{' '}
@@ -461,11 +457,10 @@ export function VerificationAndAiView() {
                       </div>
                     </div>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${
-                        rs.status === 'active'
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${rs.status === 'active'
                           ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
                           : 'bg-slate-800 text-slate-400'
-                      }`}
+                        }`}
                     >
                       {rs.status}
                     </span>
@@ -500,11 +495,10 @@ export function VerificationAndAiView() {
                   <div className="flex items-center justify-between">
                     <span className="font-mono font-bold text-indigo-300">{tv.taskCode}</span>
                     <span
-                      className={`px-2 py-0.5 rounded font-mono text-[10px] ${
-                        tv.variancePercent > 125
+                      className={`px-2 py-0.5 rounded font-mono text-[10px] ${tv.variancePercent > 125
                           ? 'bg-amber-950 text-amber-300 border border-amber-700'
                           : 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                      }`}
+                        }`}
                     >
                       {tv.variancePercent}% of est.
                     </span>
@@ -626,7 +620,7 @@ export function VerificationAndAiView() {
               >
                 {tasks.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.code} — {t.title}
+                    {t.code} - {t.title}
                   </option>
                 ))}
               </select>
@@ -707,13 +701,12 @@ export function VerificationAndAiView() {
                       </div>
 
                       <span
-                        className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase border ${
-                          gen.status === 'edited_approved'
+                        className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase border ${gen.status === 'edited_approved'
                             ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
                             : gen.status === 'discarded'
                               ? 'bg-slate-800 text-slate-400 border-slate-700'
                               : 'bg-amber-950 text-amber-300 border-amber-700'
-                        }`}
+                          }`}
                       >
                         {gen.status}
                       </span>

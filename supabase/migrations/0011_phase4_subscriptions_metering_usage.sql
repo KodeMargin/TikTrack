@@ -1,8 +1,8 @@
 -- =============================================================================
--- Migration 0011: Phase 4 — SaaS Subscriptions, Usage Metering & Entitlements
+-- Migration 0011: Phase 4 - SaaS Subscriptions, Usage Metering & Entitlements
 -- Covers F4-001 (Self-Service Trial & Checkout), F4-002 (Seat/Usage Metering),
 -- F4-003 (Strict Separation of SaaS Billing vs Freelancer Work Invoices),
--- F4-004 (Graceful Usage Limit Handling — Never Drop Core Time Sessions)
+-- F4-004 (Graceful Usage Limit Handling - Never Drop Core Time Sessions)
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------

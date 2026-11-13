@@ -6,18 +6,18 @@ Evidence-backed engineering intelligence and developer time verification platfor
 
 - **Frontend (`TikTrack/src/`)**: Interactive workspace (`App.tsx`), theme & WCAG/locale accessibility (`ThemeContext.tsx`), and phase-scoped context stores (`DataContext`, `Phase2Store`, `Phase3Store`, `Phase4Store`, `Phase5Store`).
 - **Time & Privacy Engine (`TikTrack/src/lib/`)**:
-  - `time-engine/` — Non-double-counting 5-minute UTC interval union rollup (`focus`, `debug`, `code_review`, `communication`, `observation_gap`).
-  - `phase3/` — Evidence trust tiers, AI coding-assistant correlation, and payroll lockouts.
-  - `phase4/` — Automated time-card approvals, sprint forecasting, Jira/Linear/GitHub/Calendar webhooks, and immutable client share links.
-  - `phase5/` — Enterprise SSO/SCIM, two-person policy governance, tenant retention/legal-hold sweeps, OCSF SIEM export sanitization, fleet OS compliance, warehouse manifests, and DR readiness gates.
+  - `time-engine/` - Non-double-counting 5-minute UTC interval union rollup (`focus`, `debug`, `code_review`, `communication`, `observation_gap`).
+  - `phase3/` - Evidence trust tiers, AI coding-assistant correlation, and payroll lockouts.
+  - `phase4/` - Automated time-card approvals, sprint forecasting, Jira/Linear/GitHub/Calendar webhooks, and immutable client share links.
+  - `phase5/` - Enterprise SSO/SCIM, two-person policy governance, tenant retention/legal-hold sweeps, OCSF SIEM export sanitization, fleet OS compliance, warehouse manifests, and DR readiness gates.
 - **Database & Security (`TikTrack/prisma/`, `TikTrack/supabase/`)**:
   - Normalized PostgreSQL schema (`prisma/schema.prisma`) and incremental migrations (`supabase/migrations/0001`–`0016`) + `pgTAP` verification tests (`supabase/tests/0001`–`0005`).
   - Idempotent live DB guard script (`supabase/apply_live_guards.sql`) covering append-only log immutability, two-person approval constraints, retention sweeps, and Row-Level Security (RLS) policies.
   - Supabase Edge Functions (`supabase/functions/`): `queue-worker`, `scim-provisioning`, `siem-export`, `enterprise-ops`, `jira-sync`, `webhook-ingest`, and `public-report`.
 - **Detachable Queue Worker (`TikTrack/src/worker/detachableQueueWorker.ts`, `TikTrack/Dockerfile.worker`)**: Standalone horizontally scalable Node/TypeScript worker polling `ingest_queue_jobs`, deduplicating concurrent multi-source heartbeats into 5-minute UTC rollups, and isolating exhausted jobs into `ingest_dead_letter_jobs`.
 - **Companion Clients**:
-  - `desktop-agent/` — Tauri / TypeScript desktop window-focus & idle monitor.
-  - `vscode-extension/` — VS Code active-file, git-branch, and debug-state heartbeat extension.
+  - `desktop-agent/` - Tauri / TypeScript desktop window-focus & idle monitor.
+  - `vscode-extension/` - VS Code active-file, git-branch, and debug-state heartbeat extension.
 
 ## Getting Started
 

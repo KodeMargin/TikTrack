@@ -217,7 +217,7 @@ export interface SignalArtifactInput {
 /**
  * F3-003: Work-Mode Suggestions
  * Suggests coding/debugging/research/meeting/testing based on observed coarse signals.
- * Advisory only — never alters billed hours automatically.
+ * Advisory only - never alters billed hours automatically.
  */
 export function suggestWorkModeFromSignals(
   rollups: SignalRollupInput[],

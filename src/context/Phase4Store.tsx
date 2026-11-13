@@ -472,7 +472,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     return {
       ok: true,
       plaintextKey,
-      message: `Created scoped API key "${record.name}" (${record.keyPrefix}...). Copy the secret now—only its SHA-256 hash is stored.`,
+      message: `Created scoped API key "${record.name}" (${record.keyPrefix}...). Copy the secret now-only its SHA-256 hash is stored.`,
     }
   }
 
@@ -517,38 +517,38 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     const data =
       input.resource === 'projects'
         ? projects.map((p) => ({
-            id: p.id,
-            code: p.code,
-            name: p.name,
-            clientName: p.clientName,
-            status: p.status,
-          }))
+          id: p.id,
+          code: p.code,
+          name: p.name,
+          clientName: p.clientName,
+          status: p.status,
+        }))
         : input.resource === 'tasks'
           ? tasks.map((t) => ({
-              id: t.id,
-              code: t.code,
-              title: t.title,
-              status: t.status,
-              estimateMinutes: t.estimateMinutes,
-              isBillable: t.isBillable,
-            }))
+            id: t.id,
+            code: t.code,
+            title: t.title,
+            status: t.status,
+            estimateMinutes: t.estimateMinutes,
+            isBillable: t.isBillable,
+          }))
           : input.resource === 'timesheets'
             ? timesheetLines.map((l) => ({
-                id: l.id,
-                workDate: l.workDate,
-                taskCode: l.taskCode,
-                claimedMinutes: l.claimedMinutes,
-                approvedBillableMinutes: l.approvedBillableMinutes,
-                evidenceStatus: l.evidenceStatus,
-              }))
+              id: l.id,
+              workDate: l.workDate,
+              taskCode: l.taskCode,
+              claimedMinutes: l.claimedMinutes,
+              approvedBillableMinutes: l.approvedBillableMinutes,
+              evidenceStatus: l.evidenceStatus,
+            }))
             : invoices.map((inv) => ({
-                id: inv.id,
-                invoiceNumber: inv.invoiceNumber,
-                clientName: inv.clientName,
-                totalAmount: inv.totalAmount,
-                currency: inv.currency,
-                status: inv.status,
-              }))
+              id: inv.id,
+              invoiceNumber: inv.invoiceNumber,
+              clientName: inv.clientName,
+              totalAmount: inv.totalAmount,
+              currency: inv.currency,
+              status: inv.status,
+            }))
 
     return {
       statusCode: 200,
@@ -772,7 +772,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
       tenantName: activeTenant.name,
       developerUserId: activeUser.id,
       developerName: activeUser.name,
-      reportTitle: input.reportTitle.trim() || `${activeUser.name} — Verified Work Report`,
+      reportTitle: input.reportTitle.trim() || `${activeUser.name} - Verified Work Report`,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
       lines: timesheetLines,

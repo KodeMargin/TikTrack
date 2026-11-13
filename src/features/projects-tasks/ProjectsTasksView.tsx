@@ -26,9 +26,12 @@ export function ProjectsTasksView({
     createProject,
     tasks,
     createTask,
+    updateTask,
+    deleteTask,
     updateTaskStatus,
     assignTaskMembers,
     addTaskAttachment,
+    hasPermission,
   } = usePhase1Store()
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
@@ -39,6 +42,25 @@ export function ProjectsTasksView({
   const [showNewTaskModal, setShowNewTaskModal] = useState(false)
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
   const [attachmentInput, setAttachmentInput] = useState<Record<string, string>>({})
+
+  // Edit task state
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editCriteria, setEditCriteria] = useState('')
+  const [editEstimate, setEditEstimate] = useState(120)
+  const [editPriority, setEditPriority] = useState<TaskRecord['priority']>('medium')
+  const [editMode, setEditMode] = useState<WorkMode>('coding')
+
+  // Granular action permissions
+  const canCreateProject = hasPermission('project:create')
+
+  const canCreateTask = hasPermission('task:create')
+  const canEditTask = hasPermission('task:edit')
+  const canDeleteTask = hasPermission('task:delete')
+  const canAssignTask = hasPermission('task:assign')
+  const canChangeTaskStatus = hasPermission('task:status_change')
+  const canApproveTask = hasPermission('task:approve')
+  const canTrackTimer = hasPermission('timer:start_stop')
 
   // New project form state
   const [projCode, setProjCode] = useState('')
@@ -62,8 +84,43 @@ export function ProjectsTasksView({
     (t) => !currentProject || t.projectId === currentProject.id
   )
 
-  const canManageProjects =
-    activeUser.role === 'tenant_owner' || activeUser.role === 'project_manager'
+  function startEditTask(task: TaskRecord) {
+    setEditingTaskId(task.id)
+    setEditTitle(task.title)
+    setEditCriteria(task.acceptanceCriteria)
+    setEditEstimate(task.estimateMinutes)
+    setEditPriority(task.priority)
+    setEditMode(task.defaultWorkMode)
+  }
+
+  function handleSaveEditTask(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingTaskId || !editTitle.trim()) return
+    updateTask(editingTaskId, {
+      title: editTitle.trim(),
+      acceptanceCriteria: editCriteria.trim(),
+      estimateMinutes: editEstimate,
+      priority: editPriority,
+      defaultWorkMode: editMode,
+    })
+    setEditingTaskId(null)
+    setBanner({ ok: true, text: 'Task specifications updated successfully.' })
+  }
+
+  function handleDeleteTask(taskId: string) {
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      const res = deleteTask(taskId)
+      setBanner({ ok: res.ok, text: res.message })
+    }
+  }
+
+  function handleApproveTask(task: TaskRecord) {
+    updateTask(task.id, { status: 'done' })
+    setBanner({
+      ok: true,
+      text: `Task ${task.code} acceptance criteria verified & marked Done.`,
+    })
+  }
 
   function handleCreateProject(e: React.FormEvent) {
     e.preventDefault()
@@ -183,7 +240,7 @@ export function ProjectsTasksView({
               </button>
             </div>
 
-            {canManageProjects && (
+            {canCreateProject && (
               <button
                 type="button"
                 onClick={() => setShowNewProjectModal((v) => !v)}
@@ -192,13 +249,15 @@ export function ProjectsTasksView({
                 + New Project
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setShowNewTaskModal((v) => !v)}
-              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white cursor-pointer"
-            >
-              + New Task / Subtask
-            </button>
+            {canCreateTask && (
+              <button
+                type="button"
+                onClick={() => setShowNewTaskModal((v) => !v)}
+                className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white cursor-pointer"
+              >
+                + New Task / Subtask
+              </button>
+            )}
           </div>
         </div>
 
@@ -407,6 +466,91 @@ export function ProjectsTasksView({
             </div>
           </form>
         )}
+
+        {/* Edit Task Inline Drawer (Granular: task:edit) */}
+        {editingTaskId && (
+          <form
+            onSubmit={handleSaveEditTask}
+            className="rounded-xl border border-indigo-500/50 bg-slate-950 p-4 space-y-3"
+          >
+            <div className="flex items-center justify-between text-xs font-semibold text-indigo-300">
+              <span>Edit Task Specifications & Acceptance Criteria (task:edit)</span>
+              <button
+                type="button"
+                onClick={() => setEditingTaskId(null)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+              <input
+                type="text"
+                placeholder="Task Title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                required
+              />
+              <select
+                value={editMode}
+                onChange={(e) => setEditMode(e.target.value as WorkMode)}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+              >
+                {WORK_MODE_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    Mode: {m.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={editPriority}
+                onChange={(e) =>
+                  setEditPriority(e.target.value as TaskRecord['priority'])
+                }
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <input
+                type="text"
+                placeholder="Acceptance criteria..."
+                value={editCriteria}
+                onChange={(e) => setEditCriteria(e.target.value)}
+                className="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+              />
+              <input
+                type="number"
+                min={15}
+                step={15}
+                value={editEstimate}
+                onChange={(e) => setEditEstimate(Number(e.target.value))}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white font-mono"
+                title="Estimate in minutes"
+              />
+            </div>
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setEditingTaskId(null)}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-3.5 py-1.5 rounded-lg bg-indigo-600 font-semibold text-white cursor-pointer hover:bg-indigo-500"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Kanban Board or List View (F1-011, F1-016) */}
@@ -450,17 +594,39 @@ export function ProjectsTasksView({
                               </span>
                             )}
                           </div>
-                          <span
-                            className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded ${
-                              task.priority === 'urgent'
-                                ? 'bg-rose-950 text-rose-300 border border-rose-800'
-                                : task.priority === 'high'
-                                  ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                                  : 'bg-slate-800 text-slate-300'
-                            }`}
-                          >
-                            {task.priority}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded ${
+                                task.priority === 'urgent'
+                                  ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                                  : task.priority === 'high'
+                                    ? 'bg-amber-950 text-amber-300 border border-amber-800'
+                                    : 'bg-slate-800 text-slate-300'
+                              }`}
+                            >
+                              {task.priority}
+                            </span>
+                            {canEditTask && (
+                              <button
+                                type="button"
+                                title="Edit Task Specifications (task:edit)"
+                                onClick={() => startEditTask(task)}
+                                className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] cursor-pointer"
+                              >
+                                ✎
+                              </button>
+                            )}
+                            {canDeleteTask && (
+                              <button
+                                type="button"
+                                title="Delete Task (task:delete)"
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-rose-950 hover:text-rose-300 text-slate-400 text-[10px] cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="text-xs font-semibold text-white leading-snug">
@@ -492,6 +658,17 @@ export function ProjectsTasksView({
                               .filter((m) => m.status === 'active')
                               .map((m) => {
                                 const assigned = task.assignedMemberIds.includes(m.id)
+                                if (!canAssignTask) {
+                                  if (!assigned) return null
+                                  return (
+                                    <span
+                                      key={m.id}
+                                      className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-950/70 border border-indigo-800/70 text-indigo-300"
+                                    >
+                                      ✓ {m.name.split(' ')[0]}
+                                    </span>
+                                  )
+                                }
                                 return (
                                   <button
                                     key={m.id}
@@ -553,36 +730,55 @@ export function ProjectsTasksView({
                           </div>
                         </div>
 
-                        <div className="pt-1 flex items-center justify-between gap-2 border-t border-slate-800/80">
-                          <select
-                            value={task.status}
-                            onChange={(e) =>
-                              updateTaskStatus(
-                                task.id,
-                                e.target.value as TaskRecord['status']
-                              )
-                            }
-                            className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-200"
-                          >
-                            <option value="backlog">Backlog</option>
-                            <option value="active">Active</option>
-                            <option value="review">Review</option>
-                            <option value="done">Done</option>
-                          </select>
+                        <div className="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80">
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              value={task.status}
+                              disabled={!canChangeTaskStatus}
+                              onChange={(e) =>
+                                updateTaskStatus(
+                                  task.id,
+                                  e.target.value as TaskRecord['status']
+                                )
+                              }
+                              className={`rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-200 ${
+                                !canChangeTaskStatus ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                              title={!canChangeTaskStatus ? 'Missing task:status_change permission' : undefined}
+                            >
+                              <option value="backlog">Backlog</option>
+                              <option value="active">Active</option>
+                              <option value="review">Review</option>
+                              <option value="done">Done</option>
+                            </select>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onLaunchTimerForTask(
-                                task.projectId,
-                                task.id,
-                                task.defaultWorkMode
-                              )
-                            }
-                            className="px-2.5 py-1 rounded bg-emerald-600/90 hover:bg-emerald-500 text-[11px] font-semibold text-white transition cursor-pointer"
-                          >
-                            ▶ Track Session
-                          </button>
+                            {canApproveTask && (task.status === 'review' || task.status === 'active') && (
+                              <button
+                                type="button"
+                                onClick={() => handleApproveTask(task)}
+                                title="Approve Acceptance Criteria & Sign-off Task (task:approve)"
+                                className="px-2 py-1 rounded bg-teal-600 hover:bg-teal-500 text-[10px] font-semibold text-white transition cursor-pointer"
+                              >
+                                ✓ Sign-off
+                              </button>
+                            )}
+                          </div>
+
+                          {canTrackTimer && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onLaunchTimerForTask(
+                                  task.projectId,
+                                  task.id,
+                                  task.defaultWorkMode
+                                )
+                              }
+                              className="px-2.5 py-1 rounded bg-emerald-600/90 hover:bg-emerald-500 text-[11px] font-semibold text-white transition cursor-pointer"
+                            >
+                              ▶ Track Session
+                            </button>
+                          )}
                         </div>
                       </div>
                     )
@@ -627,15 +823,49 @@ export function ProjectsTasksView({
                     {t.status}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onLaunchTimerForTask(t.projectId, t.id, t.defaultWorkMode)
-                      }
-                      className="px-2.5 py-1 rounded bg-emerald-600 text-white font-semibold cursor-pointer"
-                    >
-                      ▶ Track
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {canEditTask && (
+                        <button
+                          type="button"
+                          title="Edit Task"
+                          onClick={() => startEditTask(t)}
+                          className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs cursor-pointer"
+                        >
+                          ✎
+                        </button>
+                      )}
+                      {canDeleteTask && (
+                        <button
+                          type="button"
+                          title="Delete Task"
+                          onClick={() => handleDeleteTask(t.id)}
+                          className="px-2 py-1 rounded bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 text-xs cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      {canApproveTask && (t.status === 'review' || t.status === 'active') && (
+                        <button
+                          type="button"
+                          title="Approve Acceptance Criteria"
+                          onClick={() => handleApproveTask(t)}
+                          className="px-2 py-1 rounded bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs cursor-pointer"
+                        >
+                          ✓ Sign-off
+                        </button>
+                      )}
+                      {canTrackTimer && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onLaunchTimerForTask(t.projectId, t.id, t.defaultWorkMode)
+                          }
+                          className="px-2.5 py-1 rounded bg-emerald-600 text-white font-semibold cursor-pointer text-xs"
+                        >
+                          ▶ Track
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

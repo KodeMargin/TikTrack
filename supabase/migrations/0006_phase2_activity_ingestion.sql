@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0006: Phase 2 Milestone 2.1 — Desktop Activity Buckets, Idle
+-- Migration 0006: Phase 2 Milestone 2.1 - Desktop Activity Buckets, Idle
 -- Reconciliation, Privacy Exclusions, Device Enrollment & Clock Anomaly Detection
 -- Covers F2-001 through F2-008 & F2-034..F2-035
 -- =============================================================================

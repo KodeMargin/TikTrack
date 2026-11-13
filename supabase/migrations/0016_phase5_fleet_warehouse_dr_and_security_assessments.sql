@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0016: Phase 5 — Fleet Distribution, Scalable Analytics Warehouse,
+-- Migration 0016: Phase 5 - Fleet Distribution, Scalable Analytics Warehouse,
 -- DR & Load Drills, Security Assessments & Accessibility / Localization
 -- Covers F5-007, F5-008, F5-009, F5-010, F5-011
 -- =============================================================================

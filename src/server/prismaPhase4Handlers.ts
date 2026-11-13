@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Prisma ORM Phase 4 Handlers
+ * DevProof (TikTrack) - Prisma ORM Phase 4 Handlers
  *
  * Persists Phase 4 workflows in Supabase PostgreSQL:
  *  - SaaS Subscriptions & Separate SaaS Invoices (F4-001, F4-003)

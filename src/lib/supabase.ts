@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Typed Supabase Client Configuration
+ * DevProof (TikTrack) - Typed Supabase Client Configuration
  *
  * Security Boundary (Section 11.1 & 12.4):
  * Only VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are read from import.meta.env.
@@ -24,8 +24,8 @@ export function getSupabaseClientConfig(): SupabaseEnvConfig {
     anonKey,
     isConfigured: Boolean(
       url &&
-        anonKey &&
-        !anonKey.includes('your-local-or-project')
+      anonKey &&
+      !anonKey.includes('your-local-or-project')
     ),
   }
 }

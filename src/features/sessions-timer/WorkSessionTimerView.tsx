@@ -8,56 +8,56 @@ const WORK_MODE_DETAILS: {
   deepWork: boolean
   description: string
 }[] = [
-  {
-    mode: 'thinking',
-    label: 'Thinking / Architecture',
-    deepWork: true,
-    description:
-      'Declared deep reasoning or whiteboarding. Zero keyboard activity required (F1-023).',
-  },
-  {
-    mode: 'coding',
-    label: 'Coding',
-    deepWork: false,
-    description: 'Active implementation linked to assigned project/task.',
-  },
-  {
-    mode: 'debugging',
-    label: 'Debugging',
-    deepWork: false,
-    description: 'Root-cause investigation, stepping through debugger & test suites.',
-  },
-  {
-    mode: 'research',
-    label: 'Research / Reading Docs',
-    deepWork: true,
-    description: 'Reading RFCs, specifications, or vendor docs without forced input.',
-  },
-  {
-    mode: 'testing',
-    label: 'Testing / Verification',
-    deepWork: false,
-    description: 'Writing and running automated test suites or QA checks.',
-  },
-  {
-    mode: 'review',
-    label: 'Code & PR Review',
-    deepWork: true,
-    description: 'Reviewing pull requests, architecture docs, or security policies.',
-  },
-  {
-    mode: 'meeting',
-    label: 'Meeting / Pair Programming',
-    deepWork: true,
-    description: 'Collaborative session or client sync where another person may type.',
-  },
-  {
-    mode: 'design',
-    label: 'System / UI Design',
-    deepWork: true,
-    description: 'Schema design, wireframing, or technical specification writing.',
-  },
-]
+    {
+      mode: 'thinking',
+      label: 'Thinking / Architecture',
+      deepWork: true,
+      description:
+        'Declared deep reasoning or whiteboarding. Zero keyboard activity required (F1-023).',
+    },
+    {
+      mode: 'coding',
+      label: 'Coding',
+      deepWork: false,
+      description: 'Active implementation linked to assigned project/task.',
+    },
+    {
+      mode: 'debugging',
+      label: 'Debugging',
+      deepWork: false,
+      description: 'Root-cause investigation, stepping through debugger & test suites.',
+    },
+    {
+      mode: 'research',
+      label: 'Research / Reading Docs',
+      deepWork: true,
+      description: 'Reading RFCs, specifications, or vendor docs without forced input.',
+    },
+    {
+      mode: 'testing',
+      label: 'Testing / Verification',
+      deepWork: false,
+      description: 'Writing and running automated test suites or QA checks.',
+    },
+    {
+      mode: 'review',
+      label: 'Code & PR Review',
+      deepWork: true,
+      description: 'Reviewing pull requests, architecture docs, or security policies.',
+    },
+    {
+      mode: 'meeting',
+      label: 'Meeting / Pair Programming',
+      deepWork: true,
+      description: 'Collaborative session or client sync where another person may type.',
+    },
+    {
+      mode: 'design',
+      label: 'System / UI Design',
+      deepWork: true,
+      description: 'Schema design, wireframing, or technical specification writing.',
+    },
+  ]
 
 function formatSecondsHms(totalSeconds: number): string {
   const hrs = Math.floor(totalSeconds / 3600)
@@ -168,11 +168,10 @@ export function WorkSessionTimerView() {
 
       {feedbackBanner && (
         <div
-          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
-            feedbackBanner.ok
+          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${feedbackBanner.ok
               ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
               : 'border-rose-700 bg-rose-950/60 text-rose-200'
-          }`}
+            }`}
         >
           <span>{feedbackBanner.text}</span>
           <button
@@ -190,28 +189,34 @@ export function WorkSessionTimerView() {
         <div className="lg:col-span-7 rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-xl">
           {/* Visible Tracking Tray Bar (F1-027) */}
           <div
-            className={`px-5 py-3 border-b flex flex-wrap items-center justify-between gap-2 text-xs font-semibold ${
-              timer.lifecycle === 'running'
+            className={`px-5 py-3 border-b flex flex-wrap items-center justify-between gap-2 text-xs font-semibold ${timer.lifecycle === 'running'
                 ? 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
                 : timer.lifecycle === 'on_break'
-                  ? 'bg-amber-950/80 border-amber-800 text-amber-200'
-                  : 'bg-slate-800 border-slate-700 text-slate-300'
-            }`}
+                  ? 'bg-indigo-950/80 border-indigo-800 text-indigo-200'
+                  : timer.elapsedSeconds > 0
+                    ? 'bg-amber-950/80 border-amber-800 text-amber-200'
+                    : 'bg-slate-800 border-slate-700 text-slate-300'
+              }`}
           >
             <div className="flex items-center gap-2">
               <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  timer.lifecycle === 'running'
+                className={`h-2.5 w-2.5 rounded-full ${timer.lifecycle === 'running'
                     ? 'bg-emerald-400 animate-pulse'
-                    : 'bg-amber-400'
-                }`}
+                    : timer.lifecycle === 'on_break'
+                      ? 'bg-indigo-400'
+                      : timer.elapsedSeconds > 0
+                        ? 'bg-amber-400'
+                        : 'bg-slate-500'
+                  }`}
               />
               <span>
                 {timer.lifecycle === 'running'
                   ? `VISIBLE TRACKING ACTIVE • MODE: ${timer.workMode.toUpperCase()}`
                   : timer.lifecycle === 'on_break'
                     ? 'ON CONFIRMED BREAK (EXCLUDED FROM CLAIMED MINUTES)'
-                    : 'TIMER PAUSED — ZERO COLLECTION'}
+                    : timer.elapsedSeconds > 0
+                      ? 'TIMER PAUSED - ZERO COLLECTION'
+                      : 'TIMER IDLE - SELECT PROJECT & CLICK START'}
               </span>
             </div>
             <div className="flex items-center gap-3 font-mono text-[11px]">
@@ -250,11 +255,11 @@ export function WorkSessionTimerView() {
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
                 >
                   {projects.length === 0 && (
-                    <option value="">No projects yet — create one in Projects &amp; Tasks</option>
+                    <option value="">No projects yet - create one in Projects &amp; Tasks</option>
                   )}
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.code} — {p.name} ({p.clientName})
+                      {p.code} - {p.name} ({p.clientName})
                     </option>
                   ))}
                 </select>
@@ -314,11 +319,10 @@ export function WorkSessionTimerView() {
                           item.mode
                         )
                       }
-                      className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${
-                        active
+                      className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${active
                           ? 'border-indigo-500 bg-indigo-950/60 text-white'
                           : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700'
-                      }`}
+                        }`}
                     >
                       <div className="text-xs font-semibold">{item.label}</div>
                       <div className="text-[10px] text-slate-400 mt-0.5">
@@ -336,44 +340,40 @@ export function WorkSessionTimerView() {
               <button
                 type="button"
                 onClick={() => transitionTimer('running')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${
-                  timer.lifecycle === 'running'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${timer.lifecycle === 'running'
                     ? 'bg-emerald-600 text-white'
                     : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 ▶ Start / Resume
               </button>
               <button
                 type="button"
                 onClick={() => transitionTimer('paused')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${
-                  timer.lifecycle === 'paused'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${timer.lifecycle === 'paused'
                     ? 'bg-amber-600 text-white'
                     : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 ❚❚ Pause
               </button>
               <button
                 type="button"
                 onClick={() => transitionTimer('on_break')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${
-                  timer.lifecycle === 'on_break'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${timer.lifecycle === 'on_break'
                     ? 'bg-indigo-600 text-white'
                     : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 ☕ Break (F1-024)
               </button>
               <button
                 type="button"
                 onClick={toggleOfflineMode}
-                className={`ml-auto px-3 py-2 rounded-lg text-xs font-medium border cursor-pointer ${
-                  timer.isOfflineQueueActive
+                className={`ml-auto px-3 py-2 rounded-lg text-xs font-medium border cursor-pointer ${timer.isOfflineQueueActive
                     ? 'border-amber-500 bg-amber-950/60 text-amber-200'
                     : 'border-slate-700 bg-slate-800 text-slate-300'
-                }`}
+                  }`}
               >
                 {timer.isOfflineQueueActive
                   ? '⚡ Reconnect & Deduplicate Offline Queue (F1-025)'
@@ -555,7 +555,7 @@ export function WorkSessionTimerView() {
 
             <div>
               <label className="block text-[11px] font-semibold text-amber-300 mb-1">
-                Mandatory Manual Entry Reason (Min 10 chars — Enforced by DB Check Constraint)
+                Mandatory Manual Entry Reason (Min 10 chars - Enforced by DB Check Constraint)
               </label>
               <input
                 type="text"

@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Prisma ORM Phase 2 Handlers
+ * DevProof (TikTrack) - Prisma ORM Phase 2 Handlers
  *
  * Persists Phase 2 workflows (Activity Batches, Idle Gap Reconciliation,
  * GitHub/GitLab Webhook Deduplication, Evidence Artifacts/Links & Session Annotations)

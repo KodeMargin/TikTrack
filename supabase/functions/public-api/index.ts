@@ -6,7 +6,7 @@
 //    and matching `api_keys.key_hash_sha256` (revoked_at IS NULL, not expired).
 // 2. Enforces fine-grained scopes (`projects:read`, `tasks:read`, `timesheets:read`,
 //    `invoices:read`).
-// 3. Returns strictly commercial/project/timesheet data — never raw workstation
+// 3. Returns strictly commercial/project/timesheet data - never raw workstation
 //    telemetry, keystrokes, or internal AI drafts.
 // 4. Increments `usage_records.api_requests_count` and updates `api_keys.last_used_at`.
 // =============================================================================

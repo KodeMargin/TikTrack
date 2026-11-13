@@ -97,11 +97,11 @@ export interface SessionAnnotationItem {
   endMinuteOfDay: number
   authorName: string
   annotationType:
-    | 'thinking_note'
-    | 'research_outcome'
-    | 'investigation_log'
-    | 'idle_reconciliation'
-    | 'pair_programming'
+  | 'thinking_note'
+  | 'research_outcome'
+  | 'investigation_log'
+  | 'idle_reconciliation'
+  | 'pair_programming'
   title: string
   contentMarkdown: string
   createdAt: string
@@ -373,17 +373,17 @@ export function Phase2StoreProvider({ children }: { children: ReactNode }) {
       prev.map((art) =>
         art.id === artifactId
           ? {
-              ...art,
-              taskId: newTaskId,
-              taskCode: targetTask?.code ?? art.taskCode,
-              linkType: nextLinkType,
-              linkConfidence: 1.0,
-              linkRationale:
-                rationale.trim() ||
-                `Explicitly re-linked by ${activeUser.name} to ${targetTask?.code ?? newTaskId}`,
-              confirmedByUser: true,
-              overriddenByUser: true,
-            }
+            ...art,
+            taskId: newTaskId,
+            taskCode: targetTask?.code ?? art.taskCode,
+            linkType: nextLinkType,
+            linkConfidence: 1.0,
+            linkRationale:
+              rationale.trim() ||
+              `Explicitly re-linked by ${activeUser.name} to ${targetTask?.code ?? newTaskId}`,
+            confirmedByUser: true,
+            overriddenByUser: true,
+          }
           : art
       )
     )
@@ -443,14 +443,14 @@ export function Phase2StoreProvider({ children }: { children: ReactNode }) {
       prev.map((m) =>
         m.id === mappingId
           ? {
-              ...m,
-              taskId: targetTask.id,
-              taskCode: targetTask.code,
-              confidenceScore: 1.0,
-              confirmedByUser: true,
-              overriddenByUser: m.suggestedTaskCode !== targetTask.code,
-              updatedAt: new Date().toISOString(),
-            }
+            ...m,
+            taskId: targetTask.id,
+            taskCode: targetTask.code,
+            confidenceScore: 1.0,
+            confirmedByUser: true,
+            overriddenByUser: m.suggestedTaskCode !== targetTask.code,
+            updatedAt: new Date().toISOString(),
+          }
           : m
       )
     )
@@ -510,79 +510,79 @@ export function Phase2StoreProvider({ children }: { children: ReactNode }) {
       return {
         ok: true,
         message:
-          'Merged concurrent Desktop Agent + VS Code Extension signals (13:00–13:10) into a single 10m canonical bucket (never 20m — Section 5.5).',
+          'Merged concurrent Desktop Agent + VS Code Extension signals (13:00–13:10) into a single 10m canonical bucket (never 20m - Section 5.5).',
       }
     }
 
     const newArtifact: Phase2EvidenceArtifact =
       kind === 'vscode_debug'
         ? {
-            id: `art-dbg-${Date.now()}`,
+          id: `art-dbg-${Date.now()}`,
+          tenantId: activeTenant.id,
+          projectId: targetTask.projectId,
+          taskId: targetTask.id,
+          taskCode: targetTask.code,
+          workDate: '2026-11-11',
+          minuteOfDay: 760,
+          sourceType: 'vscode_debug',
+          captureMode: 'ide_extension',
+          externalId: `dbg-${Date.now().toString().slice(-4)}`,
+          occurredAtUtc: nowIso,
+          actorName: activeUser.name,
+          summaryTitle: `VS Code Debug Session (lldb/node): 12 breakpoints hit on ${targetTask.code}`,
+          linkType: 'contemporaneous',
+          linkConfidence: 0.96,
+          linkRationale: `Corroborates zero-commit debugging session on ${targetTask.code} (F2-012)`,
+          confirmedByUser: true,
+          overriddenByUser: false,
+          reliabilityStatus: 'signed_agent_batch',
+          metadata: { debug_type: 'pwa-node', breakpoints_hit: 12, duration_seconds: 1800 },
+        }
+        : kind === 'vscode_test'
+          ? {
+            id: `art-tst-${Date.now()}`,
             tenantId: activeTenant.id,
             projectId: targetTask.projectId,
             taskId: targetTask.id,
             taskCode: targetTask.code,
             workDate: '2026-11-11',
-            minuteOfDay: 760,
-            sourceType: 'vscode_debug',
+            minuteOfDay: 770,
+            sourceType: 'vscode_test',
             captureMode: 'ide_extension',
-            externalId: `dbg-${Date.now().toString().slice(-4)}`,
+            externalId: `tst-${Date.now().toString().slice(-4)}`,
             occurredAtUtc: nowIso,
             actorName: activeUser.name,
-            summaryTitle: `VS Code Debug Session (lldb/node): 12 breakpoints hit on ${targetTask.code}`,
+            summaryTitle: `Local Test Execution (Vitest): 34 passed, 0 failed (${targetTask.code})`,
             linkType: 'contemporaneous',
-            linkConfidence: 0.96,
-            linkRationale: `Corroborates zero-commit debugging session on ${targetTask.code} (F2-012)`,
+            linkConfidence: 0.95,
+            linkRationale: `Captured local test runner completion in workspace mapped to ${targetTask.code} (F2-013)`,
             confirmedByUser: true,
             overriddenByUser: false,
             reliabilityStatus: 'signed_agent_batch',
-            metadata: { debug_type: 'pwa-node', breakpoints_hit: 12, duration_seconds: 1800 },
+            metadata: { runner: 'vitest', passed: 34, failed: 0, duration_ms: 3190 },
           }
-        : kind === 'vscode_test'
-          ? {
-              id: `art-tst-${Date.now()}`,
-              tenantId: activeTenant.id,
-              projectId: targetTask.projectId,
-              taskId: targetTask.id,
-              taskCode: targetTask.code,
-              workDate: '2026-11-11',
-              minuteOfDay: 770,
-              sourceType: 'vscode_test',
-              captureMode: 'ide_extension',
-              externalId: `tst-${Date.now().toString().slice(-4)}`,
-              occurredAtUtc: nowIso,
-              actorName: activeUser.name,
-              summaryTitle: `Local Test Execution (Vitest): 34 passed, 0 failed (${targetTask.code})`,
-              linkType: 'contemporaneous',
-              linkConfidence: 0.95,
-              linkRationale: `Captured local test runner completion in workspace mapped to ${targetTask.code} (F2-013)`,
-              confirmedByUser: true,
-              overriddenByUser: false,
-              reliabilityStatus: 'signed_agent_batch',
-              metadata: { runner: 'vitest', passed: 34, failed: 0, duration_ms: 3190 },
-            }
           : {
-              id: `art-term-${Date.now()}`,
-              tenantId: activeTenant.id,
-              projectId: targetTask.projectId,
-              taskId: targetTask.id,
-              taskCode: targetTask.code,
-              workDate: '2026-11-11',
-              minuteOfDay: 775,
-              sourceType: 'terminal_command_category',
-              captureMode: 'desktop_agent',
-              externalId: `term-${Date.now().toString().slice(-4)}`,
-              occurredAtUtc: nowIso,
-              actorName: activeUser.name,
-              summaryTitle: `Opt-In Terminal Category: [database / test] (0 arguments or stdout collected — F2-016)`,
-              linkType: 'contemporaneous',
-              linkConfidence: 0.88,
-              linkRationale: `Explicit opt-in coarse terminal category during ${targetTask.code}`,
-              confirmedByUser: true,
-              overriddenByUser: false,
-              reliabilityStatus: 'signed_agent_batch',
-              metadata: { category: 'test', args_redacted: true, stdout_collected: false },
-            }
+            id: `art-term-${Date.now()}`,
+            tenantId: activeTenant.id,
+            projectId: targetTask.projectId,
+            taskId: targetTask.id,
+            taskCode: targetTask.code,
+            workDate: '2026-11-11',
+            minuteOfDay: 775,
+            sourceType: 'terminal_command_category',
+            captureMode: 'desktop_agent',
+            externalId: `term-${Date.now().toString().slice(-4)}`,
+            occurredAtUtc: nowIso,
+            actorName: activeUser.name,
+            summaryTitle: `Opt-In Terminal Category: [database / test] (0 arguments or stdout collected - F2-016)`,
+            linkType: 'contemporaneous',
+            linkConfidence: 0.88,
+            linkRationale: `Explicit opt-in coarse terminal category during ${targetTask.code}`,
+            confirmedByUser: true,
+            overriddenByUser: false,
+            reliabilityStatus: 'signed_agent_batch',
+            metadata: { category: 'test', args_redacted: true, stdout_collected: false },
+          }
 
     setAllArtifacts((prev) => [newArtifact, ...prev])
 
@@ -629,10 +629,10 @@ export function Phase2StoreProvider({ children }: { children: ReactNode }) {
       prev.map((int) =>
         int.id === integrationId
           ? {
-              ...int,
-              status: int.status === 'connected' ? 'disconnected' : 'connected',
-              lastSyncedAt: new Date().toISOString(),
-            }
+            ...int,
+            status: int.status === 'connected' ? 'disconnected' : 'connected',
+            lastSyncedAt: new Date().toISOString(),
+          }
           : int
       )
     )
@@ -693,11 +693,11 @@ export function Phase2StoreProvider({ children }: { children: ReactNode }) {
         prev.map((r) =>
           r.id === existingReceipt.id
             ? {
-                ...r,
-                deliveryAttemptCount: nextCount,
-                status: 'duplicate_ignored',
-                summary: `Replayed ${nextCount}x (${cleanDeliveryId}) — deduplicated to 1 canonical artifact (${existingReceipt.createdArtifactId})`,
-              }
+              ...r,
+              deliveryAttemptCount: nextCount,
+              status: 'duplicate_ignored',
+              summary: `Replayed ${nextCount}x (${cleanDeliveryId}) - deduplicated to 1 canonical artifact (${existingReceipt.createdArtifactId})`,
+            }
             : r
         )
       )
@@ -823,11 +823,11 @@ export function Phase2StoreProvider({ children }: { children: ReactNode }) {
       prev.map((d) =>
         d.id === deviceId
           ? {
-              ...d,
-              lastClockDriftSeconds: driftSeconds,
-              clockAnomalyDetected: Math.abs(driftSeconds) > 120,
-              lastSeenAt: new Date().toISOString(),
-            }
+            ...d,
+            lastClockDriftSeconds: driftSeconds,
+            clockAnomalyDetected: Math.abs(driftSeconds) > 120,
+            lastSeenAt: new Date().toISOString(),
+          }
           : d
       )
     )
@@ -840,9 +840,9 @@ export function Phase2StoreProvider({ children }: { children: ReactNode }) {
       prev.map((d) =>
         d.id === deviceId
           ? {
-              ...d,
-              revokedAt: nextRevoked ? new Date().toISOString() : null,
-            }
+            ...d,
+            revokedAt: nextRevoked ? new Date().toISOString() : null,
+          }
           : d
       )
     )

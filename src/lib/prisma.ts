@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Prisma ORM Client for Supabase PostgreSQL
+ * DevProof (TikTrack) - Prisma ORM Client for Supabase PostgreSQL
  *
  * Uses @prisma/adapter-pg (Prisma 7 Driver Adapter) connected to Supabase's
  * Supavisor transaction pooler (DATABASE_URL, port 6543, ?pgbouncer=true).

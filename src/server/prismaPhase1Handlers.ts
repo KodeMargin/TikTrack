@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Prisma Phase 1 Server Handlers
+ * DevProof (TikTrack) - Prisma Phase 1 Server Handlers
  *
  * Implements full PostgreSQL persistence for Tenancy, RBAC, Policy Consents,
  * Projects/Tasks/Assignments, Work Sessions/Breaks/Segments, Timesheets,
@@ -11,6 +11,7 @@ import { handleBootstrapPhase2Data } from './prismaPhase2Handlers.ts'
 import { handleBootstrapPhase3Data } from './prismaPhase3Handlers.ts'
 import { handleBootstrapPhase4Data } from './prismaPhase4Handlers.ts'
 import { handleBootstrapPhase5Data } from './prismaPhase5Handlers.ts'
+import { handleBootstrapRbacData } from './prismaRbacHandlers.ts'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -36,6 +37,10 @@ export async function handleBootstrap() {
       auditLogs: [],
     }
   }
+
+  // First-run & auto-evolution seed: ensures RBAC tables, permission_modules,
+  // permissions, and pre-defined system roles are saved in PostgreSQL.
+  const rbac = await handleBootstrapRbacData()
 
   const [
     dbTenants,
@@ -187,6 +192,7 @@ export async function handleBootstrap() {
         assignedProjectIds: m.user.projectMemberships
           .filter((pm) => pm.tenantId === m.tenantId)
           .map((pm) => pm.projectId),
+        customPermissions: rbac.memberGrantsByMembershipId[m.id] ?? [],
       }
     }),
     projects: dbProjects.map((p) => ({
@@ -336,6 +342,7 @@ export async function handleBootstrap() {
     phase3,
     phase4,
     phase5,
+    rbac,
   }
 }
 
@@ -356,20 +363,20 @@ export async function handleCreateTenant(body: {
 
     const user = existingUser
       ? await tx.userProfile.update({
-          where: { id: existingUser.id },
-          data: {
-            fullName: body.ownerName.trim(),
-            defaultTimezone: body.timezone,
-          },
-        })
+        where: { id: existingUser.id },
+        data: {
+          fullName: body.ownerName.trim(),
+          defaultTimezone: body.timezone,
+        },
+      })
       : await tx.userProfile.create({
-          data: {
-            id: crypto.randomUUID(),
-            email: normalizedOwnerEmail,
-            fullName: body.ownerName.trim(),
-            defaultTimezone: body.timezone,
-          },
-        })
+        data: {
+          id: crypto.randomUUID(),
+          email: normalizedOwnerEmail,
+          fullName: body.ownerName.trim(),
+          defaultTimezone: body.timezone,
+        },
+      })
 
     const tenant = await tx.tenant.create({
       data: {

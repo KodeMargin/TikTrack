@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { isSupabaseAuthConfigured, supabase } from '@/lib/supabaseClient'
+import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
+import { detectUserLocation } from '@/lib/countryTimezones'
 
 export function AuthAndOnboardingView() {
   const {
@@ -56,7 +58,8 @@ export function AuthAndOnboardingView() {
   // Tenant Onboarding State (F1-001)
   const [wsName, setWsName] = useState('')
   const [wsSlug, setWsSlug] = useState('')
-  const [wsTimezone, setWsTimezone] = useState('America/New_York')
+  const [wsCountryCode, setWsCountryCode] = useState(() => detectUserLocation().countryCode)
+  const [wsTimezone, setWsTimezone] = useState(() => detectUserLocation().timezone)
   const [wsCurrency, setWsCurrency] = useState('USD')
   const [ownerName, setOwnerName] = useState('')
   const [ownerEmail, setOwnerEmail] = useState('')
@@ -420,25 +423,29 @@ export function AuthAndOnboardingView() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <input
-                type="text"
-                placeholder="Timezone (e.g. UTC)"
-                value={wsTimezone}
-                onChange={(e) => setWsTimezone(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white font-mono"
-                required
-              />
+            <div>
+              <label className="block text-[11px] text-slate-400 mb-1">Currency</label>
               <select
                 value={wsCurrency}
                 onChange={(e) => setWsCurrency(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
               >
                 <option value="USD">USD ($)</option>
+                <option value="LKR">LKR (Rs)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="GBP">GBP (£)</option>
+                <option value="AUD">AUD (A$)</option>
               </select>
             </div>
+
+            <CountryTimezonePicker
+              countryCode={wsCountryCode}
+              timezone={wsTimezone}
+              onChange={({ countryCode, timezone }) => {
+                setWsCountryCode(countryCode)
+                setWsTimezone(timezone)
+              }}
+            />
             <div className="grid grid-cols-2 gap-2.5">
               <input
                 type="text"

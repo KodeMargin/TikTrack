@@ -20,9 +20,12 @@ import { VerificationAndAiView } from '@/features/verification-ai/VerificationAn
 import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
 import { ClientPortalView } from '@/features/client-portal/ClientPortalView'
 import { SaasBillingAndEcosystemView } from '@/features/saas-ecosystem/SaasBillingAndEcosystemView'
+import { PricingPlansView } from '@/features/saas-ecosystem/PricingPlansView'
 import { EnterpriseComplianceView } from '@/features/enterprise-compliance/EnterpriseComplianceView'
 import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
 import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaInspector'
+import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
+import { detectUserLocation } from '@/lib/countryTimezones'
 
 type NavSection =
   | 'timesheets-review'
@@ -34,6 +37,7 @@ type NavSection =
   | 'integrations-devices'
   | 'privacy-audit'
   | 'billing-admin'
+  | 'pricing-plans'
   | 'client-portal'
   | 'saas-ecosystem'
   | 'enterprise-compliance'
@@ -155,6 +159,23 @@ const NAV_ITEMS: NavItem[] = [
     group: 'admin',
     allowedRoles: ['super_admin', 'tenant_owner', 'finance'],
     icon: <NavIcon path="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3Z" />,
+  },
+  {
+    id: 'pricing-plans',
+    path: '/pricing',
+    label: 'Pricing & Plans',
+    description: 'SaaS tiers, seat quotas & subscription upgrade',
+    group: 'admin',
+    allowedRoles: [
+      'super_admin',
+      'tenant_owner',
+      'project_manager',
+      'developer',
+      'finance',
+      'client_reviewer',
+      'auditor',
+    ],
+    icon: <NavIcon path="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />,
   },
   {
     id: 'client-portal',
@@ -313,6 +334,21 @@ function FirstTimePasswordChangeModal({
   )
 }
 
+// Granular permission that unlocks each section for custom (tenant-defined) roles
+// and for members with individual permission overrides.
+const NAV_PERMISSION_MAP: Partial<Record<string, string>> = {
+  'timesheets-review': 'timesheet:view_own',
+  'timer-sessions': 'timer:start_stop',
+  'projects-tasks': 'task:view',
+  'timeline-evidence': 'timeline:view_own',
+  'verification-ai': 'verification:view',
+  'disputes-appeals': 'dispute:view',
+  'integrations-devices': 'integration:view',
+  'privacy-audit': 'compliance:view',
+  'billing-admin': 'billing:view',
+  'enterprise-compliance': 'compliance:view',
+}
+
 function resolveSectionFromPath(pathname: string): NavSection {
   const match = NAV_ITEMS.find((item) => item.path === pathname)
   return match ? match.id : 'timesheets-review'
@@ -343,12 +379,24 @@ function DevProofShell() {
     notifications,
     unreadNotificationCount,
     markNotificationRead,
+    hasPermission,
   } = usePhase1Store()
+
+  const canAccessNav = (item: NavItem) => {
+    if (activeUser.role === 'super_admin') return true
+    if (item.allowedRoles.includes(activeUser.role)) return true
+    const perm = NAV_PERMISSION_MAP[item.id]
+    if (perm && hasPermission(perm)) return true
+    // Team & role management lives in the admin section
+    if (item.id === 'billing-admin' && (hasPermission('role:view') || hasPermission('member:invite'))) return true
+    return false
+  }
 
   const [setupName, setSetupName] = useState('')
   const [setupSlug, setSetupSlug] = useState('')
   const [setupCurrency, setSetupCurrency] = useState('USD')
-  const [setupTimezone, setSetupTimezone] = useState('Asia/Colombo')
+  const [setupCountryCode, setSetupCountryCode] = useState(() => detectUserLocation().countryCode)
+  const [setupTimezone, setSetupTimezone] = useState(() => detectUserLocation().timezone)
   const [setupOwnerName, setSetupOwnerName] = useState('')
   const [setupOwnerEmail, setSetupOwnerEmail] = useState(
     () => sessionUserEmail || 'iamartseeker@gmail.com'
@@ -387,7 +435,7 @@ function DevProofShell() {
   }, [])
 
   const visibleNavItems = NAV_ITEMS.filter((item) =>
-    item.allowedRoles.includes(activeUser.role)
+    canAccessNav(item)
   )
 
   useEffect(() => {
@@ -412,7 +460,7 @@ function DevProofShell() {
 
   function navigateToSection(section: NavSection) {
     const target = NAV_ITEMS.find((n) => n.id === section)
-    if (!target || !target.allowedRoles.includes(activeUser.role)) {
+    if (!target || !canAccessNav(target)) {
       return
     }
     setActiveSection(section)
@@ -619,36 +667,31 @@ function DevProofShell() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    Currency
-                  </label>
-                  <select
-                    value={setupCurrency}
-                    onChange={(e) => setSetupCurrency(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm"
-                  >
-                    <option value="USD">USD ($)</option>
-                    <option value="LKR">LKR (Rs)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                    <option value="AUD">AUD (A$)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    Timezone
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={setupTimezone}
-                    onChange={(e) => setSetupTimezone(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+                  Currency
+                </label>
+                <select
+                  value={setupCurrency}
+                  onChange={(e) => setSetupCurrency(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm"
+                >
+                  <option value="USD">USD ($)</option>
+                  <option value="LKR">LKR (Rs)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="AUD">AUD (A$)</option>
+                </select>
               </div>
+
+              <CountryTimezonePicker
+                countryCode={setupCountryCode}
+                timezone={setupTimezone}
+                onChange={({ countryCode, timezone }) => {
+                  setSetupCountryCode(countryCode)
+                  setSetupTimezone(timezone)
+                }}
+              />
 
               {setupError && (
                 <div className="text-xs text-rose-600 dark:text-rose-400">{setupError}</div>
@@ -777,21 +820,42 @@ function DevProofShell() {
             <button
               type="button"
               onClick={() => navigateToSection('timer-sessions')}
+              title={
+                timer.lifecycle === 'running'
+                  ? `Recording active work session (${timer.workMode}) - Click to view timer`
+                  : timer.lifecycle === 'on_break'
+                    ? `Session on break - Click to view timer`
+                    : timer.elapsedSeconds > 0
+                      ? `Session paused (${Math.floor(timer.elapsedSeconds / 60)}m elapsed) - Click to resume`
+                      : 'Timer idle - Click to start tracking time'
+              }
               className={`hidden md:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer ${timer.lifecycle === 'running'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-300'
-                : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-300'
+                  : timer.lifecycle === 'on_break'
+                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/10 dark:border-indigo-500/30 dark:text-indigo-300'
+                    : timer.elapsedSeconds > 0
+                      ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300'
+                      : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300'
                 }`}
             >
               <span
                 className={`h-2 w-2 rounded-full ${timer.lifecycle === 'running'
-                  ? 'bg-emerald-500 animate-pulse'
-                  : 'bg-amber-500'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : timer.lifecycle === 'on_break'
+                      ? 'bg-indigo-500'
+                      : timer.elapsedSeconds > 0
+                        ? 'bg-amber-500'
+                        : 'bg-slate-400'
                   }`}
               />
               <span>
                 {timer.lifecycle === 'running'
                   ? `Recording · ${timer.workMode}`
-                  : `Timer ${timer.lifecycle}`}
+                  : timer.lifecycle === 'on_break'
+                    ? `On Break (${Math.floor(timer.breakSeconds / 60)}m)`
+                    : timer.elapsedSeconds > 0
+                      ? `Paused (${Math.floor(timer.elapsedSeconds / 60)}m)`
+                      : 'Timer Idle'}
               </span>
             </button>
 
@@ -840,17 +904,15 @@ function DevProofShell() {
                               setActiveTenantId(t.id)
                               setWorkspaceMenuOpen(false)
                             }}
-                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-left ${
-                              isSelected
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-left ${isSelected
                                 ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold'
                                 : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <span
-                                className={`h-2 w-2 rounded-full shrink-0 ${
-                                  isSelected ? 'bg-indigo-600 dark:bg-indigo-400' : 'bg-slate-300 dark:bg-slate-600'
-                                }`}
+                                className={`h-2 w-2 rounded-full shrink-0 ${isSelected ? 'bg-indigo-600 dark:bg-indigo-400' : 'bg-slate-300 dark:bg-slate-600'
+                                  }`}
                               />
                               <div className="truncate">
                                 <div className="truncate">{t.name}</div>
@@ -895,26 +957,23 @@ function DevProofShell() {
                     setNotifOpen(false)
                   }}
                   aria-label="User role and simulation menu"
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-sm transition cursor-pointer ${
-                    activeUser.role === 'super_admin'
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-sm transition cursor-pointer ${activeUser.role === 'super_admin'
                       ? 'bg-amber-500/10 border-amber-500/30 dark:bg-amber-500/20 dark:border-amber-500/40 text-amber-800 dark:text-amber-200 hover:bg-amber-500/15'
                       : 'bg-violet-500/10 border-violet-500/30 dark:bg-violet-500/20 dark:border-violet-500/40 text-violet-800 dark:text-violet-200 hover:bg-violet-500/15'
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`h-2 w-2 rounded-full shrink-0 ${
-                      activeUser.role === 'super_admin' ? 'bg-amber-500' : 'bg-violet-500'
-                    }`}
+                    className={`h-2 w-2 rounded-full shrink-0 ${activeUser.role === 'super_admin' ? 'bg-amber-500' : 'bg-violet-500'
+                      }`}
                   />
                   <span className="truncate max-w-[120px] font-bold">
                     {activeUser.name || 'Super Admin'}
                   </span>
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase shrink-0 font-bold tracking-wider ${
-                      activeUser.role === 'super_admin'
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase shrink-0 font-bold tracking-wider ${activeUser.role === 'super_admin'
                         ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-800 dark:text-amber-200'
                         : 'bg-violet-500/20 dark:bg-violet-500/30 text-violet-800 dark:text-violet-200'
-                    }`}
+                      }`}
                   >
                     {activeUser.role === 'super_admin'
                       ? 'SUPER ADMIN'
@@ -967,11 +1026,10 @@ function DevProofShell() {
                           setActiveUserId('super-admin')
                           setPersonaMenuOpen(false)
                         }}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${
-                          activeUser.role === 'super_admin'
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${activeUser.role === 'super_admin'
                             ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-200 font-semibold'
                             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
@@ -1006,11 +1064,10 @@ function DevProofShell() {
                                 setActiveUserId(m.id)
                                 setPersonaMenuOpen(false)
                               }}
-                              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${
-                                isSimulating
+                              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${isSimulating
                                   ? 'bg-violet-50 dark:bg-violet-500/15 text-violet-800 dark:text-violet-200 font-semibold'
                                   : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
-                              }`}
+                                }`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className={`h-2 w-2 rounded-full shrink-0 ${isSimulating ? 'bg-violet-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
@@ -1070,11 +1127,10 @@ function DevProofShell() {
                           setActiveUserId(m.id)
                           setPersonaMenuOpen(false)
                         }}
-                        className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition ${
-                          activeUser.id === m.id
+                        className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition ${activeUser.id === m.id
                             ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 font-semibold'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
-                        }`}
+                          }`}
                       >
                         {m.name} ({m.role.replace('_', ' ')})
                       </button>
@@ -1169,7 +1225,7 @@ function DevProofShell() {
                   navigateToSection('timer-sessions')
                 })
               }}
-              title={sessionUserEmail ? `Signed in as ${sessionUserEmail} — Click to Sign Out` : 'Sign out'}
+              title={sessionUserEmail ? `Signed in as ${sessionUserEmail} - Click to Sign Out` : 'Sign out'}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-xs font-semibold text-rose-700 dark:text-rose-300 transition cursor-pointer"
             >
               <svg
@@ -1190,7 +1246,7 @@ function DevProofShell() {
 
         {/* Main Workspace Canvas with Strict RBAC Route Guard */}
         <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-6">
-          {!currentNav.allowedRoles.includes(activeUser.role) ? (
+          {!canAccessNav(currentNav) ? (
             <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-8 text-center space-y-4">
               <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-300">
                 <NavIcon path="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -1230,6 +1286,7 @@ function DevProofShell() {
               {activeSection === 'integrations-devices' && <IntegrationsAndDevicesView />}
               {activeSection === 'privacy-audit' && <PrivacyAuditView />}
               {activeSection === 'billing-admin' && <BillingAndAdminView />}
+              {activeSection === 'pricing-plans' && <PricingPlansView />}
               {activeSection === 'client-portal' && <ClientPortalView />}
               {activeSection === 'saas-ecosystem' && <SaasBillingAndEcosystemView />}
               {activeSection === 'enterprise-compliance' && <EnterpriseComplianceView />}

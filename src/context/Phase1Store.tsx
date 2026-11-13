@@ -17,16 +17,28 @@ import type {
   SessionProvenance,
   UserRole,
   WorkMode,
+  CustomRole,
 } from '@/types/domain.types'
+import {
+  DEFAULT_PREDEFINED_ROLES,
+  DEFAULT_TENANT_OWNER_PERMISSIONS,
+  GRANULAR_PERMISSIONS,
+  type GranularPermissionDef,
+  type PermissionModuleId,
+} from '@/types/permissions.types'
 import { applyTimeRounding, resolveEffectiveRate } from '@/lib/time-engine'
 import {
   assignTaskMembersViaPrisma,
+  createCustomRoleViaPrisma,
   createProjectViaPrisma,
   createTaskViaPrisma,
   createTenantViaPrisma,
+  deleteCustomRoleViaPrisma,
   fetchPrismaBootstrap,
   inviteMemberViaPrisma,
+  registerPermissionViaPrisma,
   resendMemberInviteViaPrisma,
+  runPermissionsSeedViaPrisma,
   lockInvoiceViaPrisma,
   markNotificationReadViaPrisma,
   partialApproveTimesheetViaPrisma,
@@ -34,15 +46,19 @@ import {
   recordSessionViaPrisma,
   reviewTimesheetLineViaPrisma,
   submitTimesheetViaPrisma,
+  updateCustomRoleViaPrisma,
+  updateMemberRoleViaPrisma,
   updateMemberStatusViaPrisma,
   deleteMemberViaPrisma,
   updateTaskStatusViaPrisma,
+  updateTenantOwnerPermissionsViaPrisma,
   updateTenantSettingsViaPrisma,
   type PrismaConnectionStatus,
   type PrismaPhase2BootstrapPayload,
   type PrismaPhase3BootstrapPayload,
   type PrismaPhase4BootstrapPayload,
   type PrismaPhase5BootstrapPayload,
+  type PrismaRbacBootstrapPayload,
 } from '@/lib/prismaApiClient'
 
 export interface PolicyVersionRecord {
@@ -94,6 +110,7 @@ export interface WorkspaceMember {
   assignedProjectIds: string[]
   mustChangePassword?: boolean
   temporaryPassword?: string
+  customPermissions?: string[]
 }
 
 export interface ProjectRecord {
@@ -230,6 +247,8 @@ interface ActiveTimerState {
 }
 
 const TIMER_RECOVERY_STORAGE_KEY = 'devproof_active_timer_recovery_v1'
+const CUSTOM_ROLES_STORAGE_KEY = 'devproof_custom_roles_v1'
+const TENANT_OWNER_PERMS_STORAGE_KEY = 'devproof_tenant_owner_perms_v1'
 
 interface Phase1StoreContextValue {
   tenants: TenantWorkspace[]
@@ -257,7 +276,8 @@ interface Phase1StoreContextValue {
     name: string,
     email: string,
     role: UserRole,
-    temporaryPassword?: string
+    temporaryPassword?: string,
+    customPermissions?: string[]
   ) => { ok: boolean; message: string }
   completeFirstTimePasswordChange: (
     newPassword: string
@@ -266,10 +286,46 @@ interface Phase1StoreContextValue {
   toggleMemberStatus: (memberId: string, nextStatus: WorkspaceMember['status']) => void
   deleteMember: (memberId: string) => { ok: boolean; message: string }
   acknowledgeCurrentPolicy: () => void
+  roles: CustomRole[]
+  permissionsCatalog: GranularPermissionDef[]
+  rbacSeedStatus: PrismaRbacBootstrapPayload['seedStatus'] | null
+  tenantOwnerPermissions: Record<string, string[]>
+  hasPermission: (permission: string, member?: WorkspaceMember) => boolean
+  getUserPermissions: (member?: WorkspaceMember) => string[]
+  createCustomRole: (input: {
+    name: string
+    code?: string
+    description: string
+    permissions: string[]
+  }) => { ok: boolean; message: string; role?: CustomRole }
+  updateCustomRole: (
+    roleId: string,
+    updates: Partial<{ name: string; description: string; permissions: string[] }>
+  ) => { ok: boolean; message: string }
+  deleteCustomRole: (roleId: string) => { ok: boolean; message: string }
+  updateMemberRole: (
+    memberId: string,
+    role: string,
+    customPermissions?: string[]
+  ) => { ok: boolean; message: string }
+  updateTenantOwnerPermissions: (
+    tenantId: string,
+    permissions: string[]
+  ) => { ok: boolean; message: string }
+  registerNewPermission: (input: {
+    key: string
+    module: PermissionModuleId
+    label: string
+    description: string
+    isSuperAdminOnly?: boolean
+  }) => Promise<{ ok: boolean; message: string }>
+  reseedPermissionsToDatabase: () => Promise<{ ok: boolean; message: string }>
   projects: ProjectRecord[]
   createProject: (code: string, name: string, clientName: string, description: string) => { ok: boolean; message: string }
   tasks: TaskRecord[]
   createTask: (input: Omit<TaskRecord, 'id' | 'tenantId' | 'attachments'>) => void
+  updateTask: (taskId: string, patch: Partial<Omit<TaskRecord, 'id' | 'tenantId'>>) => void
+  deleteTask: (taskId: string) => { ok: boolean; message: string }
   updateTaskStatus: (taskId: string, status: TaskRecord['status']) => void
   assignTaskMembers: (taskId: string, memberIds: string[]) => void
   addTaskAttachment: (taskId: string, fileName: string) => void
@@ -349,7 +405,7 @@ const EMPTY_CONTRACT_POLICY: ContractBillingPolicy = {
   id: '',
   tenantId: '',
   projectName: 'No active contract',
-  clientName: '—',
+  clientName: '-',
   roundingRule: 'none',
   paidBreakAllowanceMinutesPerDay: 15,
   weeklyCapMinutes: 2400,
@@ -404,11 +460,28 @@ function loadRecoveredTimerState(): ActiveTimerState {
     const raw = localStorage.getItem(TIMER_RECOVERY_STORAGE_KEY)
     if (!raw) return defaultState
     const parsed = JSON.parse(raw) as Partial<ActiveTimerState>
-    if (parsed && typeof parsed.elapsedSeconds === 'number') {
-      return {
+    // Critical: A time-tracker must NEVER auto-tick on app start or page refresh.
+    // Time must only be tracked when the developer explicitly starts the timer.
+    if (parsed && typeof parsed.elapsedSeconds === 'number' && parsed.elapsedSeconds > 0) {
+      const recovered: ActiveTimerState = {
         ...defaultState,
         ...parsed,
-        recoveredFromCrash: Boolean(parsed.isRunning || parsed.elapsedSeconds > 0),
+        isRunning: false,
+        lifecycle: 'paused',
+        recoveredFromCrash: true,
+      }
+      try {
+        localStorage.setItem(TIMER_RECOVERY_STORAGE_KEY, JSON.stringify(recovered))
+      } catch {
+        // Ignore storage errors
+      }
+      return recovered
+    } else {
+      // If elapsed seconds was 0 or invalid, clear out stale state
+      try {
+        localStorage.removeItem(TIMER_RECOVERY_STORAGE_KEY)
+      } catch {
+        // Ignore
       }
     }
   } catch {
@@ -462,6 +535,60 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     message: 'Connecting to Supabase PostgreSQL...',
   })
   const [timer, setTimer] = useState<ActiveTimerState>(loadRecoveredTimerState)
+  const [permissionsCatalog, setPermissionsCatalog] =
+    useState<GranularPermissionDef[]>(GRANULAR_PERMISSIONS)
+  const [rbacSeedStatus, setRbacSeedStatus] = useState<
+    PrismaRbacBootstrapPayload['seedStatus'] | null
+  >(null)
+
+  const [roles, setRoles] = useState<CustomRole[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_PREDEFINED_ROLES
+    try {
+      const stored = localStorage.getItem(CUSTOM_ROLES_STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as CustomRole[]
+        const customOnly = parsed.filter((r) => !r.isSystemRole)
+        return [...DEFAULT_PREDEFINED_ROLES, ...customOnly]
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_PREDEFINED_ROLES
+  })
+
+  const [tenantOwnerPermissions, setTenantOwnerPermissions] = useState<Record<string, string[]>>(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const stored = localStorage.getItem(TENANT_OWNER_PERMS_STORAGE_KEY)
+      if (stored) return JSON.parse(stored)
+    } catch {
+      // ignore
+    }
+    return {}
+  })
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(CUSTOM_ROLES_STORAGE_KEY, JSON.stringify(roles))
+      } catch {
+        // ignore
+      }
+    }
+  }, [roles])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          TENANT_OWNER_PERMS_STORAGE_KEY,
+          JSON.stringify(tenantOwnerPermissions)
+        )
+      } catch {
+        // ignore
+      }
+    }
+  }, [tenantOwnerPermissions])
 
   function applyBootstrapPayload(
     payload: NonNullable<Awaited<ReturnType<typeof fetchPrismaBootstrap>>>
@@ -507,6 +634,16 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       setPhase3Bootstrap(payload.phase3 ?? null)
       setPhase4Bootstrap(payload.phase4 ?? null)
       setPhase5Bootstrap(payload.phase5 ?? null)
+      if (payload.rbac) {
+        setRbacSeedStatus(payload.rbac.seedStatus)
+        if (payload.rbac.permissions.length > 0) {
+          setPermissionsCatalog(payload.rbac.permissions)
+        }
+        if (payload.rbac.roles.length > 0) {
+          setRoles(payload.rbac.roles)
+        }
+        setTenantOwnerPermissions(payload.rbac.tenantOwnerPermissions)
+      }
     } else {
       setTenants([])
       setMembers([])
@@ -890,7 +1027,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     name: string,
     email: string,
     role: UserRole,
-    temporaryPassword?: string
+    temporaryPassword?: string,
+    customPermissions?: string[]
   ): { ok: boolean; message: string } {
     const activeSeatCount = tenantMembers.filter((m) => m.status === 'active').length
     if (activeSeatCount >= activeEntitlement.maxSeats) {
@@ -913,6 +1051,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
               ...m,
               name: name.trim(),
               role,
+              customPermissions: customPermissions || m.customPermissions,
               status: 'invited',
               mustChangePassword: true,
               temporaryPassword,
@@ -927,6 +1066,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         name: name.trim(),
         email: normalizedEmail,
         role,
+        customPermissions: customPermissions || [],
         status: 'invited',
         mustChangePassword: true,
         temporaryPassword,
@@ -951,6 +1091,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         email: normalizedEmail,
         role,
         temporaryPassword,
+        customPermissions,
       }).then((res) => {
         if (res?.ok && res.userId) {
           setMembers((prev) =>
@@ -1096,6 +1237,357 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  function hasPermission(permission: string, member?: WorkspaceMember): boolean {
+    const targetMember = member ?? activeUser
+    if (!targetMember) return false
+
+    // SUPER ADMIN PRIVILEGE:
+    // If user has role super_admin or session is super admin (unless intentionally evaluating another member),
+    // they get automatic master authorization for ALL current and future permissions.
+    const isSuper =
+      targetMember.role === 'super_admin' ||
+      (!member && isSuperAdminSession && activeUser.role === 'super_admin')
+    if (isSuper) {
+      return true
+    }
+
+    // Tenant owner permissions (can be customized by super admin per tenant)
+    if (targetMember.role === 'tenant_owner') {
+      const allowed =
+        tenantOwnerPermissions[activeTenant.id] ?? DEFAULT_TENANT_OWNER_PERMISSIONS
+      const direct = targetMember.customPermissions ?? []
+      return allowed.includes(permission) || direct.includes(permission)
+    }
+
+    // System or custom role resolution
+    const matchedRole = roles.find(
+      (r) =>
+        (r.tenantId === 'system' || r.tenantId === activeTenant.id) &&
+        (r.code === targetMember.role || r.id === targetMember.role)
+    )
+
+    const rolePerms = matchedRole ? matchedRole.permissions : []
+    const directPerms = targetMember.customPermissions ?? []
+    return rolePerms.includes(permission) || directPerms.includes(permission)
+  }
+
+  function getUserPermissions(member?: WorkspaceMember): string[] {
+    const targetMember = member ?? activeUser
+    if (!targetMember) return []
+
+    const isSuper =
+      targetMember.role === 'super_admin' ||
+      (!member && isSuperAdminSession && activeUser.role === 'super_admin')
+    if (isSuper) {
+      return permissionsCatalog.map((p) => p.key)
+    }
+
+    if (targetMember.role === 'tenant_owner') {
+      const base =
+        tenantOwnerPermissions[activeTenant.id] ?? DEFAULT_TENANT_OWNER_PERMISSIONS
+      const direct = targetMember.customPermissions ?? []
+      return Array.from(new Set([...base, ...direct]))
+    }
+
+    const matchedRole = roles.find(
+      (r) =>
+        (r.tenantId === 'system' || r.tenantId === activeTenant.id) &&
+        (r.code === targetMember.role || r.id === targetMember.role)
+    )
+    const rolePerms = matchedRole ? matchedRole.permissions : []
+    const directPerms = targetMember.customPermissions ?? []
+    return Array.from(new Set([...rolePerms, ...directPerms]))
+  }
+
+  function createCustomRole(input: {
+    name: string
+    code?: string
+    description: string
+    permissions: string[]
+  }): { ok: boolean; message: string; role?: CustomRole } {
+    if (!input.name.trim()) {
+      return { ok: false, message: 'Role name cannot be empty.' }
+    }
+    const cleanCode = (
+      input.code?.trim() ||
+      input.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')
+    ).slice(0, 32)
+
+    const exists = roles.some(
+      (r) =>
+        (r.tenantId === 'system' || r.tenantId === activeTenant.id) &&
+        r.code.toLowerCase() === cleanCode.toLowerCase()
+    )
+    if (exists) {
+      return { ok: false, message: `A role with identifier "${cleanCode}" already exists.` }
+    }
+
+    const tempId = `role-${Date.now()}`
+    const newRole: CustomRole = {
+      id: tempId,
+      tenantId: activeTenant.id,
+      name: input.name.trim(),
+      code: cleanCode,
+      description:
+        input.description.trim() || 'Custom tenant role with granular permissions',
+      isSystemRole: false,
+      permissions: input.permissions,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    setRoles((prev) => [...prev, newRole])
+    appendAudit(
+      'ROLE_CREATED',
+      `roles:${cleanCode}`,
+      `Created custom role "${newRole.name}" with ${newRole.permissions.length} granular action(s)`
+    )
+
+    if (prismaStatus.connected) {
+      void createCustomRoleViaPrisma({
+        tenantId: activeTenant.id,
+        name: newRole.name,
+        code: cleanCode,
+        description: newRole.description,
+        permissions: newRole.permissions,
+        createdBy: activeUser.id,
+      }).then((res) => {
+        if (res?.ok && res.role) {
+          setRoles((prev) => prev.map((r) => (r.id === tempId ? res.role! : r)))
+        }
+      })
+    }
+
+    return { ok: true, message: `Role "${newRole.name}" saved to database.`, role: newRole }
+  }
+
+  function updateCustomRole(
+    roleId: string,
+    updates: Partial<{ name: string; description: string; permissions: string[] }>
+  ): { ok: boolean; message: string } {
+    const target = roles.find((r) => r.id === roleId)
+    if (!target) return { ok: false, message: 'Role not found.' }
+
+    setRoles((prev) =>
+      prev.map((r) => {
+        if (r.id !== roleId) return r
+        return {
+          ...r,
+          name: updates.name?.trim() || r.name,
+          description:
+            updates.description !== undefined
+              ? updates.description.trim()
+              : r.description,
+          permissions: updates.permissions ? updates.permissions : r.permissions,
+          updatedAt: new Date().toISOString(),
+        }
+      })
+    )
+    appendAudit('ROLE_UPDATED', `roles:${target.code}`, `Updated role "${target.name}" permissions`)
+
+    if (prismaStatus.connected) {
+      void updateCustomRoleViaPrisma({
+        roleId,
+        tenantId: activeTenant.id,
+        name: updates.name,
+        description: updates.description,
+        permissions: updates.permissions,
+      })
+    }
+
+    return { ok: true, message: `Role "${target.name}" updated in database.` }
+  }
+
+  function deleteCustomRole(roleId: string): { ok: boolean; message: string } {
+    const target = roles.find((r) => r.id === roleId)
+    if (!target) return { ok: false, message: 'Role not found.' }
+    if (target.isSystemRole) {
+      return { ok: false, message: 'Pre-defined system roles cannot be deleted.' }
+    }
+
+    const assignedCount = members.filter(
+      (m) =>
+        m.tenantId === activeTenant.id &&
+        (m.role === target.code || m.role === target.id)
+    ).length
+    if (assignedCount > 0) {
+      return {
+        ok: false,
+        message: `Cannot delete role "${target.name}" because it is currently assigned to ${assignedCount} member(s). Reassign them first.`,
+      }
+    }
+
+    setRoles((prev) => prev.filter((r) => r.id !== roleId))
+    appendAudit('ROLE_DELETED', `roles:${target.code}`, `Deleted custom role "${target.name}"`)
+
+    if (prismaStatus.connected) {
+      void deleteCustomRoleViaPrisma({ roleId, tenantId: activeTenant.id })
+    }
+
+    return { ok: true, message: `Role "${target.name}" removed from database.` }
+  }
+
+  function updateMemberRole(
+    memberId: string,
+    role: string,
+    customPermissions?: string[]
+  ): { ok: boolean; message: string } {
+    const member = members.find((m) => m.id === memberId)
+    if (!member) return { ok: false, message: 'Member not found.' }
+
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === memberId
+          ? {
+              ...m,
+              role: role as UserRole,
+              customPermissions:
+                customPermissions !== undefined
+                  ? customPermissions
+                  : m.customPermissions,
+            }
+          : m
+      )
+    )
+
+    appendAudit(
+      'MEMBER_ROLE_UPDATED',
+      `memberships:${member.email}`,
+      `Updated member ${member.name} role to "${role}" with ${customPermissions?.length ?? 0} permission override(s)`
+    )
+
+    if (prismaStatus.connected) {
+      void updateMemberRoleViaPrisma({
+        tenantId: activeTenant.id,
+        userId: memberId,
+        role,
+        customPermissions,
+        grantedBy: activeUser.id,
+      })
+    }
+
+    return { ok: true, message: `Permissions for ${member.name} saved to database.` }
+  }
+
+  function updateTenantOwnerPermissions(
+    tenantId: string,
+    permissions: string[]
+  ): { ok: boolean; message: string } {
+    setTenantOwnerPermissions((prev) => ({
+      ...prev,
+      [tenantId]: permissions,
+    }))
+    appendAudit(
+      'TENANT_OWNER_PERMS_UPDATED',
+      `tenants:${tenantId}`,
+      `Super Admin updated Tenant Owner base permissions (${permissions.length} actions allowed)`
+    )
+
+    if (prismaStatus.connected) {
+      void updateTenantOwnerPermissionsViaPrisma({
+        tenantId,
+        permissions,
+        updatedBy: activeUser.id,
+      })
+    }
+
+    return { ok: true, message: `Tenant Owner permissions saved to database.` }
+  }
+
+  async function registerNewPermission(input: {
+    key: string
+    module: PermissionModuleId
+    label: string
+    description: string
+    isSuperAdminOnly?: boolean
+  }): Promise<{ ok: boolean; message: string }> {
+    const cleanKey = input.key.trim().toLowerCase()
+    const cleanLabel = input.label.trim()
+    if (!cleanKey || !cleanKey.includes(':') || !cleanLabel) {
+      return {
+        ok: false,
+        message: 'Permission key (format module:action) and label are required.',
+      }
+    }
+
+    const newPerm: GranularPermissionDef = {
+      key: cleanKey,
+      module: input.module,
+      label: cleanLabel,
+      description: input.description.trim(),
+      isSuperAdminOnly: input.isSuperAdminOnly || undefined,
+    }
+
+    setPermissionsCatalog((prev) => {
+      const filtered = prev.filter((p) => p.key !== cleanKey)
+      return [...filtered, newPerm]
+    })
+
+    // Automatically add to super_admin (and tenant_owner if not superadmin-only) in state
+    setRoles((prev) =>
+      prev.map((r) => {
+        if (r.code === 'super_admin') {
+          return {
+            ...r,
+            permissions: Array.from(new Set([...r.permissions, cleanKey])),
+          }
+        }
+        if (r.code === 'tenant_owner' && !input.isSuperAdminOnly) {
+          return {
+            ...r,
+            permissions: Array.from(new Set([...r.permissions, cleanKey])),
+          }
+        }
+        return r
+      })
+    )
+
+    if (prismaStatus.connected) {
+      const res = await registerPermissionViaPrisma(input)
+      if (!res?.ok) {
+        return {
+          ok: false,
+          message: res?.error ?? 'Failed to save permission to database.',
+        }
+      }
+    }
+
+    appendAudit(
+      'PERMISSION_REGISTERED',
+      `permissions:${cleanKey}`,
+      `Registered new granular permission "${cleanKey}" (${cleanLabel}) — auto-applied to Super Admin`
+    )
+    return {
+      ok: true,
+      message: `Permission "${cleanKey}" saved to database and automatically granted to Super Admin.`,
+    }
+  }
+
+  async function reseedPermissionsToDatabase(): Promise<{
+    ok: boolean
+    message: string
+  }> {
+    if (!prismaStatus.connected) {
+      return { ok: false, message: 'PostgreSQL is not connected.' }
+    }
+    const res = await runPermissionsSeedViaPrisma()
+    if (!res?.ok) {
+      return { ok: false, message: 'Failed to execute permissions seed.' }
+    }
+    setRbacSeedStatus({
+      seeded: res.seeded,
+      firstTime: res.firstTime,
+      checksum: res.checksum,
+      moduleCount: res.moduleCount,
+      permissionCount: res.permissionCount,
+      systemRoleCount: res.systemRoleCount,
+    })
+    return {
+      ok: true,
+      message: `Seeded ${res.permissionCount} permissions across ${res.moduleCount} modules and ${res.systemRoleCount} system roles into PostgreSQL.`,
+    }
+  }
+
   function createProject(
     code: string,
     name: string,
@@ -1161,6 +1653,24 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         }
       })
     }
+  }
+
+  function updateTask(
+    taskId: string,
+    patch: Partial<Omit<TaskRecord, 'id' | 'tenantId'>>
+  ) {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t))
+    )
+    appendAudit('TASK_UPDATED', `tasks:${taskId}`, `Updated task specifications`)
+  }
+
+  function deleteTask(taskId: string): { ok: boolean; message: string } {
+    const target = tasks.find((t) => t.id === taskId)
+    if (!target) return { ok: false, message: 'Task not found' }
+    setTasks((prev) => prev.filter((t) => t.id !== taskId))
+    appendAudit('TASK_DELETED', `tasks:${target.code}`, `Deleted task ${target.title}`)
+    return { ok: true, message: `Task ${target.code} deleted successfully.` }
   }
 
   function updateTaskStatus(taskId: string, status: TaskRecord['status']) {
@@ -2055,10 +2565,27 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         toggleMemberStatus,
         deleteMember,
         acknowledgeCurrentPolicy,
+        roles: roles.filter(
+          (r) => r.tenantId === 'system' || r.tenantId === activeTenant.id
+        ),
+        permissionsCatalog,
+        rbacSeedStatus,
+        tenantOwnerPermissions,
+        hasPermission,
+        getUserPermissions,
+        createCustomRole,
+        updateCustomRole,
+        deleteCustomRole,
+        updateMemberRole,
+        updateTenantOwnerPermissions,
+        registerNewPermission,
+        reseedPermissionsToDatabase,
         projects: projects.filter((p) => p.tenantId === activeTenant.id),
         createProject,
         tasks: tasks.filter((t) => t.tenantId === activeTenant.id),
         createTask,
+        updateTask,
+        deleteTask,
         updateTaskStatus,
         assignTaskMembers,
         addTaskAttachment,

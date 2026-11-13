@@ -1,5 +1,5 @@
 -- =============================================================================
--- Migration 0010: Phase 3 Milestone 3.3 — Fair Dispute, Independent Escalation
+-- Migration 0010: Phase 3 Milestone 3.3 - Fair Dispute, Independent Escalation
 -- & Partial Approval Workflow
 -- Covers F3-030 through F3-035
 -- =============================================================================

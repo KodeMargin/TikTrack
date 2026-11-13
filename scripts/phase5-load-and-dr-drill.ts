@@ -1,5 +1,5 @@
 /**
- * DevProof (TikTrack) — Phase 5 1,000-Concurrent-Developer Load & DR Readiness Drill (F5-009)
+ * DevProof (TikTrack) - Phase 5 1,000-Concurrent-Developer Load & DR Readiness Drill (F5-009)
  *
  * Simulates 1,000 concurrent developers across:
  *  1. Multi-source activity bucket normalization (Desktop + VS Code concurrent merge)

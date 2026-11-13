@@ -116,7 +116,7 @@ export function SaasBillingAndEcosystemView() {
 
   // Calendar sync state
   const [calProjectId, setCalProjectId] = useState(() => projects[0]?.id ?? '')
-  const [calTitle, setCalTitle] = useState('Sprint Architecture Review — alice@acme.com')
+  const [calTitle, setCalTitle] = useState('Sprint Architecture Review - alice@acme.com')
   const [calScope, setCalScope] = useState<'metadata_only' | 'title_and_duration'>(
     'title_and_duration'
   )
@@ -133,7 +133,7 @@ export function SaasBillingAndEcosystemView() {
 
   // Portable report state
   const [reportTitle, setReportTitle] = useState(
-    `${activeUser.name} — Verified Engineering Hours`
+    `${activeUser.name} - Verified Engineering Hours`
   )
   const [periodStart, setPeriodStart] = useState('2026-11-01')
   const [periodEnd, setPeriodEnd] = useState('2026-11-30')
@@ -216,11 +216,10 @@ export function SaasBillingAndEcosystemView() {
     <div className="space-y-6">
       {banner && (
         <div
-          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
-            banner.ok
+          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${banner.ok
               ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
               : 'border-rose-700 bg-rose-950/60 text-rose-200'
-          }`}
+            }`}
         >
           <span>{banner.text}</span>
           <button
@@ -248,11 +247,10 @@ export function SaasBillingAndEcosystemView() {
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                tab === item.id
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${tab === item.id
                   ? 'bg-indigo-600 text-white'
                   : 'bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800'
-              }`}
+                }`}
             >
               {item.label}
             </button>
@@ -300,6 +298,20 @@ export function SaasBillingAndEcosystemView() {
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs">
+                <a
+                  href="/pricing"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    window.history.pushState({}, '', '/pricing')
+                    window.dispatchEvent(new PopStateEvent('popstate'))
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-semibold hover:bg-indigo-600/50 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Full Pricing & Comparison</span>
+                </a>
                 <select
                   value={billingProvider}
                   onChange={(e) => setBillingProvider(e.target.value as BillingProvider)}
@@ -331,11 +343,10 @@ export function SaasBillingAndEcosystemView() {
                 return (
                   <div
                     key={tier}
-                    className={`rounded-xl border p-4 flex flex-col justify-between space-y-3 ${
-                      isCurrent
+                    className={`rounded-xl border p-4 flex flex-col justify-between space-y-3 ${isCurrent
                         ? 'border-indigo-500 bg-indigo-950/25'
                         : 'border-slate-800 bg-slate-950/70'
-                    }`}
+                      }`}
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
@@ -371,11 +382,10 @@ export function SaasBillingAndEcosystemView() {
                         })
                         setBanner({ ok: res.ok, text: res.message })
                       }}
-                      className={`w-full py-2 rounded-lg text-xs font-semibold cursor-pointer transition ${
-                        isCurrent
+                      className={`w-full py-2 rounded-lg text-xs font-semibold cursor-pointer transition ${isCurrent
                           ? 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                           : 'bg-indigo-600 text-white hover:bg-indigo-500'
-                      }`}
+                        }`}
                     >
                       {isCurrent ? 'Renew / Issue SaaS Invoice' : `Switch to ${spec.displayName}`}
                     </button>
@@ -389,7 +399,7 @@ export function SaasBillingAndEcosystemView() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-6 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
               <h3 className="text-sm font-bold text-white">
-                Seat & Usage Metering (`usage_records` — F4-002)
+                Seat & Usage Metering (`usage_records` - F4-002)
               </h3>
               <div className="space-y-3">
                 {quotaReport.metrics.map((m) => (
@@ -402,13 +412,12 @@ export function SaasBillingAndEcosystemView() {
                     </div>
                     <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
                       <div
-                        className={`h-full transition-all ${
-                          m.state === 'overage_graceful'
+                        className={`h-full transition-all ${m.state === 'overage_graceful'
                             ? 'bg-amber-500'
                             : m.state === 'warning_80'
                               ? 'bg-amber-400'
                               : 'bg-emerald-500'
-                        }`}
+                          }`}
                         style={{ width: `${Math.min(100, m.percent)}%` }}
                       />
                     </div>
@@ -507,13 +516,12 @@ export function SaasBillingAndEcosystemView() {
                       </td>
                       <td className="py-2.5 text-right">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] uppercase font-semibold ${
-                            f.riskLevel === 'over_estimate'
+                          className={`px-2 py-0.5 rounded text-[10px] uppercase font-semibold ${f.riskLevel === 'over_estimate'
                               ? 'bg-rose-500/20 text-rose-300'
                               : f.riskLevel === 'watch'
                                 ? 'bg-amber-500/20 text-amber-300'
                                 : 'bg-emerald-500/20 text-emerald-300'
-                          }`}
+                            }`}
                         >
                           {f.riskLevel.replace('_', ' ')}
                         </span>
@@ -530,7 +538,7 @@ export function SaasBillingAndEcosystemView() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-white">
-                  Accounting Exports & Connectors — Xero & QuickBooks (F4-009)
+                  Accounting Exports & Connectors - Xero & QuickBooks (F4-009)
                 </h3>
                 <p className="text-xs text-slate-400">
                   Exports finalized client work invoices to Xero CSV or QuickBooks Online JSON without raw workstation telemetry.
@@ -554,11 +562,10 @@ export function SaasBillingAndEcosystemView() {
                         })
                         setBanner({ ok: res.ok, text: res.message })
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer ${
-                        connected
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer ${connected
                           ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300'
                           : 'border-slate-700 bg-slate-950 text-slate-300'
-                      }`}
+                        }`}
                     >
                       {prov === 'xero' ? 'Xero' : 'QuickBooks'}: {connected ? 'Connected' : 'Connect'}
                     </button>
@@ -633,7 +640,7 @@ export function SaasBillingAndEcosystemView() {
           <div className="lg:col-span-6 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
             <div>
               <h3 className="text-sm font-bold text-white">
-                Scoped Public API Keys (`dp_live_...` — F4-006)
+                Scoped Public API Keys (`dp_live_...` - F4-006)
               </h3>
               <p className="text-xs text-slate-400">
                 Keys are SHA-256 hashed at rest. Never exposes raw workstation telemetry.
@@ -671,11 +678,10 @@ export function SaasBillingAndEcosystemView() {
                           prev.includes(sc) ? prev.filter((x) => x !== sc) : [...prev, sc]
                         )
                       }
-                      className={`px-2 py-1 rounded text-[11px] font-mono border cursor-pointer ${
-                        active
+                      className={`px-2 py-1 rounded text-[11px] font-mono border cursor-pointer ${active
                           ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200'
                           : 'border-slate-800 bg-slate-950 text-slate-400'
-                      }`}
+                        }`}
                     >
                       {sc}
                     </button>
@@ -775,7 +781,7 @@ export function SaasBillingAndEcosystemView() {
           <div className="lg:col-span-6 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
             <div>
               <h3 className="text-sm font-bold text-white">
-                Outbound Signed Webhooks (`X-DevProof-Signature-256` — F4-007)
+                Outbound Signed Webhooks (`X-DevProof-Signature-256` - F4-007)
               </h3>
               <p className="text-xs text-slate-400">
                 Dispatches HMAC-SHA256 signed events on approvals, disputes, and finalized invoices.
@@ -814,11 +820,10 @@ export function SaasBillingAndEcosystemView() {
                           prev.includes(ev) ? prev.filter((x) => x !== ev) : [...prev, ev]
                         )
                       }
-                      className={`px-2 py-1 rounded text-[11px] font-mono border cursor-pointer ${
-                        active
+                      className={`px-2 py-1 rounded text-[11px] font-mono border cursor-pointer ${active
                           ? 'border-cyan-500 bg-cyan-500/20 text-cyan-200'
                           : 'border-slate-800 bg-slate-950 text-slate-400'
-                      }`}
+                        }`}
                     >
                       {ev}
                     </button>
@@ -927,11 +932,10 @@ export function SaasBillingAndEcosystemView() {
                           })
                           setBanner({ ok: res.ok, text: res.message })
                         }}
-                        className={`px-2.5 py-1 rounded text-[11px] font-semibold border cursor-pointer ${
-                          active
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold border cursor-pointer ${active
                             ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300'
                             : 'border-slate-700 bg-slate-950 text-slate-300'
-                        }`}
+                          }`}
                       >
                         {prov === 'google_calendar' ? 'Google' : 'Outlook'}
                       </button>
@@ -1021,7 +1025,7 @@ export function SaasBillingAndEcosystemView() {
           <div className="lg:col-span-6 space-y-6">
             <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3 text-xs">
               <h3 className="text-sm font-bold text-white">
-                External PM Integration — Jira / Linear / Trello / Azure DevOps (F4-010)
+                External PM Integration - Jira / Linear / Trello / Azure DevOps (F4-010)
               </h3>
               <div className="grid grid-cols-3 gap-2">
                 <select

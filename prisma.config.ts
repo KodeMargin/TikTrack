@@ -7,7 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 /**
- * DevProof (TikTrack) — Prisma Configuration for Supabase PostgreSQL
+ * DevProof (TikTrack) - Prisma Configuration for Supabase PostgreSQL
  *
  * Supabase Connection Best Practices:
  * - DIRECT_URL (port 5432, session pooler or direct connection) is used by Prisma CLI

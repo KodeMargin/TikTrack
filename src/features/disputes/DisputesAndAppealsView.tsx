@@ -56,7 +56,7 @@ export function DisputesAndAppealsView() {
           Internal Dispute & Clarification Threads Restricted
         </h2>
         <p className="text-xs text-slate-300 max-w-2xl">
-          External Client Reviewers only see finalized approved deliverables and hours—never
+          External Client Reviewers only see finalized approved deliverables and hours-never
           internal developer/manager dispute appeals.
         </p>
       </div>
@@ -126,11 +126,10 @@ export function DisputesAndAppealsView() {
     <div className="space-y-6">
       {banner && (
         <div
-          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
-            banner.ok
+          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${banner.ok
               ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
               : 'border-rose-700 bg-rose-950/60 text-rose-200'
-          }`}
+            }`}
         >
           <span>{banner.text}</span>
           <button
