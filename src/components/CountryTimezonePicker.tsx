@@ -126,7 +126,7 @@ export function CountryTimezonePicker({
       <div className="space-y-1">
         <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300">
           Country / Region {showDialCode && selectedCountry?.dialCode && (
-            <span className="text-slate-400 font-mono text-[10px]">({selectedCountry.dialCode})</span>
+            <span className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px]">({selectedCountry.dialCode})</span>
           )}
         </label>
         <div className="relative" ref={countryRef}>
@@ -146,7 +146,7 @@ export function CountryTimezonePicker({
               )}
             </div>
             <svg
-              className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 shrink-0 ml-1.5 ${
+              className={`h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400 transition-transform duration-150 shrink-0 ml-1.5 ${
                 countryDropdownOpen ? 'rotate-180' : ''
               }`}
               fill="none"
@@ -167,14 +167,14 @@ export function CountryTimezonePicker({
                   placeholder="Search country or code (e.g. Sri Lanka, +94)..."
                   value={countrySearch}
                   onChange={(e) => setCountrySearch(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#6d25da]"
                 />
               </div>
 
               {/* Country list */}
               <div className="overflow-y-auto flex-1 py-1 space-y-0.5">
                 {filteredCountries.length === 0 ? (
-                  <div className="py-4 text-center text-xs text-slate-400">
+                  <div className="py-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
                     No matching countries found
                   </div>
                 ) : (
@@ -197,7 +197,7 @@ export function CountryTimezonePicker({
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           {c.dialCode && (
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                               {c.dialCode}
                             </span>
                           )}
@@ -234,7 +234,7 @@ export function CountryTimezonePicker({
                 {availableTimezones.find((t) => t.name === timezone)?.label || timezone}
               </span>
               <svg
-                className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 shrink-0 ml-1.5 ${
+                className={`h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400 transition-transform duration-150 shrink-0 ml-1.5 ${
                   tzDropdownOpen ? 'rotate-180' : ''
                 }`}
                 fill="none"
@@ -254,7 +254,7 @@ export function CountryTimezonePicker({
                       placeholder="Search timezones..."
                       value={tzSearch}
                       onChange={(e) => setTzSearch(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#6d25da]"
                     />
                   </div>
                 )}

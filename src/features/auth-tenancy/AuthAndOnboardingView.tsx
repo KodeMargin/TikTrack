@@ -190,21 +190,18 @@ export function AuthAndOnboardingView() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Supabase Auth + TOTP MFA Panel (F1-002) */}
-        <div className="lg:col-span-6 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+        <div className="lg:col-span-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-                F1-002 • Identity, Recovery & TOTP MFA
-              </span>
-              <h3 className="text-sm font-bold text-white mt-0.5">
-                Supabase Auth Sign-In & Privileged Role MFA
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+                Sign In & MFA
               </h3>
             </div>
             <span
               className={`px-2 py-0.5 rounded text-[11px] font-mono border ${
                 isSupabaseAuthConfigured
-                  ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
-                  : 'bg-amber-950 text-amber-300 border-amber-700'
+                  ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
+                  : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700'
               }`}
             >
               {isSupabaseAuthConfigured ? 'Supabase Auth Ready' : 'Preview Mode'}
@@ -212,7 +209,7 @@ export function AuthAndOnboardingView() {
           </div>
 
           {signedInEmail && (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-700/60 bg-emerald-950/50 px-3 py-2 text-xs text-emerald-200">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200">
               <span>
                 Signed in via Supabase Auth: <strong>{signedInEmail}</strong>
               </span>
@@ -224,7 +221,7 @@ export function AuthAndOnboardingView() {
                     setAuthNotice('Signed out from Supabase Auth.')
                   })
                 }}
-                className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 font-medium cursor-pointer"
+                className="px-2.5 py-1 rounded bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-medium cursor-pointer"
               >
                 Sign Out
               </button>
@@ -234,18 +231,15 @@ export function AuthAndOnboardingView() {
           {isRecoverySession && (
             <form
               onSubmit={(e) => void handleUpdatePassword(e)}
-              className="p-3 rounded-lg border border-amber-500/50 bg-amber-950/30 space-y-2 text-xs"
+              className="p-3 rounded-lg border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30 space-y-2 text-xs"
             >
-              <div className="font-semibold text-amber-300">Set New Password</div>
-              <p className="text-[11px] text-slate-300">
-                You have authenticated via a secure email recovery link. Enter your new password below.
-              </p>
+              <div className="font-semibold text-amber-700 dark:text-amber-300">Set New Password</div>
               <input
                 type="password"
                 placeholder="New Password (min 6 characters)"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-lg border border-amber-700/60 bg-slate-950 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-amber-200 dark:border-amber-700/60 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
                 required
                 minLength={6}
               />
@@ -267,8 +261,8 @@ export function AuthAndOnboardingView() {
                 onClick={() => setAuthMode(mode)}
                 className={`px-3 py-1.5 rounded-lg font-medium capitalize cursor-pointer ${
                   authMode === mode
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-950 border border-slate-800 text-slate-300'
+                    ? 'bg-[#702fe3] text-white'
+                    : 'bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
                 }`}
               >
                 {mode === 'recovery'
@@ -283,10 +277,10 @@ export function AuthAndOnboardingView() {
           <form onSubmit={(e) => void handleSupabaseAuth(e)} className="space-y-3 text-xs">
             <input
               type="email"
-              placeholder="Work Email (e.g. aria@northstar.dev)"
+              placeholder="Work Email"
               value={authEmail}
               onChange={(e) => setAuthEmail(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
               required
             />
             {authMode !== 'recovery' && authMode !== 'magiclink' && (
@@ -295,39 +289,39 @@ export function AuthAndOnboardingView() {
                 placeholder="Password"
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
             )}
             <button
               type="submit"
-              className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-white cursor-pointer"
+              className="w-full py-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] font-semibold text-white cursor-pointer"
             >
               {authMode === 'login'
-                ? 'Sign In via Supabase Auth'
+                ? 'Sign In'
                 : authMode === 'signup'
-                  ? 'Create Verified Account (Email Verification)'
+                  ? 'Create Account'
                   : authMode === 'magiclink'
-                    ? 'Send One-Click Magic Link Email'
-                    : 'Send Password Reset Email'}
+                    ? 'Send Magic Link'
+                    : 'Send Reset Email'}
             </button>
           </form>
 
-          <div className="pt-3 border-t border-slate-800 space-y-2 text-xs">
+          <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 space-y-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-300">
-                TOTP Multi-Factor Authentication (Required for Owner / Finance)
+              <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                TOTP Multi-Factor Authentication
               </span>
               <button
                 type="button"
                 onClick={() => void handleEnrollTotpMfa()}
-                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium cursor-pointer"
+                className="px-2.5 py-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-[#6d25da] dark:text-[#c5a8f0] font-medium cursor-pointer"
               >
                 Enroll TOTP Factor
               </button>
             </div>
             {mfaQrCode && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-950 border border-slate-800">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
                 <img src={mfaQrCode} alt="TOTP MFA QR Code" className="h-20 w-20 bg-white p-1 rounded" />
                 <div className="space-y-2 flex-1">
                   <input
@@ -335,7 +329,7 @@ export function AuthAndOnboardingView() {
                     placeholder="6-digit TOTP code"
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value)}
-                    className="w-full rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-white font-mono"
+                    className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1 text-zinc-900 dark:text-white font-mono"
                   />
                   <button
                     type="button"
@@ -348,7 +342,7 @@ export function AuthAndOnboardingView() {
               </div>
             )}
             {authNotice && (
-              <div className="rounded-lg bg-slate-950 border border-slate-800 p-2.5 text-slate-300">
+              <div className="rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-2.5 text-zinc-700 dark:text-zinc-300">
                 {authNotice}
               </div>
             )}
@@ -356,32 +350,29 @@ export function AuthAndOnboardingView() {
         </div>
 
         {/* Tenant Provisioning Wizard (F1-001) + Plan Entitlements (F1-006) */}
-        <div className="lg:col-span-6 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+        <div className="lg:col-span-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-              F1-001 / F1-006 • Tenant Registration & Plan Entitlements
-            </span>
-            <h3 className="text-sm font-bold text-white mt-0.5">
-              Provision New Organization Workspace
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+              New Workspace
             </h3>
           </div>
 
           <div className="grid grid-cols-3 gap-2.5 text-xs">
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-2.5">
-              <span className="text-slate-400 block text-[10px]">Active Plan</span>
-              <span className="font-mono font-bold text-indigo-300 uppercase">
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-2.5">
+              <span className="text-zinc-500 dark:text-zinc-400 block text-[10px]">Active Plan</span>
+              <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0] uppercase">
                 {activeTenant.planTier}
               </span>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-2.5">
-              <span className="text-slate-400 block text-[10px]">Seat Quota (F1-006)</span>
-              <span className="font-mono font-bold text-white">
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-2.5">
+              <span className="text-zinc-500 dark:text-zinc-400 block text-[10px]">Seat Quota</span>
+              <span className="font-mono font-bold text-zinc-900 dark:text-white">
                 {activeSeatCount} / {activeEntitlement.maxSeats}
               </span>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-2.5">
-              <span className="text-slate-400 block text-[10px]">Projects Quota</span>
-              <span className="font-mono font-bold text-white">
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-2.5">
+              <span className="text-zinc-500 dark:text-zinc-400 block text-[10px]">Projects Quota</span>
+              <span className="font-mono font-bold text-zinc-900 dark:text-white">
                 {projects.length} / {activeEntitlement.maxActiveProjects}
               </span>
             </div>
@@ -391,8 +382,8 @@ export function AuthAndOnboardingView() {
             <div
               className={`rounded-lg border p-2.5 text-xs ${
                 onboardingNotice.ok
-                  ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200'
-                  : 'border-rose-700 bg-rose-950/40 text-rose-200'
+                  ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
+                  : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200'
               }`}
             >
               {onboardingNotice.text}
@@ -403,7 +394,7 @@ export function AuthAndOnboardingView() {
             <div className="grid grid-cols-2 gap-2.5">
               <input
                 type="text"
-                placeholder="Organization Name (e.g. Horizon Labs)"
+                placeholder="Organization Name"
                 value={wsName}
                 onChange={(e) => {
                   setWsName(e.target.value)
@@ -411,24 +402,24 @@ export function AuthAndOnboardingView() {
                     setWsSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
                   }
                 }}
-                className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
               <input
                 type="text"
-                placeholder="Slug (e.g. horizon-labs)"
+                placeholder="Workspace Slug"
                 value={wsSlug}
                 onChange={(e) => setWsSlug(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white font-mono"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white font-mono"
                 required
               />
             </div>
             <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Currency</label>
+              <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">Currency</label>
               <select
                 value={wsCurrency}
                 onChange={(e) => setWsCurrency(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
               >
                 <option value="USD">USD ($)</option>
                 <option value="LKR">LKR (Rs)</option>
@@ -452,7 +443,7 @@ export function AuthAndOnboardingView() {
                 placeholder="Owner Full Name"
                 value={ownerName}
                 onChange={(e) => setOwnerName(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
               <input
@@ -460,7 +451,7 @@ export function AuthAndOnboardingView() {
                 placeholder="Owner Email"
                 value={ownerEmail}
                 onChange={(e) => setOwnerEmail(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
             </div>
@@ -468,28 +459,25 @@ export function AuthAndOnboardingView() {
               type="submit"
               className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-white cursor-pointer"
             >
-              + Provision Tenant Workspace (F1-001)
+              Create Workspace
             </button>
           </form>
         </div>
       </div>
 
       {/* Policy Versioning & Member Consent Matrix (F1-030) */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-              F1-030 & Principle 6 • Versioned Privacy Policies & Member Consent Ledger
-            </span>
-            <h3 className="text-sm font-bold text-white mt-0.5">
-              Active Policy: {activeTenant.policyVersion}
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+              Privacy Policy ({activeTenant.policyVersion})
             </h3>
           </div>
           {activeUser.consentedPolicyVersion !== activeTenant.policyVersion && (
             <button
               type="button"
               onClick={acknowledgeCurrentPolicy}
-              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white cursor-pointer"
             >
               Acknowledge Policy {activeTenant.policyVersion}
             </button>
@@ -498,21 +486,21 @@ export function AuthAndOnboardingView() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs">
           <div className="lg:col-span-6 space-y-2">
-            <div className="font-semibold text-slate-300">Member Consent Status</div>
-            <div className="divide-y divide-slate-800 rounded-lg border border-slate-800 bg-slate-950/70">
+            <div className="font-semibold text-zinc-700 dark:text-zinc-300">Member Consent Status</div>
+            <div className="divide-y divide-zinc-200 dark:divide-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/70">
               {members.map((m) => {
                 const upToDate = m.consentedPolicyVersion === activeTenant.policyVersion
                 return (
                   <div key={m.id} className="px-3.5 py-2.5 flex items-center justify-between">
                     <div>
-                      <span className="font-semibold text-white">{m.name}</span>{' '}
-                      <span className="font-mono text-[11px] text-slate-400">({m.role})</span>
+                      <span className="font-semibold text-zinc-900 dark:text-white">{m.name}</span>{' '}
+                      <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">({m.role})</span>
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded font-mono text-[11px] ${
                         upToDate
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                          : 'bg-amber-950 text-amber-300 border border-amber-800'
+                          ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                          : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                       }`}
                     >
                       {upToDate ? `✓ Consented (${m.consentedPolicyVersion})` : 'Pending Re-Consent'}
@@ -524,21 +512,21 @@ export function AuthAndOnboardingView() {
           </div>
 
           {activeUser.role === 'tenant_owner' && (
-            <div className="lg:col-span-6 space-y-2.5 rounded-lg border border-slate-800 bg-slate-950/70 p-4">
-              <div className="font-semibold text-white">
-                Publish New Tracking Policy Version (Non-Retroactive)
+            <div className="lg:col-span-6 space-y-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/70 p-4">
+              <div className="font-semibold text-zinc-900 dark:text-white">
+                Publish Policy Version
               </div>
               <input
                 type="text"
                 value={newPolicyCode}
                 onChange={(e) => setNewPolicyCode(e.target.value)}
-                className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-1.5 text-white font-mono"
+                className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-zinc-900 dark:text-white font-mono"
               />
               <textarea
                 rows={2}
                 value={newPolicySummary}
                 onChange={(e) => setNewPolicySummary(e.target.value)}
-                className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-1.5 text-white"
+                className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-zinc-900 dark:text-white"
               />
               <button
                 type="button"

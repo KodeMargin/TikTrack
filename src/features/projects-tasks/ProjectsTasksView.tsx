@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { usePhase1Store, type TaskRecord } from '@/context/Phase1Store'
 import type { WorkMode } from '@/types/domain.types'
 
@@ -38,6 +39,7 @@ export function ProjectsTasksView({
     projects[0]?.id ?? ''
   )
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban')
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
   const [showNewTaskModal, setShowNewTaskModal] = useState(false)
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
@@ -83,6 +85,9 @@ export function ProjectsTasksView({
   const projectTasks = tasks.filter(
     (t) => !currentProject || t.projectId === currentProject.id
   )
+  const selectedTask = selectedTaskId
+    ? tasks.find((t) => t.id === selectedTaskId) ?? null
+    : null
 
   function startEditTask(task: TaskRecord) {
     setEditingTaskId(task.id)
@@ -187,8 +192,8 @@ export function ProjectsTasksView({
         <div
           className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
             banner.ok
-              ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
-              : 'border-rose-700 bg-rose-950/60 text-rose-200'
+              ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
+              : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200'
           }`}
         >
           <span>{banner.text}</span>
@@ -203,26 +208,23 @@ export function ProjectsTasksView({
       )}
 
       {/* Project Directory Bar */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
               {activeTenant.name} Projects
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Organize engineering tasks, estimates, and launch focus sessions directly from a card.
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-0.5 text-xs">
+            <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-0.5 text-xs">
               <button
                 type="button"
                 onClick={() => setViewMode('kanban')}
                 className={`px-3 py-1.5 rounded-md font-medium transition cursor-pointer ${
                   viewMode === 'kanban'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#702fe3] text-white'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                 }`}
               >
                 Kanban Board
@@ -232,8 +234,8 @@ export function ProjectsTasksView({
                 onClick={() => setViewMode('list')}
                 className={`px-3 py-1.5 rounded-md font-medium transition cursor-pointer ${
                   viewMode === 'list'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-[#702fe3] text-white'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                 }`}
               >
                 Task List
@@ -244,7 +246,7 @@ export function ProjectsTasksView({
               <button
                 type="button"
                 onClick={() => setShowNewProjectModal((v) => !v)}
-                className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-xs font-semibold text-zinc-900 dark:text-white cursor-pointer"
               >
                 + New Project
               </button>
@@ -253,7 +255,7 @@ export function ProjectsTasksView({
               <button
                 type="button"
                 onClick={() => setShowNewTaskModal((v) => !v)}
-                className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white cursor-pointer"
               >
                 + New Task / Subtask
               </button>
@@ -261,8 +263,8 @@ export function ProjectsTasksView({
           </div>
         </div>
 
-        {/* Project Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Compact Horizontal Project Switcher (Space-Optimized) */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           {projects.map((proj) => {
             const isSelected = currentProject?.id === proj.id
             const count = tasks.filter((t) => t.projectId === proj.id).length
@@ -271,27 +273,25 @@ export function ProjectsTasksView({
                 key={proj.id}
                 type="button"
                 onClick={() => setSelectedProjectId(proj.id)}
-                className={`text-left p-4 rounded-xl border transition cursor-pointer ${
+                title={proj.description}
+                className={`group inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-left transition-all duration-150 cursor-pointer ${
                   isSelected
-                    ? 'border-indigo-500 bg-indigo-950/40 text-white'
-                    : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700'
+                    ? 'bg-[#f6f4fc] dark:bg-[#6d25da]/15 text-zinc-900 dark:text-white shadow-[inset_0_0_0_1px_rgba(109,37,218,0.28)]'
+                    : 'bg-zinc-100/70 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200/60 dark:hover:bg-white/[0.08]'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-indigo-300">
-                    {proj.code}
-                  </span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
-                    {proj.clientName}
-                  </span>
-                </div>
-                <div className="text-sm font-semibold mt-1.5">{proj.name}</div>
-                <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                  {proj.description}
-                </p>
-                <div className="text-[11px] font-mono text-slate-400 mt-2">
-                  {count} assigned tasks • Tenant RLS Isolated
-                </div>
+                <span className="font-mono text-[11px] font-bold text-[#6d25da] dark:text-[#c5a8f0]">
+                  {proj.code}
+                </span>
+                <span className="text-xs font-semibold truncate max-w-[160px]">
+                  {proj.name}
+                </span>
+                <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-white/90 dark:bg-white/[0.07] text-zinc-500 dark:text-zinc-400">
+                  {proj.clientName}
+                </span>
+                <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500">
+                  {count}
+                </span>
               </button>
             )
           })}
@@ -301,10 +301,10 @@ export function ProjectsTasksView({
         {showNewProjectModal && (
           <form
             onSubmit={handleCreateProject}
-            className="rounded-xl border border-indigo-500/40 bg-slate-950 p-4 space-y-3"
+            className="rounded-xl border border-[#6d25da]/40 bg-zinc-50 dark:bg-zinc-950 p-4 space-y-3"
           >
-            <div className="text-xs font-semibold text-indigo-300">
-              Create New Client Project (F1-010)
+            <div className="text-xs font-semibold text-[#6d25da] dark:text-[#c5a8f0]">
+              New Project
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
               <input
@@ -312,7 +312,7 @@ export function ProjectsTasksView({
                 placeholder="Project Code (e.g. CORE-API)"
                 value={projCode}
                 onChange={(e) => setProjCode(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
               <input
@@ -320,7 +320,7 @@ export function ProjectsTasksView({
                 placeholder="Project Name"
                 value={projName}
                 onChange={(e) => setProjName(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
               <input
@@ -328,7 +328,7 @@ export function ProjectsTasksView({
                 placeholder="Client Organization Name"
                 value={projClient}
                 onChange={(e) => setProjClient(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
             </div>
@@ -337,19 +337,19 @@ export function ProjectsTasksView({
               placeholder="Project scope & deliverable summary..."
               value={projDesc}
               onChange={(e) => setProjDesc(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white"
             />
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowNewProjectModal(false)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-300 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-3.5 py-1.5 rounded-lg bg-indigo-600 text-xs font-semibold text-white cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-[#702fe3] text-xs font-semibold text-white cursor-pointer"
               >
                 Save Project
               </button>
@@ -361,10 +361,10 @@ export function ProjectsTasksView({
         {showNewTaskModal && (
           <form
             onSubmit={handleCreateTask}
-            className="rounded-xl border border-emerald-500/40 bg-slate-950 p-4 space-y-3"
+            className="rounded-xl border border-emerald-500/40 bg-zinc-50 dark:bg-zinc-950 p-4 space-y-3"
           >
-            <div className="text-xs font-semibold text-emerald-300">
-              Create Task or Subtask with Acceptance Criteria & Default Work Mode (F1-011, F1-012, F1-014)
+            <div className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+              New Task
             </div>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
               <input
@@ -372,7 +372,7 @@ export function ProjectsTasksView({
                 placeholder="Task Code (e.g. DEV-410)"
                 value={taskCode}
                 onChange={(e) => setTaskCode(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white font-mono"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white font-mono"
                 required
               />
               <input
@@ -380,13 +380,13 @@ export function ProjectsTasksView({
                 placeholder="Task Title"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
-                className="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="md:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
               <select
                 value={parentTaskId}
                 onChange={(e) => setParentTaskId(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
               >
                 <option value="">Top-Level Task (No Parent)</option>
                 {projectTasks
@@ -400,7 +400,7 @@ export function ProjectsTasksView({
               <select
                 value={taskMode}
                 onChange={(e) => setTaskMode(e.target.value as WorkMode)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
               >
                 {WORK_MODE_OPTIONS.map((m) => (
                   <option key={m} value={m}>
@@ -415,7 +415,7 @@ export function ProjectsTasksView({
                 placeholder="Acceptance criteria (used by manager during timesheet review)..."
                 value={taskCriteria}
                 onChange={(e) => setTaskCriteria(e.target.value)}
-                className="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="md:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
               />
               <div className="flex items-center gap-3">
                 <input
@@ -424,7 +424,7 @@ export function ProjectsTasksView({
                   step={15}
                   value={taskEstimate}
                   onChange={(e) => setTaskEstimate(Number(e.target.value))}
-                  className="w-28 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white font-mono"
+                  className="w-28 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white font-mono"
                   title="Estimate in minutes"
                 />
                 <select
@@ -432,14 +432,14 @@ export function ProjectsTasksView({
                   onChange={(e) =>
                     setTaskPriority(e.target.value as TaskRecord['priority'])
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-white"
+                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-2 text-zinc-900 dark:text-white"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                   <option value="urgent">Urgent</option>
                 </select>
-                <label className="inline-flex items-center gap-1.5 text-slate-300">
+                <label className="inline-flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
                   <input
                     type="checkbox"
                     checked={taskBillable}
@@ -453,7 +453,7 @@ export function ProjectsTasksView({
               <button
                 type="button"
                 onClick={() => setShowNewTaskModal(false)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-300 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer"
               >
                 Cancel
               </button>
@@ -471,14 +471,14 @@ export function ProjectsTasksView({
         {editingTaskId && (
           <form
             onSubmit={handleSaveEditTask}
-            className="rounded-xl border border-indigo-500/50 bg-slate-950 p-4 space-y-3"
+            className="rounded-xl border border-[#6d25da]/50 bg-zinc-50 dark:bg-zinc-950 p-4 space-y-3"
           >
-            <div className="flex items-center justify-between text-xs font-semibold text-indigo-300">
+            <div className="flex items-center justify-between text-xs font-semibold text-[#6d25da] dark:text-[#c5a8f0]">
               <span>Edit Task Specifications & Acceptance Criteria (task:edit)</span>
               <button
                 type="button"
                 onClick={() => setEditingTaskId(null)}
-                className="text-slate-400 hover:text-white cursor-pointer"
+                className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -489,13 +489,13 @@ export function ProjectsTasksView({
                 placeholder="Task Title"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                className="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="md:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
               <select
                 value={editMode}
                 onChange={(e) => setEditMode(e.target.value as WorkMode)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
               >
                 {WORK_MODE_OPTIONS.map((m) => (
                   <option key={m} value={m}>
@@ -508,7 +508,7 @@ export function ProjectsTasksView({
                 onChange={(e) =>
                   setEditPriority(e.target.value as TaskRecord['priority'])
                 }
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -522,7 +522,7 @@ export function ProjectsTasksView({
                 placeholder="Acceptance criteria..."
                 value={editCriteria}
                 onChange={(e) => setEditCriteria(e.target.value)}
-                className="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="md:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
               />
               <input
                 type="number"
@@ -530,7 +530,7 @@ export function ProjectsTasksView({
                 step={15}
                 value={editEstimate}
                 onChange={(e) => setEditEstimate(Number(e.target.value))}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white font-mono"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white font-mono"
                 title="Estimate in minutes"
               />
             </div>
@@ -538,13 +538,13 @@ export function ProjectsTasksView({
               <button
                 type="button"
                 onClick={() => setEditingTaskId(null)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-3.5 py-1.5 rounded-lg bg-indigo-600 font-semibold text-white cursor-pointer hover:bg-indigo-500"
+                className="px-3.5 py-1.5 rounded-lg bg-[#702fe3] font-semibold text-white cursor-pointer hover:bg-[#5f21cc]"
               >
                 Save Changes
               </button>
@@ -553,245 +553,154 @@ export function ProjectsTasksView({
         )}
       </div>
 
-      {/* Kanban Board or List View (F1-011, F1-016) */}
+      {/* Kanban Board or List View (Jira-style full-height columns) */}
       {viewMode === 'kanban' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5 items-stretch">
           {columns.map((col) => {
             const colTasks = projectTasks.filter((t) => t.status === col.status)
+            const statusDotClass =
+              col.status === 'backlog'
+                ? 'bg-zinc-400'
+                : col.status === 'active'
+                  ? 'bg-[#6d25da] dark:bg-[#a87ce9]'
+                  : col.status === 'review'
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+
             return (
               <div
                 key={col.status}
-                className="rounded-xl border border-slate-800 bg-slate-900/70 p-3.5 space-y-3"
+                className="rounded-xl bg-[#f4f5f7] dark:bg-white/[0.03] p-2.5 flex flex-col gap-2.5 h-[calc(100vh-14.5rem)] min-h-[460px]"
               >
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                    {col.label}
-                  </span>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                <div className="flex items-center justify-between px-1 pb-1 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
+                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-200">
+                      {col.label}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-white dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300 shadow-[0_1px_2px_rgba(15,5,31,0.05)]">
                     {colTasks.length}
                   </span>
                 </div>
 
-                <div className="space-y-3">
-                  {colTasks.map((task) => {
-                    const parentTask = task.parentTaskId
-                      ? tasks.find((p) => p.id === task.parentTaskId)
-                      : null
+                {colTasks.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-zinc-200/80 dark:border-white/[0.06] text-xs text-zinc-400 dark:text-zinc-500">
+                    No tasks
+                  </div>
+                ) : (
+                  <div className="flex-1 space-y-2.5 overflow-y-auto pr-0.5">
+                    {colTasks.map((task) => {
+                      const parentTask = task.parentTaskId
+                        ? tasks.find((p) => p.id === task.parentTaskId)
+                        : null
+                      const assignedMembers = members.filter(
+                        (m) => m.status === 'active' && task.assignedMemberIds.includes(m.id)
+                      )
 
-                    return (
-                      <div
-                        key={task.id}
-                        className="rounded-xl border border-slate-800 bg-slate-950/90 p-3.5 space-y-2.5"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-xs font-bold text-indigo-300">
-                              {task.code}
-                            </span>
-                            {parentTask && (
-                              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
-                                ↳ {parentTask.code}
+                      return (
+                        <div
+                          key={task.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setSelectedTaskId(task.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              setSelectedTaskId(task.id)
+                            }
+                          }}
+                          className="group rounded-xl bg-white dark:bg-[#131319] p-3.5 space-y-2.5 shadow-[0_1px_2px_rgba(15,5,31,0.04),0_4px_12px_-4px_rgba(15,5,31,0.06),0_0_0_1px_rgba(15,5,31,0.05)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_4px_14px_-4px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.06)] hover:shadow-[0_6px_18px_-6px_rgba(109,37,218,0.14),0_0_0_1px_rgba(109,37,218,0.22)] hover:-translate-y-[1px] transition-all duration-150 cursor-pointer"
+                        >
+                          {/* Compact Header: Code + Priority */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-mono text-[11px] font-bold text-[#6d25da] dark:text-[#c5a8f0]">
+                                {task.code}
                               </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5">
+                              {parentTask && (
+                                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 dark:text-zinc-400 truncate">
+                                  ↳ {parentTask.code}
+                                </span>
+                              )}
+                            </div>
                             <span
-                              className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded ${
+                              className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded shrink-0 ${
                                 task.priority === 'urgent'
-                                  ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                                  ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
                                   : task.priority === 'high'
-                                    ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                                    : 'bg-slate-800 text-slate-300'
+                                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                                    : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300'
                               }`}
                             >
                               {task.priority}
                             </span>
-                            {canEditTask && (
-                              <button
-                                type="button"
-                                title="Edit Task Specifications (task:edit)"
-                                onClick={() => startEditTask(task)}
-                                className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] cursor-pointer"
-                              >
-                                ✎
-                              </button>
-                            )}
-                            {canDeleteTask && (
-                              <button
-                                type="button"
-                                title="Delete Task (task:delete)"
-                                onClick={() => handleDeleteTask(task.id)}
-                                className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-rose-950 hover:text-rose-300 text-slate-400 text-[10px] cursor-pointer"
-                              >
-                                ✕
-                              </button>
-                            )}
                           </div>
-                        </div>
 
-                        <div className="text-xs font-semibold text-white leading-snug">
-                          {task.title}
-                        </div>
-
-                        <div className="rounded-lg bg-slate-900/90 border border-slate-800/80 p-2 text-[11px] text-slate-400">
-                          <strong className="text-slate-300 block mb-0.5">
-                            Acceptance Criteria:
-                          </strong>
-                          {task.acceptanceCriteria}
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400 font-mono">
-                          <span>Est: {task.estimateMinutes}m</span>
-                          <span className="text-indigo-300">
-                            Mode: {task.defaultWorkMode}
-                          </span>
-                          <span>{task.isBillable ? 'Billable' : 'Non-Billable'}</span>
-                        </div>
-
-                        {/* Contributors Assignment Picker (F1-013) */}
-                        <div className="space-y-1">
-                          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
-                            Assigned Contributors (F1-013):
-                          </span>
-                          <div className="flex flex-wrap gap-1">
-                            {members
-                              .filter((m) => m.status === 'active')
-                              .map((m) => {
-                                const assigned = task.assignedMemberIds.includes(m.id)
-                                if (!canAssignTask) {
-                                  if (!assigned) return null
-                                  return (
-                                    <span
-                                      key={m.id}
-                                      className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-950/70 border border-indigo-800/70 text-indigo-300"
-                                    >
-                                      ✓ {m.name.split(' ')[0]}
-                                    </span>
-                                  )
-                                }
-                                return (
-                                  <button
-                                    key={m.id}
-                                    type="button"
-                                    onClick={() => toggleTaskAssignee(task, m.id)}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] border cursor-pointer ${
-                                      assigned
-                                        ? 'bg-indigo-950 text-indigo-200 border-indigo-700'
-                                        : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300'
-                                    }`}
-                                  >
-                                    {assigned ? '✓ ' : '+ '}
-                                    {m.name.split(' ')[0]}
-                                  </button>
-                                )
-                              })}
+                          {/* Compact Title */}
+                          <div className="text-[13px] font-semibold text-zinc-900 dark:text-white leading-snug line-clamp-2 group-hover:text-[#6d25da] dark:group-hover:text-[#c5a8f0] transition-colors">
+                            {task.title}
                           </div>
-                        </div>
 
-                        {/* Attachments & Links (F1-015) */}
-                        <div className="space-y-1">
-                          {task.attachments.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {task.attachments.map((att) => (
-                                <span
-                                  key={att}
-                                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400"
-                                >
-                                  📎 {att}
-                                </span>
-                              ))}
+                          {/* Compact Footer: Metadata + Quick Track */}
+                          <div className="flex items-center justify-between gap-2 pt-0.5">
+                            <div className="flex items-center gap-1.5 min-w-0 text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+                              <span>{task.estimateMinutes}m</span>
+                              <span>·</span>
+                              <span className="text-[#6d25da] dark:text-[#c5a8f0] truncate">
+                                {task.defaultWorkMode}
+                              </span>
+                              {task.attachments.length > 0 && (
+                                <>
+                                  <span>·</span>
+                                  <span>📎 {task.attachments.length}</span>
+                                </>
+                              )}
                             </div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="text"
-                              placeholder="Attach doc/PR link (F1-015)..."
-                              value={attachmentInput[task.id] ?? ''}
-                              onChange={(e) =>
-                                setAttachmentInput((prev) => ({
-                                  ...prev,
-                                  [task.id]: e.target.value,
-                                }))
-                              }
-                              className="flex-1 rounded border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] text-white"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const val = (attachmentInput[task.id] ?? '').trim()
-                                if (!val) return
-                                addTaskAttachment(task.id, val)
-                                setAttachmentInput((prev) => ({ ...prev, [task.id]: '' }))
-                              }}
-                              className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-200 cursor-pointer"
-                            >
-                              + Attach
-                            </button>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {assignedMembers.length > 0 && (
+                                <span
+                                  title={assignedMembers.map((m) => m.name).join(', ')}
+                                  className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.08] text-[10px] font-semibold text-zinc-700 dark:text-zinc-300"
+                                >
+                                  {assignedMembers[0].name.split(' ')[0].slice(0, 2).toUpperCase()}
+                                  {assignedMembers.length > 1 ? `+${assignedMembers.length - 1}` : ''}
+                                </span>
+                              )}
+
+                              {canTrackTimer && (
+                                <button
+                                  type="button"
+                                  title="Start Focus Session"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onLaunchTimerForTask(
+                                      task.projectId,
+                                      task.id,
+                                      task.defaultWorkMode
+                                    )
+                                  }}
+                                  className="h-6 px-2 rounded-md bg-[#6d25da]/10 hover:bg-[#6d25da] text-[#6d25da] hover:text-white dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] dark:hover:bg-[#6d25da] dark:hover:text-white text-[10px] font-semibold transition cursor-pointer"
+                                >
+                                  ▶
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-
-                        <div className="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80">
-                          <div className="flex items-center gap-1.5">
-                            <select
-                              value={task.status}
-                              disabled={!canChangeTaskStatus}
-                              onChange={(e) =>
-                                updateTaskStatus(
-                                  task.id,
-                                  e.target.value as TaskRecord['status']
-                                )
-                              }
-                              className={`rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-200 ${
-                                !canChangeTaskStatus ? 'opacity-50 cursor-not-allowed' : ''
-                              }`}
-                              title={!canChangeTaskStatus ? 'Missing task:status_change permission' : undefined}
-                            >
-                              <option value="backlog">Backlog</option>
-                              <option value="active">Active</option>
-                              <option value="review">Review</option>
-                              <option value="done">Done</option>
-                            </select>
-
-                            {canApproveTask && (task.status === 'review' || task.status === 'active') && (
-                              <button
-                                type="button"
-                                onClick={() => handleApproveTask(task)}
-                                title="Approve Acceptance Criteria & Sign-off Task (task:approve)"
-                                className="px-2 py-1 rounded bg-teal-600 hover:bg-teal-500 text-[10px] font-semibold text-white transition cursor-pointer"
-                              >
-                                ✓ Sign-off
-                              </button>
-                            )}
-                          </div>
-
-                          {canTrackTimer && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onLaunchTimerForTask(
-                                  task.projectId,
-                                  task.id,
-                                  task.defaultWorkMode
-                                )
-                              }
-                              className="px-2.5 py-1 rounded bg-emerald-600/90 hover:bg-emerald-500 text-[11px] font-semibold text-white transition cursor-pointer"
-                            >
-                              ▶ Track Session
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 overflow-hidden">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/90 text-slate-400 uppercase text-[11px]">
+            <thead className="bg-zinc-50 dark:bg-zinc-950/90 text-zinc-500 dark:text-zinc-400 uppercase text-[11px]">
               <tr>
                 <th className="py-3 px-4">Code</th>
                 <th className="py-3 px-4">Task & Acceptance Criteria</th>
@@ -801,22 +710,22 @@ export function ProjectsTasksView({
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {projectTasks.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-950/40">
-                  <td className="py-3 px-4 font-mono font-bold text-indigo-300">
+                <tr key={t.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950/40">
+                  <td className="py-3 px-4 font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">
                     {t.code}
                   </td>
                   <td className="py-3 px-4">
-                    <div className="font-semibold text-white">{t.title}</div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="font-semibold text-zinc-900 dark:text-white">{t.title}</div>
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
                       {t.acceptanceCriteria}
                     </div>
                   </td>
-                  <td className="py-3 px-4 font-mono text-indigo-300">
+                  <td className="py-3 px-4 font-mono text-[#6d25da] dark:text-[#c5a8f0]">
                     {t.defaultWorkMode}
                   </td>
-                  <td className="py-3 px-4 font-mono text-slate-300">
+                  <td className="py-3 px-4 font-mono text-zinc-700 dark:text-zinc-300">
                     {t.estimateMinutes}m
                   </td>
                   <td className="py-3 px-4 uppercase font-mono text-[11px]">
@@ -829,7 +738,7 @@ export function ProjectsTasksView({
                           type="button"
                           title="Edit Task"
                           onClick={() => startEditTask(t)}
-                          className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs cursor-pointer"
+                          className="px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs cursor-pointer"
                         >
                           ✎
                         </button>
@@ -839,7 +748,7 @@ export function ProjectsTasksView({
                           type="button"
                           title="Delete Task"
                           onClick={() => handleDeleteTask(t.id)}
-                          className="px-2 py-1 rounded bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 text-xs cursor-pointer"
+                          className="px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-rose-100 dark:hover:bg-rose-950 text-zinc-500 dark:text-zinc-400 hover:text-rose-800 dark:hover:text-rose-300 text-xs cursor-pointer"
                         >
                           ✕
                         </button>
@@ -873,6 +782,273 @@ export function ProjectsTasksView({
           </table>
         </div>
       )}
+
+      {/* Clean 2-Column Task Detail Modal (Portal to document.body for full-page backdrop) */}
+      {selectedTask &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/45 backdrop-blur-xs"
+            onClick={() => setSelectedTaskId(null)}
+          >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="dp-popover-enter w-full max-w-2xl rounded-2xl bg-white dark:bg-[#131319] shadow-(--dp-shadow-popover) overflow-hidden max-h-[88vh] flex flex-col"
+          >
+            {/* Top Bar */}
+            <div className="px-6 py-3.5 flex items-center justify-between gap-3 border-b border-zinc-100 dark:border-white/[0.06] shrink-0">
+              <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 min-w-0">
+                <span className="truncate font-medium text-zinc-700 dark:text-zinc-300">
+                  {currentProject?.name ?? 'Project'}
+                </span>
+                <span>/</span>
+                <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">
+                  {selectedTask.code}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {canEditTask && (
+                  <button
+                    type="button"
+                    title="Edit task"
+                    onClick={() => {
+                      startEditTask(selectedTask)
+                      setSelectedTaskId(null)
+                    }}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/[0.07] dark:hover:text-white transition cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                  </button>
+                )}
+                {canDeleteTask && (
+                  <button
+                    type="button"
+                    title="Delete task"
+                    onClick={() => {
+                      handleDeleteTask(selectedTask.id)
+                      setSelectedTaskId(null)
+                    }}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/60 dark:hover:text-rose-300 transition cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTaskId(null)}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/[0.07] dark:hover:text-white transition cursor-pointer"
+                  aria-label="Close task details"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* 2-Column Body */}
+            <div className="grid grid-cols-1 md:grid-cols-12 overflow-y-auto">
+              {/* Left Column: Title, Criteria & Links */}
+              <div className="md:col-span-7 p-6 space-y-6">
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug">
+                  {selectedTask.title}
+                </h3>
+
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                    Acceptance Criteria
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                    {selectedTask.acceptanceCriteria}
+                  </p>
+                </div>
+
+                <div className="space-y-2.5 pt-2 border-t border-zinc-100 dark:border-white/[0.06]">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                    Links &amp; Attachments
+                  </div>
+                  {selectedTask.attachments.length > 0 && (
+                    <div className="space-y-1.5">
+                      {selectedTask.attachments.map((att) => (
+                        <div
+                          key={att}
+                          className="flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-lg bg-zinc-50 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 truncate"
+                        >
+                          <svg className="w-3.5 h-3.5 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                          </svg>
+                          <span className="truncate">{att}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Paste doc or PR URL..."
+                      value={attachmentInput[selectedTask.id] ?? ''}
+                      onChange={(e) =>
+                        setAttachmentInput((prev) => ({
+                          ...prev,
+                          [selectedTask.id]: e.target.value,
+                        }))
+                      }
+                      className="min-w-0 flex-1 px-3 py-1.5 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = (attachmentInput[selectedTask.id] ?? '').trim()
+                        if (!val) return
+                        addTaskAttachment(selectedTask.id, val)
+                        setAttachmentInput((prev) => ({ ...prev, [selectedTask.id]: '' }))
+                      }}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-white/[0.07] dark:hover:bg-white/[0.12] text-xs font-medium text-zinc-700 dark:text-zinc-200 cursor-pointer"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Clean Properties Sidebar */}
+              <div className="md:col-span-5 bg-zinc-50/80 dark:bg-white/[0.02] p-6 border-t md:border-t-0 md:border-l border-zinc-100 dark:border-white/[0.06] flex flex-col justify-between gap-6">
+                <div className="space-y-4 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-500 dark:text-zinc-400">Status</span>
+                    <select
+                      value={selectedTask.status}
+                      disabled={!canChangeTaskStatus}
+                      onChange={(e) =>
+                        updateTaskStatus(
+                          selectedTask.id,
+                          e.target.value as TaskRecord['status']
+                        )
+                      }
+                      className={`!py-1 !pl-2.5 !pr-7 !text-xs ${!canChangeTaskStatus ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <option value="backlog">Backlog</option>
+                      <option value="active">Active Work</option>
+                      <option value="review">In Review</option>
+                      <option value="done">Done</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-500 dark:text-zinc-400">Priority</span>
+                    <span
+                      className={`text-[11px] font-semibold capitalize px-2 py-0.5 rounded-md ${
+                        selectedTask.priority === 'urgent'
+                          ? 'bg-rose-100/80 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
+                          : selectedTask.priority === 'high'
+                            ? 'bg-amber-100/80 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                            : 'bg-zinc-200/70 dark:bg-white/[0.07] text-zinc-700 dark:text-zinc-300'
+                      }`}
+                    >
+                      {selectedTask.priority}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-500 dark:text-zinc-400">Estimate</span>
+                    <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                      {selectedTask.estimateMinutes} min
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-500 dark:text-zinc-400">Work Mode</span>
+                    <span className="capitalize font-medium text-[#6d25da] dark:text-[#c5a8f0]">
+                      {selectedTask.defaultWorkMode}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-zinc-500 dark:text-zinc-400">Billing</span>
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                      {selectedTask.isBillable ? 'Billable' : 'Non-Billable'}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-zinc-200/70 dark:border-white/[0.06] space-y-2">
+                    <div className="text-zinc-500 dark:text-zinc-400">Assignees</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {members
+                        .filter((m) => m.status === 'active')
+                        .map((m) => {
+                          const assigned = selectedTask.assignedMemberIds.includes(m.id)
+                          if (!canAssignTask) {
+                            if (!assigned) return null
+                            return (
+                              <span
+                                key={m.id}
+                                className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#f4effc] dark:bg-[#6d25da]/15 text-[#581eae] dark:text-[#c5a8f0]"
+                              >
+                                {m.name}
+                              </span>
+                            )
+                          }
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => toggleTaskAssignee(selectedTask, m.id)}
+                              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                                assigned
+                                  ? 'bg-[#f4effc] dark:bg-[#6d25da]/20 text-[#581eae] dark:text-[#c5a8f0] shadow-[inset_0_0_0_1px_rgba(109,37,218,0.18)]'
+                                  : 'bg-white dark:bg-white/[0.05] text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                              }`}
+                            >
+                              {assigned ? '✓ ' : '+ '}
+                              {m.name}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Primary Actions */}
+                <div className="space-y-2 pt-3 border-t border-zinc-200/70 dark:border-white/[0.06]">
+                  {canTrackTimer && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onLaunchTimerForTask(
+                          selectedTask.projectId,
+                          selectedTask.id,
+                          selectedTask.defaultWorkMode
+                        )
+                        setSelectedTaskId(null)
+                      }}
+                      className="w-full py-2 rounded-lg bg-[#6d25da] hover:bg-[#581eae] text-xs font-semibold text-white transition cursor-pointer"
+                    >
+                      ▶ Track Session
+                    </button>
+                  )}
+
+                  {canApproveTask &&
+                    (selectedTask.status === 'review' || selectedTask.status === 'active') && (
+                      <button
+                        type="button"
+                        onClick={() => handleApproveTask(selectedTask)}
+                        className="w-full py-2 rounded-lg bg-zinc-200/70 hover:bg-zinc-200 dark:bg-white/[0.07] dark:hover:bg-white/[0.12] text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition cursor-pointer"
+                      >
+                        ✓ Sign-off Task
+                      </button>
+                    )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+          document.body
+        )}
     </div>
   )
 }

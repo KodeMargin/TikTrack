@@ -126,38 +126,38 @@ export function AuthLoginScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#090c14] dark:text-slate-100 flex flex-col justify-between p-4 sm:p-6">
-      <header className="max-w-5xl w-full mx-auto flex items-center justify-between pb-6">
+    <div className="min-h-screen bg-[#f5f5f9] text-zinc-900 dark:bg-[#07070a] dark:text-zinc-100 flex flex-col justify-between p-4 sm:p-6 relative overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_65%_50%_at_50%_-10%,rgba(109,37,218,0.1),transparent)] dark:bg-[radial-gradient(ellipse_65%_50%_at_50%_-10%,rgba(139,81,225,0.18),transparent)]"
+      />
+      <header className="max-w-5xl w-full mx-auto flex items-center justify-between pb-6 relative z-10">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
-            DP
-          </div>
-          <div>
-            <div className="text-sm font-bold tracking-tight">DevProof</div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400">
-              TikTrack Enterprise SaaS
-            </div>
-          </div>
+          <img
+            src={theme === 'dark' ? '/images/Logo-Light2.png' : '/images/Logo-Dark2.png'}
+            alt="TikTrack"
+            className="h-9 w-auto object-contain"
+          />
         </div>
         <button
           type="button"
           onClick={toggleTheme}
-          className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 text-xs font-medium cursor-pointer"
+          className="px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-50 shadow-(--dp-shadow-pill) dark:bg-white/[0.05] dark:hover:bg-white/[0.09] text-xs font-medium cursor-pointer transition"
         >
           {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
         </button>
       </header>
 
-      <main className="flex-1 flex items-center justify-center py-6">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200/90 bg-white dark:border-white/10 dark:bg-[#111623] p-6 sm:p-8 shadow-xl space-y-5">
+      <main className="flex-1 flex items-center justify-center py-6 relative z-10">
+        <div className="dp-view-enter w-full max-w-md rounded-2xl border border-zinc-200 bg-white dark:bg-[#121218] p-6 sm:p-8 space-y-5">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#8b51e1]">
               Sign In Required
             </span>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-              Welcome to DevProof
+            <h1 className="text-xl font-bold text-zinc-900 dark:text-white mt-1">
+              Welcome to TikTrack
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Log in with your company or developer account to access your workspace.
             </p>
           </div>
@@ -175,9 +175,9 @@ export function AuthLoginScreen() {
 
           {isRecoverySession ? (
             <form onSubmit={(e) => void handleSetNewPassword(e)} className="space-y-3 text-xs">
-              <div className="p-3 rounded-lg border border-amber-500/50 bg-amber-950/20 text-amber-200 text-xs space-y-1">
+              <div className="p-3 rounded-lg border border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200 text-xs space-y-1">
                 <strong>Password Recovery Session Verified</strong>
-                <p className="text-[11px] text-slate-400">Enter your new password below.</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Enter your new password below.</p>
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -205,7 +205,7 @@ export function AuthLoginScreen() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-0.5"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-0.5"
                   // aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
@@ -224,7 +224,7 @@ export function AuthLoginScreen() {
               <button
                 type="submit"
                 disabled={isUpdatingPassword}
-                className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-white text-xs cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] font-semibold text-white text-xs cursor-pointer disabled:opacity-50"
               >
                 {isUpdatingPassword ? 'Saving Password...' : 'Save New Password'}
               </button>
@@ -232,15 +232,15 @@ export function AuthLoginScreen() {
           ) : (
             <>
               {/* Auth Mode Tabs */}
-              <div className="flex rounded-lg bg-slate-100 dark:bg-white/5 p-1 text-xs font-medium">
+              <div className="flex rounded-xl bg-zinc-200/60 dark:bg-white/[0.045] p-1 text-xs font-medium shadow-[inset_0_1px_2px_rgba(15,5,31,0.06)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">
                 {(['signup', 'login', 'recovery'] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setAuthMode(m)}
-                    className={`flex-1 py-1.5 rounded-md transition cursor-pointer ${authMode === m
-                      ? 'bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-xs font-semibold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    className={`flex-1 py-1.5 rounded-lg transition-all duration-200 cursor-pointer ${authMode === m
+                      ? 'bg-white dark:bg-[#6d25da]/30 text-[#581eae] dark:text-[#e2d3f8] shadow-xs font-semibold'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                       }`}
                   >
                     {m === 'signup'
@@ -263,7 +263,7 @@ export function AuthLoginScreen() {
                       placeholder="e.g. Alex Silva"
                       value={authFullName}
                       onChange={(e) => setAuthFullName(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                       required
                     />
                   </div>
@@ -278,7 +278,7 @@ export function AuthLoginScreen() {
                     placeholder="you@company.com"
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                     required
                   />
                 </div>
@@ -315,14 +315,14 @@ export function AuthLoginScreen() {
                         placeholder="••••••••"
                         value={authPassword}
                         onChange={(e) => setAuthPassword(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 pr-10 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 pr-10 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                         required
                         minLength={6}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-0.5"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-0.5"
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? (
@@ -343,7 +343,7 @@ export function AuthLoginScreen() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-white text-xs transition cursor-pointer disabled:opacity-50"
+                  className="w-full py-2.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] font-semibold text-white text-xs transition cursor-pointer disabled:opacity-50"
                 >
                   {loading
                     ? 'Processing...'

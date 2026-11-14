@@ -257,43 +257,43 @@ function FirstTimePasswordChangeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl border border-indigo-500/30 bg-[#0d111b] p-6 sm:p-8 shadow-2xl space-y-5 text-white">
+    <div className="fixed inset-0 z-50 bg-zinc-900/40 dark:bg-[#09090b]/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white text-zinc-900 dark:border-zinc-800/80 dark:bg-[#121215] dark:text-white p-6 sm:p-8 shadow-2xl space-y-5">
         <div className="space-y-1.5 text-center">
-          <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/20">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
+          <img
+            src="/images/logo-only.png"
+            alt="TikTrack"
+            className="h-12 w-12 mx-auto mb-2"
+          />
           <h2 className="text-lg font-bold">First-Time Sign-In Required</h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Welcome, <strong>{user.name}</strong>! Your account was initialized with a temporary password. Before accessing your workspace, please set a new strong password.
           </p>
         </div>
 
         {error && (
-          <div className="p-3 rounded-lg border border-rose-500/50 bg-rose-950/60 text-rose-200 text-xs font-medium">
+          <div className="p-3 rounded-lg border border-rose-500/50 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 text-xs font-medium">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Signed In Account</label>
+            <label className="block text-zinc-700 dark:text-zinc-300 font-medium mb-1">Signed In Account</label>
             <input
               type="text"
               disabled
               value={user.email}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-400 cursor-not-allowed text-xs font-mono"
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-100 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-zinc-500 dark:text-zinc-400 cursor-not-allowed text-xs font-mono"
             />
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-slate-300 font-medium">New Strong Password</label>
+              <label className="text-zinc-700 dark:text-zinc-300 font-medium">New Strong Password</label>
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="text-[11px] text-indigo-400 hover:text-indigo-300 cursor-pointer"
+                className="text-[11px] text-[#6d25da] dark:text-[#a87ce9] hover:text-[#581eae] dark:hover:text-[#c5a8f0] cursor-pointer"
               >
                 {showPass ? 'Hide' : 'Show'}
               </button>
@@ -305,11 +305,11 @@ function FirstTimePasswordChangeModal({
               placeholder="At least 8 characters"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+              className="w-full rounded-lg border border-zinc-300 dark:border-white/15 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6d25da] text-xs"
             />
           </div>
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Confirm New Password</label>
+            <label className="block text-zinc-700 dark:text-zinc-300 font-medium mb-1">Confirm New Password</label>
             <input
               type={showPass ? 'text' : 'password'}
               required
@@ -317,14 +317,14 @@ function FirstTimePasswordChangeModal({
               placeholder="Re-enter your new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+              className="w-full rounded-lg border border-zinc-300 dark:border-white/15 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6d25da] text-xs"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-white text-xs transition cursor-pointer disabled:opacity-50 mt-2 shadow-md shadow-indigo-600/30"
+            className="w-full py-2.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] font-semibold text-white text-xs transition cursor-pointer disabled:opacity-50 mt-2 shadow-md shadow-indigo-600/30"
           >
             {loading ? 'Securing Account...' : 'Set Password & Enter Workspace'}
           </button>
@@ -477,7 +477,7 @@ function DevProofShell() {
     if (items.length === 0) return null
     return (
       <div className="space-y-1">
-        <div className="px-3 text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <div className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-zinc-400/90 dark:text-zinc-500">
           {title}
         </div>
         {items.map((item) => {
@@ -487,12 +487,18 @@ function DevProofShell() {
               key={item.id}
               type="button"
               onClick={() => navigateToSection(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition cursor-pointer ${selected
-                ? 'bg-indigo-50 text-indigo-700 font-semibold dark:bg-indigo-500/15 dark:text-indigo-300'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200'
+              className={`group relative w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6d25da]/30 ${selected
+                ? 'bg-zinc-900/[0.055] text-zinc-950 font-semibold dark:bg-white/[0.08] dark:text-white'
+                : 'text-zinc-600 hover:bg-zinc-900/[0.035] hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-zinc-100'
                 }`}
             >
-              <span className={selected ? 'text-indigo-600 dark:text-indigo-400' : 'opacity-75'}>
+              {selected && (
+                <span className="absolute left-1 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-full bg-[#6d25da] dark:bg-[#a87ce9]" />
+              )}
+              <span
+                className={`transition-transform duration-200 group-hover:scale-105 group-hover:translate-x-0.5 ${selected ? 'text-[#6d25da] dark:text-[#c5a8f0]' : 'opacity-70 group-hover:opacity-100'
+                  }`}
+              >
                 {item.icon}
               </span>
               <span className="truncate">{item.label}</span>
@@ -505,13 +511,15 @@ function DevProofShell() {
 
   if (!bootstrapLoaded || authChecking) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#090c14] dark:text-slate-100 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-white text-zinc-900 dark:bg-[#09090b] dark:text-zinc-100 flex items-center justify-center p-6">
         <div className="text-center space-y-3">
-          <div className="h-10 w-10 mx-auto rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-sm font-bold text-white shadow-sm">
-            DP
-          </div>
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Loading DevProof...
+          <img
+            src="/images/logo-only.png"
+            alt="TikTrack"
+            className="h-10 w-10 mx-auto animate-pulse"
+          />
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Loading TikTrack...
           </p>
         </div>
       </div>
@@ -525,13 +533,14 @@ function DevProofShell() {
 
   if (!hasWorkspace) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#090c14] dark:text-slate-100 flex flex-col">
-        <header className="h-14 border-b border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-[#0d111b]/80 px-6 flex items-center justify-between">
+      <div className="min-h-screen bg-white text-zinc-900 dark:bg-[#09090b] dark:text-zinc-100 flex flex-col">
+        <header className="h-14 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-[#0c0c0e]/80 px-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-xs font-bold text-white">
-              DP
-            </div>
-            <span className="text-sm font-semibold">DevProof</span>
+            <img
+              src={theme === 'dark' ? '/images/Logo-Light2.png' : '/images/Logo-Dark2.png'}
+              alt="TikTrack"
+              className="h-8 w-auto object-contain"
+            />
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -620,7 +629,7 @@ function DevProofShell() {
                           .replace(/^-|-$/g, '')
                       )
                     }}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                   />
                 </div>
                 <div>
@@ -633,7 +642,7 @@ function DevProofShell() {
                     placeholder="e.g. acme-studio"
                     value={setupSlug}
                     onChange={(e) => setSetupSlug(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                   />
                 </div>
               </div>
@@ -649,7 +658,7 @@ function DevProofShell() {
                     placeholder="Your full name"
                     value={setupOwnerName}
                     onChange={(e) => setSetupOwnerName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                   />
                 </div>
                 <div>
@@ -662,7 +671,7 @@ function DevProofShell() {
                     placeholder="iamartseeker@gmail.com"
                     value={setupOwnerEmail}
                     onChange={(e) => setSetupOwnerEmail(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                   />
                 </div>
               </div>
@@ -700,7 +709,7 @@ function DevProofShell() {
               <button
                 type="submit"
                 disabled={!prismaStatus.connected}
-                className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition cursor-pointer"
+                className="w-full py-2.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] disabled:opacity-50 text-white text-sm font-semibold transition cursor-pointer"
               >
                 Create Live Workspace in Supabase
               </button>
@@ -716,7 +725,7 @@ function DevProofShell() {
     (activeUser.status === 'invited' || Boolean(activeUser.mustChangePassword))
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#090c14] dark:text-slate-100 flex">
+    <div className="h-screen overflow-hidden bg-white text-zinc-900 dark:bg-[#09090c] dark:text-zinc-100 flex relative">
       {isFirstTimePasswordRequired && (
         <FirstTimePasswordChangeModal
           user={activeUser}
@@ -727,91 +736,63 @@ function DevProofShell() {
       {mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden transition-opacity"
         />
       )}
 
-      {/* Clean Left Sidebar */}
+      {/* Fixed Independent Left Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200/80 dark:bg-[#0d111b] dark:border-white/10 flex flex-col transition-transform duration-200 lg:static lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-50 w-64 h-full shrink-0 bg-[#fafafc] shadow-[1px_0_0_rgba(15,5,31,0.06)] dark:bg-[#0c0c10] dark:shadow-[1px_0_0_rgba(255,255,255,0.06)] flex flex-col transition-transform duration-250 ease-out lg:static lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
         {/* Brand */}
-        <div className="h-14 px-4 flex items-center justify-between border-b border-slate-200/70 dark:border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-xs font-bold text-white shadow-xs">
-              DP
-            </div>
-            <div>
-              <div className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white leading-none">
-                DevProof
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-none">
-                {activeTenant.name}
-              </div>
-            </div>
+        <div className="h-16 shrink-0 px-4 flex items-center justify-between gap-2 shadow-[0_1px_0_rgba(15,5,31,0.05)] dark:shadow-[0_1px_0_rgba(255,255,255,0.05)]">
+          <div className="flex items-center min-w-0">
+            <img
+              src={theme === 'dark' ? '/images/Logo-Light2.png' : '/images/Logo-Dark2.png'}
+              alt="TikTrack"
+              className="h-10 w-auto object-contain transition-transform duration-200 hover:scale-[1.02]"
+            />
           </div>
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-200/60 text-zinc-700 dark:bg-white/[0.07] dark:text-zinc-300 text-xs font-semibold tracking-tight truncate max-w-[115px] shrink-0">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#6d25da] dark:bg-[#a87ce9] shrink-0" />
+            <span className="truncate">{activeTenant.name}</span>
+          </span>
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="lg:hidden p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+            className="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 dark:hover:text-white dark:hover:bg-white/10 cursor-pointer"
             aria-label="Close navigation"
           >
             ✕
           </button>
         </div>
 
-        {/* Grouped Navigation */}
+        {/* Independently Scrollable Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
           {renderNavGroup('workspace', 'Work & Time')}
           {renderNavGroup('evidence', 'Context & Privacy')}
           {renderNavGroup('admin', 'Organization')}
         </nav>
-
-        {/* Minimal Footer Status */}
-        <div className="p-3 border-t border-slate-200/70 dark:border-white/10 space-y-2">
-          <button
-            type="button"
-            onClick={() => void refreshPrismaConnection()}
-            title={prismaStatus.message}
-            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-400 transition cursor-pointer"
-          >
-            <span className="flex items-center gap-2 truncate">
-              <span
-                className={`h-2 w-2 rounded-full shrink-0 ${prismaStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'
-                  }`}
-              />
-              <span className="truncate">
-                {prismaStatus.connected ? 'Database Synced' : 'DB Disconnected'}
-              </span>
-            </span>
-            <span className="text-[10px] font-mono opacity-75">
-              {activeTenant.currency}
-            </span>
-          </button>
-        </div>
       </aside>
 
-      {/* Main Column */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        {/* Slim Top Bar */}
-        <header className="h-14 sticky top-0 z-30 bg-white/85 dark:bg-[#090c14]/85 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 px-4 sm:px-6 flex items-center justify-between gap-3">
+      {/* Independently Scrollable Main Column */}
+      <div className="flex-1 min-w-0 h-full overflow-y-auto flex flex-col relative z-10">
+        {/* Sticky Top Bar */}
+        <header className="h-16 shrink-0 sticky top-0 z-30 bg-white/85 dark:bg-[#09090c]/85 backdrop-blur-xl shadow-[0_1px_0_rgba(15,5,31,0.055)] dark:shadow-[0_1px_0_rgba(255,255,255,0.055)] px-4 sm:px-8 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 cursor-pointer"
+              className="lg:hidden p-1.5 rounded-xl bg-white dark:bg-white/5 shadow-(--dp-shadow-pill) text-zinc-600 dark:text-zinc-300 cursor-pointer"
               aria-label="Open navigation"
             >
               <NavIcon path="M4 6h16M4 12h16M4 18h16" />
             </button>
             <div className="min-w-0">
-              <h1 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+              <h1 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-white truncate">
                 {currentNav.label}
               </h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden sm:block">
-                {currentNav.description}
-              </p>
             </div>
           </div>
 
@@ -829,23 +810,23 @@ function DevProofShell() {
                       ? `Session paused (${Math.floor(timer.elapsedSeconds / 60)}m elapsed) - Click to resume`
                       : 'Timer idle - Click to start tracking time'
               }
-              className={`hidden md:inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer ${timer.lifecycle === 'running'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-300'
+              className={`hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 hover:-translate-y-[0.5px] cursor-pointer ${timer.lifecycle === 'running'
+                  ? 'bg-[#6d25da]/12 text-[#581eae] shadow-[0_0_0_1px_rgba(109,37,218,0.22),0_4px_14px_-4px_rgba(109,37,218,0.3)] dark:bg-[#6d25da]/22 dark:text-[#d8c4f8] dark:shadow-[0_0_0_1px_rgba(139,81,225,0.35),0_4px_16px_-4px_rgba(139,81,225,0.35)]'
                   : timer.lifecycle === 'on_break'
-                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/10 dark:border-indigo-500/30 dark:text-indigo-300'
+                    ? 'bg-white text-zinc-700 shadow-(--dp-shadow-pill) dark:bg-white/6 dark:text-zinc-300'
                     : timer.elapsedSeconds > 0
-                      ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300'
-                      : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-slate-300'
+                      ? 'bg-amber-500/12 text-amber-700 shadow-[0_0_0_1px_rgba(245,158,11,0.25)] dark:text-amber-300'
+                      : 'bg-white/90 text-zinc-600 shadow-(--dp-shadow-pill) hover:bg-white dark:bg-white/[0.045] dark:hover:bg-white/[0.08] dark:text-zinc-300'
                 }`}
             >
               <span
                 className={`h-2 w-2 rounded-full ${timer.lifecycle === 'running'
-                    ? 'bg-emerald-500 animate-pulse'
+                    ? 'dp-beacon text-[#8b51e1] bg-[#8b51e1]'
                     : timer.lifecycle === 'on_break'
-                      ? 'bg-indigo-500'
+                      ? 'bg-zinc-400'
                       : timer.elapsedSeconds > 0
                         ? 'bg-amber-500'
-                        : 'bg-slate-400'
+                        : 'bg-zinc-400'
                   }`}
               />
               <span>
@@ -870,12 +851,12 @@ function DevProofShell() {
                     setNotifOpen(false)
                   }}
                   aria-label="Switch workspace"
-                  className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] hover:bg-slate-50 dark:hover:bg-white/5 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition cursor-pointer"
+                  className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 text-zinc-800 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] dark:text-zinc-200 text-xs font-semibold transition cursor-pointer"
                 >
-                  <span className="h-2 w-2 rounded-full bg-indigo-500 shrink-0" />
-                  <span className="truncate max-w-[130px]">{activeTenant.name}</span>
+                  <span className="h-2 w-2 rounded-full bg-[#6d25da] dark:bg-[#a87ce9] shrink-0" />
+                  <span className="truncate max-w-[140px]">{activeTenant.name}</span>
                   <svg
-                    className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${workspaceMenuOpen ? 'rotate-180' : ''}`}
+                    className={`h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 ${workspaceMenuOpen ? 'rotate-180' : ''}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -886,10 +867,10 @@ function DevProofShell() {
                 </button>
 
                 {workspaceMenuOpen && (
-                  <div className="absolute left-0 mt-2 w-64 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] shadow-2xl p-1.5 z-50 animate-in fade-in duration-100">
-                    <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+                  <div className="dp-popover-enter absolute left-0 mt-2 w-64 rounded-2xl bg-white/95 dark:bg-[#14141b]/95 backdrop-blur-2xl shadow-(--dp-shadow-popover) p-1.5 z-50">
+                    <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
                       <span>Workspaces</span>
-                      <span className="bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[9px] font-mono">
+                      <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-1.5 py-0.5 rounded text-[9px] font-mono">
                         {tenants.length}
                       </span>
                     </div>
@@ -905,25 +886,25 @@ function DevProofShell() {
                               setWorkspaceMenuOpen(false)
                             }}
                             className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-left ${isSelected
-                                ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold'
-                                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
+                                ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
+                                : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                               }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <span
-                                className={`h-2 w-2 rounded-full shrink-0 ${isSelected ? 'bg-indigo-600 dark:bg-indigo-400' : 'bg-slate-300 dark:bg-slate-600'
+                                className={`h-2 w-2 rounded-full shrink-0 ${isSelected ? 'bg-[#8b51e1]' : 'bg-zinc-300 dark:bg-zinc-600'
                                   }`}
                               />
                               <div className="truncate">
                                 <div className="truncate">{t.name}</div>
-                                <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate font-mono">
+                                <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate font-mono">
                                   {t.slug} • {t.currency}
                                 </div>
                               </div>
                             </div>
                             {isSelected && (
                               <svg
-                                className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 ml-2"
+                                className="h-4 w-4 text-[#8b51e1] shrink-0 ml-2"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
@@ -940,8 +921,8 @@ function DevProofShell() {
                 )}
               </div>
             ) : (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs font-semibold text-slate-700 dark:text-slate-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              <span className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#f0e9fb]/90 text-[#581eae] shadow-[0_0_0_1px_rgba(109,37,218,0.14)] dark:bg-[#6d25da]/18 dark:text-[#e2d3f8] dark:shadow-[0_0_0_1px_rgba(139,81,225,0.28)] text-xs font-bold">
+                <span className="h-2 w-2 rounded-full bg-[#6d25da] dark:bg-[#a87ce9]" />
                 {activeTenant.name}
               </span>
             )}
@@ -957,30 +938,22 @@ function DevProofShell() {
                     setNotifOpen(false)
                   }}
                   aria-label="User role and simulation menu"
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-sm transition cursor-pointer ${activeUser.role === 'super_admin'
-                      ? 'bg-amber-500/10 border-amber-500/30 dark:bg-amber-500/20 dark:border-amber-500/40 text-amber-800 dark:text-amber-200 hover:bg-amber-500/15'
-                      : 'bg-violet-500/10 border-violet-500/30 dark:bg-violet-500/20 dark:border-violet-500/40 text-violet-800 dark:text-violet-200 hover:bg-violet-500/15'
-                    }`}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-50 shadow-(--dp-shadow-pill) dark:bg-white/[0.05] dark:hover:bg-white/[0.09] text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition cursor-pointer"
                 >
                   <span
-                    className={`h-2 w-2 rounded-full shrink-0 ${activeUser.role === 'super_admin' ? 'bg-amber-500' : 'bg-violet-500'
+                    className={`h-2 w-2 rounded-full shrink-0 ${activeUser.role === 'super_admin' ? 'bg-[#8b51e1]' : 'bg-zinc-400'
                       }`}
                   />
                   <span className="truncate max-w-[120px] font-bold">
                     {activeUser.name || 'Super Admin'}
                   </span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase shrink-0 font-bold tracking-wider ${activeUser.role === 'super_admin'
-                        ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-800 dark:text-amber-200'
-                        : 'bg-violet-500/20 dark:bg-violet-500/30 text-violet-800 dark:text-violet-200'
-                      }`}
-                  >
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono uppercase shrink-0 font-bold tracking-wider bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]">
                     {activeUser.role === 'super_admin'
                       ? 'SUPER ADMIN'
                       : `PREVIEW: ${activeUser.role.replace('_', ' ')}`}
                   </span>
                   <svg
-                    className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-150 ${personaMenuOpen ? 'rotate-180' : ''}`}
+                    className={`h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 ${personaMenuOpen ? 'rotate-180' : ''}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -991,30 +964,30 @@ function DevProofShell() {
                 </button>
 
                 {personaMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] shadow-2xl p-2 z-50 animate-in fade-in duration-100">
+                  <div className="dp-popover-enter absolute right-0 mt-2 w-72 rounded-2xl bg-white/95 dark:bg-[#14141b]/95 backdrop-blur-2xl shadow-(--dp-shadow-popover) p-2 z-50">
                     {/* Identity card */}
-                    <div className="px-3 py-2.5 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-100 dark:border-white/5 mb-2">
+                    <div className="px-3 py-2.5 bg-[#f5f4fa] dark:bg-white/[0.04] rounded-xl mb-2">
                       <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#6d25da] to-[#8b51e1] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
                           {(sessionUserEmail?.[0] || 'A').toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                          <div className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate">
                             {sessionUserEmail?.split('@')[0]}
                           </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono">
+                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate font-mono">
                             {sessionUserEmail}
                           </div>
                         </div>
                       </div>
-                      <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-800 dark:text-amber-200">
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6d25da]/15 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#a87ce9]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b51e1]" />
                         System Super Admin • Full Access
                       </div>
                     </div>
 
                     {/* Simulation Section */}
-                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                       Simulate Workspace View
                     </div>
 
@@ -1027,20 +1000,20 @@ function DevProofShell() {
                           setPersonaMenuOpen(false)
                         }}
                         className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${activeUser.role === 'super_admin'
-                            ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-200 font-semibold'
-                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
+                            ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
+                            : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                           }`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                          <span className="h-2 w-2 rounded-full bg-[#8b51e1] shrink-0" />
                           <div>
                             <span className="font-semibold">Super Admin</span>
-                            <span className="text-[11px] text-slate-400 ml-1">(System-wide)</span>
+                            <span className="text-[11px] text-zinc-400 ml-1">(System-wide)</span>
                           </div>
                         </div>
                         {activeUser.role === 'super_admin' && (
                           <svg
-                            className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0"
+                            className="h-4 w-4 text-[#8b51e1] shrink-0"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -1065,22 +1038,22 @@ function DevProofShell() {
                                 setPersonaMenuOpen(false)
                               }}
                               className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${isSimulating
-                                  ? 'bg-violet-50 dark:bg-violet-500/15 text-violet-800 dark:text-violet-200 font-semibold'
-                                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5'
+                                  ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
+                                  : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                                 }`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className={`h-2 w-2 rounded-full shrink-0 ${isSimulating ? 'bg-violet-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                                <span className={`h-2 w-2 rounded-full shrink-0 ${isSimulating ? 'bg-[#8b51e1]' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
                                 <div className="truncate">
                                   <div className="truncate font-medium">{m.name}</div>
-                                  <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate capitalize font-mono">
+                                  <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate capitalize font-mono">
                                     {m.role.replace('_', ' ')}
                                   </div>
                                 </div>
                               </div>
                               {isSimulating && (
                                 <svg
-                                  className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0 ml-1.5"
+                                  className="h-4 w-4 text-[#8b51e1] shrink-0 ml-1.5"
                                   fill="none"
                                   viewBox="0 0 24 24"
                                   stroke="currentColor"
@@ -1093,32 +1066,119 @@ function DevProofShell() {
                           )
                         })}
                     </div>
+
+                    <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-zinc-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPersonaMenuOpen(false)
+                          void signOut().then(() => {
+                            navigateToSection('timer-sessions')
+                          })
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition cursor-pointer text-left"
+                      >
+                        <svg
+                          className="w-4 h-4 shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                        </svg>
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
             ) : sessionUserEmail ? (
-              <div
-                title={`Signed in as ${activeUser.name} (${activeUser.email}) • Role: ${activeUser.role}`}
-                className="bg-indigo-50 border border-indigo-200 dark:bg-indigo-500/10 dark:border-indigo-500/30 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 truncate max-w-[200px] flex items-center gap-1.5"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="truncate">{activeUser.name}</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-indigo-200/50 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 shrink-0">
-                  {activeUser.role.replace('_', ' ')}
-                </span>
+              <div className="relative" ref={personaMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPersonaMenuOpen((prev) => !prev)
+                    setWorkspaceMenuOpen(false)
+                    setNotifOpen(false)
+                  }}
+                  title={`Signed in as ${activeUser.name} (${activeUser.email}) • Role: ${activeUser.role}`}
+                  className="bg-white hover:bg-zinc-50 shadow-(--dp-shadow-pill) dark:bg-white/[0.05] dark:hover:bg-white/[0.09] rounded-xl px-2.5 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate max-w-[220px] flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#8b51e1] shrink-0" />
+                  <span className="truncate">{activeUser.name}</span>
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono uppercase bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] shrink-0">
+                    {activeUser.role.replace('_', ' ')}
+                  </span>
+                  <svg
+                    className={`h-3.5 w-3.5 text-zinc-400 shrink-0 transition-transform duration-200 ${personaMenuOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                {personaMenuOpen && (
+                  <div className="dp-popover-enter absolute right-0 mt-2 w-64 rounded-2xl bg-white/95 dark:bg-[#14141b]/95 backdrop-blur-2xl shadow-(--dp-shadow-popover) p-2 z-50">
+                    <div className="px-2.5 py-2 bg-[#f5f4fa] dark:bg-white/[0.04] rounded-xl mb-2">
+                      <div className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate">
+                        {activeUser.name}
+                      </div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                        {activeUser.email || sessionUserEmail}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPersonaMenuOpen(false)
+                        void signOut().then(() => {
+                          navigateToSection('timer-sessions')
+                        })
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition cursor-pointer text-left"
+                    >
+                      <svg
+                        className="w-4 h-4 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                      </svg>
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="relative" ref={personaMenuRef}>
                 <button
                   type="button"
                   onClick={() => setPersonaMenuOpen((prev) => !prev)}
-                  className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer flex items-center gap-1.5"
+                  className="bg-white hover:bg-zinc-50 shadow-(--dp-shadow-pill) dark:bg-white/[0.05] dark:hover:bg-white/[0.09] rounded-xl px-2.5 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-200 focus:outline-none cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="truncate max-w-[120px]">{activeUser.name}</span>
-                  <span className="text-[10px] text-slate-400 uppercase font-mono">({activeUser.role.replace('_', ' ')})</span>
+                  <span className="text-[10px] text-zinc-400 uppercase font-mono">({activeUser.role.replace('_', ' ')})</span>
+                  <svg
+                    className={`h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 ${personaMenuOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
                 </button>
                 {personaMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] shadow-xl p-1 z-50">
+                  <div className="dp-popover-enter absolute right-0 mt-2 w-56 rounded-2xl bg-white/95 dark:bg-[#14141b]/95 backdrop-blur-2xl shadow-(--dp-shadow-popover) p-1.5 z-50">
                     {members.map((m) => (
                       <button
                         key={m.id}
@@ -1128,13 +1188,38 @@ function DevProofShell() {
                           setPersonaMenuOpen(false)
                         }}
                         className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition ${activeUser.id === m.id
-                            ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 font-semibold'
-                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
+                            ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
+                            : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                           }`}
                       >
                         {m.name} ({m.role.replace('_', ' ')})
                       </button>
                     ))}
+                    <div className="mt-1 pt-1 border-t border-zinc-200/80 dark:border-zinc-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPersonaMenuOpen(false)
+                          void signOut().then(() => {
+                            navigateToSection('timer-sessions')
+                          })
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition cursor-pointer text-left"
+                      >
+                        <svg
+                          className="w-4 h-4 shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                        </svg>
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1146,30 +1231,30 @@ function DevProofShell() {
                 type="button"
                 onClick={() => setNotifOpen((prev) => !prev)}
                 aria-label="Notifications"
-                className="relative p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300 transition cursor-pointer"
+                className="relative p-2 rounded-xl bg-white hover:bg-zinc-50 shadow-(--dp-shadow-pill) text-zinc-600 dark:bg-white/[0.05] dark:hover:bg-white/[0.09] dark:text-zinc-300 transition cursor-pointer"
               >
                 <NavIcon path="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
                 {unreadNotificationCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-indigo-600 text-[10px] font-bold text-white flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#6d25da] text-[10px] font-bold text-white shadow-[0_2px_8px_rgba(109,37,218,0.5)] flex items-center justify-center">
                     {unreadNotificationCount}
                   </span>
                 )}
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 mt-2 w-80 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#111623] shadow-xl p-3 space-y-2 z-50">
-                  <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 pb-1.5 border-b border-slate-200 dark:border-white/10">
+                <div className="dp-popover-enter absolute right-0 mt-2 w-80 max-h-80 overflow-y-auto rounded-2xl bg-white/95 dark:bg-[#14141b]/95 backdrop-blur-2xl shadow-(--dp-shadow-popover) p-3 space-y-2 z-50">
+                  <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-200 pb-2 border-b border-zinc-200/60 dark:border-white/5">
                     <span>Notifications</span>
                     <button
                       type="button"
                       onClick={() => setNotifOpen(false)}
-                      className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+                      className="text-zinc-400 hover:text-zinc-700 dark:hover:text-white cursor-pointer"
                     >
                       Close
                     </button>
                   </div>
                   {notifications.length === 0 ? (
-                    <div className="text-xs text-slate-500 py-4 text-center">
+                    <div className="text-xs text-zinc-500 py-4 text-center">
                       You are all caught up.
                     </div>
                   ) : (
@@ -1177,15 +1262,15 @@ function DevProofShell() {
                       <div
                         key={n.id}
                         onClick={() => markNotificationRead(n.id)}
-                        className={`p-2.5 rounded-lg border text-xs cursor-pointer space-y-0.5 transition ${n.readAt
-                          ? 'border-slate-200/70 bg-slate-50 text-slate-500 dark:border-white/5 dark:bg-white/[0.02] dark:text-slate-400'
-                          : 'border-indigo-200 bg-indigo-50/70 text-slate-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-slate-100'
+                        className={`p-2.5 rounded-xl text-xs cursor-pointer space-y-0.5 transition ${n.readAt
+                          ? 'bg-zinc-50/80 text-zinc-500 hover:bg-zinc-100/80 dark:bg-white/[0.025] dark:hover:bg-white/[0.045] dark:text-zinc-400'
+                          : 'bg-[#6d25da]/10 text-zinc-800 shadow-[inset_0_0_0_1px_rgba(109,37,218,0.18)] dark:bg-[#6d25da]/18 dark:text-zinc-100 dark:shadow-[inset_0_0_0_1px_rgba(139,81,225,0.28)]'
                           }`}
                       >
                         <div className="flex items-center justify-between font-semibold">
                           <span>{n.title}</span>
                           {!n.readAt && (
-                            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#8b51e1]" />
                           )}
                         </div>
                         <p className="text-[11px] opacity-85 leading-snug">{n.body}</p>
@@ -1202,50 +1287,19 @@ function DevProofShell() {
               onClick={toggleTheme}
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-200 text-xs font-medium transition cursor-pointer"
+              className="p-2 rounded-xl bg-white hover:bg-zinc-50 shadow-(--dp-shadow-pill) text-zinc-600 dark:bg-white/[0.05] dark:hover:bg-white/[0.09] dark:text-zinc-300 transition cursor-pointer"
             >
               {theme === 'dark' ? (
-                <>
-                  <NavIcon path="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364-.707-.707M6.343 6.343l-.707-.707m12.728 0-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
-                  <span className="hidden sm:inline">Light</span>
-                </>
+                <NavIcon path="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364-.707-.707M6.343 6.343l-.707-.707m12.728 0-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
               ) : (
-                <>
-                  <NavIcon path="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-                  <span className="hidden sm:inline">Dark</span>
-                </>
+                <NavIcon path="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
               )}
-            </button>
-
-            {/* User Identity & Sign Out Button */}
-            <button
-              type="button"
-              onClick={() => {
-                void signOut().then(() => {
-                  navigateToSection('timer-sessions')
-                })
-              }}
-              title={sessionUserEmail ? `Signed in as ${sessionUserEmail} - Click to Sign Out` : 'Sign out'}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-xs font-semibold text-rose-700 dark:text-rose-300 transition cursor-pointer"
-            >
-              <svg
-                className="w-3.5 h-3.5 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-              </svg>
-              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </header>
 
         {/* Main Workspace Canvas with Strict RBAC Route Guard */}
-        <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-6">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-5 sm:px-8 py-6">
           {!canAccessNav(currentNav) ? (
             <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-8 text-center space-y-4">
               <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-300">
@@ -1262,13 +1316,13 @@ function DevProofShell() {
               <button
                 type="button"
                 onClick={() => navigateToSection(visibleNavItems[0]?.id || 'timer-sessions')}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold cursor-pointer"
               >
                 Return to {visibleNavItems[0]?.label || 'Workspace'}
               </button>
             </div>
           ) : (
-            <>
+            <div key={activeSection} className="dp-view-enter">
               {activeSection === 'timesheets-review' && <TimesheetsAndReviewView />}
               {activeSection === 'timer-sessions' && <WorkSessionTimerView />}
               {activeSection === 'projects-tasks' && (
@@ -1297,7 +1351,7 @@ function DevProofShell() {
                   <PrivacyDpiaInspector />
                 </div>
               )}
-            </>
+            </div>
           )}
         </main>
       </div>

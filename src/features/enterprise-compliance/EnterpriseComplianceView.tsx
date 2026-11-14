@@ -193,13 +193,7 @@ export function EnterpriseComplianceView() {
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">
               {strings.pageTitle}
             </h1>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/30">
-              Phase 5 • F5-001..F5-011
-            </span>
           </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-            {strings.pageSubtitle}
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -256,7 +250,7 @@ export function EnterpriseComplianceView() {
               type="button"
               onClick={() => setTab(t.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${active
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-[#702fe3] text-white shadow-sm'
                   : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 dark:bg-white/5 dark:text-slate-300 dark:border-white/10 dark:hover:bg-white/10'
                 }`}
             >
@@ -391,7 +385,7 @@ export function EnterpriseComplianceView() {
                   if (res.scimBearerToken) setRevealedScimToken(res.scimBearerToken)
                 })
               }}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold cursor-pointer"
             >
               Save & Activate SSO Provider
             </button>
@@ -399,7 +393,7 @@ export function EnterpriseComplianceView() {
             {revealedScimToken && (
               <div className="p-3 rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 text-xs space-y-1">
                 <div className="font-semibold text-amber-800 dark:text-amber-300">
-                  SCIM 2.0 Bearer Token (shown once - stored as SHA-256 hash)
+                  SCIM 2.0 Bearer Token
                 </div>
                 <code className="block break-all font-mono text-[11px]">{revealedScimToken}</code>
               </div>
@@ -530,9 +524,6 @@ export function EnterpriseComplianceView() {
                 {strings.twoPersonBadge}
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Any policy change expanding telemetry scope requires two distinct administrators and takes effect prospectively only (never retroactive).
-            </p>
 
             <div className="space-y-3 text-xs">
               <label className="block space-y-1">
@@ -558,7 +549,7 @@ export function EnterpriseComplianceView() {
                   checked={propExpands}
                   onChange={(e) => setPropExpands(e.target.checked)}
                 />
-                <span>Expands collection scope (triggers mandatory dual-control review)</span>
+                <span>Expands collection scope</span>
               </label>
             </div>
 
@@ -573,7 +564,7 @@ export function EnterpriseComplianceView() {
                 })
                 setBanner({ kind: res.ok ? 'ok' : 'err', text: res.message })
               }}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold cursor-pointer"
             >
               Propose & Sign (1st Approval as {activeUser.name})
             </button>
@@ -651,10 +642,7 @@ export function EnterpriseComplianceView() {
           </section>
 
           <section className="p-5 rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#111623] space-y-4">
-            <h2 className="text-sm font-bold">Immutable Sensitive Access Logs (F5-002)</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Append-only ledger (`REVOKE UPDATE, DELETE`) tracking policy approvals, legal holds, SIEM exports, SCIM syncs & DSAR activity.
-            </p>
+            <h2 className="text-sm font-bold">Sensitive Access Logs</h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {sensitiveAccessLogs.length === 0 ? (
                 <p className="text-xs text-slate-500">No sensitive access log entries yet.</p>
@@ -687,7 +675,7 @@ export function EnterpriseComplianceView() {
       {tab === 'retention-holds' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <section className="p-5 rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#111623] space-y-4">
-            <h2 className="text-sm font-bold">Legal Holds (Pause Purge & Erasure)</h2>
+            <h2 className="text-sm font-bold">Legal Holds</h2>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <label className="space-y-1">
                 <span className="font-medium">Hold Scope</span>
@@ -839,7 +827,7 @@ export function EnterpriseComplianceView() {
                   })
                   setBanner({ kind: res.ok ? 'ok' : 'err', text: res.message })
                 }}
-                className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold cursor-pointer"
+                className="px-3 py-2 rounded-lg bg-[#702fe3] text-white text-xs font-semibold cursor-pointer"
               >
                 Save Retention Template
               </button>
@@ -851,7 +839,7 @@ export function EnterpriseComplianceView() {
                 }}
                 className="px-3 py-2 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold cursor-pointer"
               >
-                Execute Retention Sweep (Respects Legal Holds)
+                Run Retention Sweep
               </button>
             </div>
 
@@ -878,7 +866,7 @@ export function EnterpriseComplianceView() {
                         setBanner({ kind: res.ok ? 'ok' : 'err', text: res.message })
                       )
                     }}
-                    className="px-3 py-1 rounded bg-indigo-600 text-white font-semibold cursor-pointer"
+                    className="px-3 py-1 rounded bg-[#702fe3] text-white font-semibold cursor-pointer"
                   >
                     Submit DSAR
                   </button>
@@ -953,7 +941,7 @@ export function EnterpriseComplianceView() {
                 </select>
               </label>
               <label className="space-y-1">
-                <span className="font-medium">Tenant Isolation Tier (F5-004)</span>
+                <span className="font-medium">Tenant Isolation Tier</span>
                 <select
                   value={isolationTier}
                   onChange={(e) => setIsolationTier(e.target.value as IsolationTier)}
@@ -1017,7 +1005,7 @@ export function EnterpriseComplianceView() {
                 })
                 setBanner({ kind: 'ok', text: res.message })
               }}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-[#702fe3] text-white text-xs font-semibold cursor-pointer"
             >
               Save Residency & Isolation Policy
             </button>
@@ -1047,7 +1035,7 @@ export function EnterpriseComplianceView() {
           </section>
 
           <section className="p-5 rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#111623] space-y-4">
-            <h2 className="text-sm font-bold">Sanitized SIEM Destinations & Batches (F5-005)</h2>
+            <h2 className="text-sm font-bold">SIEM Destinations & Batches</h2>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <label className="space-y-1">
                 <span className="font-medium">Destination Name</span>
@@ -1104,7 +1092,7 @@ export function EnterpriseComplianceView() {
                   includeCategories: ['auth', 'policy', 'dispute', 'retention', 'export'],
                 }).then((res) => setBanner({ kind: 'ok', text: res.message }))
               }}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-[#702fe3] text-white text-xs font-semibold cursor-pointer"
             >
               Add SIEM Destination
             </button>
@@ -1214,7 +1202,7 @@ export function EnterpriseComplianceView() {
                   releaseNotes: 'Signed & notarized enterprise release with monotonic clock hardening.',
                 }).then((res) => setBanner({ kind: 'ok', text: res.message }))
               }}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-[#702fe3] text-white text-xs font-semibold cursor-pointer"
             >
               Publish Signed Fleet Release
             </button>
@@ -1242,7 +1230,7 @@ export function EnterpriseComplianceView() {
           </section>
 
           <section className="p-5 rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#111623] space-y-4">
-            <h2 className="text-sm font-bold">Scalable Analytics Warehouse & Detachable Worker (F5-008)</h2>
+            <h2 className="text-sm font-bold">Analytics Warehouse & Worker</h2>
             <div className="grid grid-cols-3 gap-2 text-xs">
               <label className="space-y-1">
                 <span className="font-medium">Warehouse Sink</span>
@@ -1287,7 +1275,7 @@ export function EnterpriseComplianceView() {
                     rowCount: 12500,
                   }).then((res) => setBanner({ kind: 'ok', text: res.message }))
                 }}
-                className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold cursor-pointer"
+                className="px-3 py-2 rounded-lg bg-[#702fe3] text-white text-xs font-semibold cursor-pointer"
               >
                 Offload Aggregates to Warehouse
               </button>
@@ -1351,7 +1339,7 @@ export function EnterpriseComplianceView() {
                 </select>
               </label>
               <label className="space-y-1">
-                <span className="font-medium">Measured RPO (min, target 15m)</span>
+                <span className="font-medium">Measured RPO (min)</span>
                 <input
                   type="number"
                   value={drMeasuredRpo}
@@ -1360,7 +1348,7 @@ export function EnterpriseComplianceView() {
                 />
               </label>
               <label className="space-y-1">
-                <span className="font-medium">Measured RTO (min, target 60m)</span>
+                <span className="font-medium">Measured RTO (min)</span>
                 <input
                   type="number"
                   value={drMeasuredRto}
@@ -1369,7 +1357,7 @@ export function EnterpriseComplianceView() {
                 />
               </label>
               <label className="space-y-1">
-                <span className="font-medium">p95 CRUD Latency (ms, target &lt; 500ms)</span>
+                <span className="font-medium">p95 Latency (ms)</span>
                 <input
                   type="number"
                   value={drP95Ms}
@@ -1410,7 +1398,7 @@ export function EnterpriseComplianceView() {
                 })
                 setBanner({ kind: res.passed ? 'ok' : 'err', text: res.message })
               }}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-[#702fe3] text-white text-xs font-semibold cursor-pointer"
             >
               Record DR / Load Drill Result
             </button>
@@ -1446,7 +1434,7 @@ export function EnterpriseComplianceView() {
           </section>
 
           <section className="p-5 rounded-2xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#111623] space-y-4">
-            <h2 className="text-sm font-bold">Independent Security Assessments (F5-011)</h2>
+            <h2 className="text-sm font-bold">Security Assessments</h2>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <label className="space-y-1 col-span-2">
                 <span className="font-medium">Assessment Title</span>
@@ -1624,7 +1612,7 @@ export function EnterpriseComplianceView() {
                 text: `Applied locale ${a11yLocale} and WCAG ${a11yWcag} (${a11yHighContrast ? 'High Contrast ON' : 'Standard Contrast'}).`,
               })
             }}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold cursor-pointer"
+            className="px-4 py-2 rounded-lg bg-[#702fe3] text-white text-xs font-semibold cursor-pointer"
           >
             Apply Accessibility & Localization Settings
           </button>

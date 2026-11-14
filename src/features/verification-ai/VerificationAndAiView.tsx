@@ -57,17 +57,13 @@ export function VerificationAndAiView() {
 
   if (isRestrictedRole) {
     return (
-      <div className="rounded-2xl border border-amber-500/40 bg-amber-950/20 p-6 space-y-2">
-        <div className="text-xs font-mono uppercase tracking-wider text-amber-300 font-bold">
-          Role Boundary Enforced (Section 12.4 & Phase 3 RLS)
-        </div>
-        <h2 className="text-lg font-bold text-white">
-          Verification Rules, Correlation Graph & AI Drafts Restricted
+      <div className="rounded-2xl border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-6 space-y-2">
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+          Access Restricted
         </h2>
-        <p className="text-xs text-slate-300 max-w-2xl">
-          Finance and Client Reviewer roles see only approved commercial hours, locked rates,
-          and finalized deliverables-never segment rule evaluations, correlation graphs, or
-          private developer AI drafts. Switch to Developer, Project Manager, or Tenant Owner.
+        <p className="text-xs text-zinc-700 dark:text-zinc-300 max-w-2xl">
+          Finance and Client Reviewer roles can only view approved hours, rates, and finalized
+          deliverables. Switch to Developer, Project Manager, or Tenant Owner.
         </p>
       </div>
     )
@@ -106,8 +102,8 @@ export function VerificationAndAiView() {
       {banner && (
         <div
           className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${banner.ok
-              ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
-              : 'border-rose-700 bg-rose-950/60 text-rose-200'
+              ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
+              : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200'
             }`}
         >
           <span>{banner.text}</span>
@@ -122,18 +118,11 @@ export function VerificationAndAiView() {
       )}
 
       {/* Header & Sub-navigation */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-wider text-indigo-400 font-semibold">
-            Phase 3 • Context-Aware Verification & Guardrailed AI
-          </div>
-          <h2 className="text-lg font-bold text-white mt-0.5">
-            Rules Engine, Evidence Correlation & AI Draft Studio
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+            Verification & AI Studio
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Active Rule Set: <strong className="text-slate-200">v{activeRuleSet.versionNumber} ({activeRuleSet.versionLabel})</strong> •
-            AI Assistance: <strong className={aiEnabled ? 'text-emerald-300' : 'text-amber-300'}>{aiEnabled ? 'Enabled (Guardrailed)' : 'Disabled (Deterministic Templates)'}</strong>
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -141,31 +130,31 @@ export function VerificationAndAiView() {
             type="button"
             onClick={() => setTab('rules')}
             className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${tab === 'rules'
-                ? 'bg-indigo-600 border-indigo-500 text-white'
-                : 'bg-slate-950 border-slate-700 text-slate-300'
+                ? 'bg-[#702fe3] border-[#6d25da] text-white'
+                : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300'
               }`}
           >
-            Rules & Policy Simulator (F3-001..010)
+            Rules & Policy Simulator
           </button>
           <button
             type="button"
             onClick={() => setTab('correlation')}
             className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${tab === 'correlation'
-                ? 'bg-indigo-600 border-indigo-500 text-white'
-                : 'bg-slate-950 border-slate-700 text-slate-300'
+                ? 'bg-[#702fe3] border-[#6d25da] text-white'
+                : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300'
               }`}
           >
-            Correlation Graph & Variance ({correlationEdges.length})
+            Correlation & Variance ({correlationEdges.length})
           </button>
           <button
             type="button"
             onClick={() => setTab('ai')}
             className={`px-3 py-1.5 rounded-lg font-semibold border cursor-pointer ${tab === 'ai'
-                ? 'bg-indigo-600 border-indigo-500 text-white'
-                : 'bg-slate-950 border-slate-700 text-slate-300'
+                ? 'bg-[#702fe3] border-[#6d25da] text-white'
+                : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300'
               }`}
           >
-            AI Draft Studio ({aiGenerations.length})
+            AI Drafts ({aiGenerations.length})
           </button>
         </div>
       </div>
@@ -176,30 +165,30 @@ export function VerificationAndAiView() {
           {/* Explainable Pattern Alerts & Work Mode Suggestions */}
           {(unusualPatternAlerts.length > 0 || workModeSuggestions.length > 0) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-                  F3-010 • Explainable Pattern Notices (Non-Punitive)
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-4 space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  Pattern Notices
                 </div>
                 {unusualPatternAlerts.length === 0 ? (
-                  <p className="text-xs text-slate-400">
-                    No pattern anomalies detected across current intervals.
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    No pattern anomalies detected.
                   </p>
                 ) : (
                   unusualPatternAlerts.map((alert) => (
                     <div
                       key={alert.id}
-                      className="rounded-lg border border-amber-800/60 bg-amber-950/20 p-3 space-y-1 text-xs"
+                      className="rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-1 text-xs"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-amber-300">
-                          {alert.ruleCode} • {alert.title}
+                        <span className="font-mono font-bold text-amber-700 dark:text-amber-300">
+                          {alert.title}
                         </span>
                       </div>
-                      <p className="text-slate-300">{alert.explanation}</p>
-                      <p className="text-emerald-300/90 text-[11px]">
+                      <p className="text-zinc-700 dark:text-zinc-300">{alert.explanation}</p>
+                      <p className="text-zinc-800 dark:text-zinc-200 text-[11px]">
                         ✓ Suggested action: {alert.suggestedReviewAction}
                       </p>
-                      <p className="text-rose-300/90 text-[11px]">
+                      <p className="text-rose-700 dark:text-rose-300/90 text-[11px]">
                         ✗ Prohibited inference: {alert.prohibitedInference}
                       </p>
                     </div>
@@ -207,31 +196,31 @@ export function VerificationAndAiView() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-wider text-sky-400">
-                  F3-003 • Signal-Based Work-Mode Suggestions
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-4 space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
+                  Work-Mode Suggestions
                 </div>
                 {workModeSuggestions.length === 0 ? (
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     All observed activity rollups match their declared work modes.
                   </p>
                 ) : (
                   workModeSuggestions.slice(0, 4).map((s) => (
                     <div
                       key={s.id}
-                      className="rounded-lg border border-sky-800/50 bg-sky-950/20 p-3 flex items-start justify-between gap-3 text-xs"
+                      className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 p-3 flex items-start justify-between gap-3 text-xs"
                     >
                       <div className="space-y-1">
-                        <div className="font-mono text-sky-300 font-semibold">
+                        <div className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">
                           {s.workDate} {formatMinuteOfDay(s.startMinuteOfDay)}–{formatMinuteOfDay(s.endMinuteOfDay)} •{' '}
                           {s.currentWorkMode} → {s.suggestedWorkMode} ({Math.round(s.confidence * 100)}%)
                         </div>
-                        <p className="text-slate-300">{s.rationale}</p>
+                        <p className="text-zinc-700 dark:text-zinc-300">{s.rationale}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => dismissWorkModeSuggestion(s.id)}
-                        className="px-2 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 shrink-0 cursor-pointer"
+                        className="px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 shrink-0 cursor-pointer"
                       >
                         Acknowledge
                       </button>
@@ -244,30 +233,26 @@ export function VerificationAndAiView() {
 
           {/* Policy Simulator & Versioned Rule Publisher */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-7 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+            <div className="lg:col-span-7 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-                  F3-001 & F3-007 • Versioned Rule Policy Simulator
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
+                  Rule Policy Simulator
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Test threshold changes before activation. Rule changes apply strictly to future
-                  sessions-never silently mutating historical locked periods.
-                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <label className="space-y-1">
-                  <span className="text-slate-400 block">Draft Version Label</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 block">Version Label</span>
                   <input
                     type="text"
                     value={draftLabel}
                     onChange={(e) => setDraftLabel(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+                    className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-slate-400 block">
-                    R-01 Idle Clarification Threshold (min)
+                  <span className="text-zinc-500 dark:text-zinc-400 block">
+                    Idle Threshold (min)
                   </span>
                   <input
                     type="number"
@@ -280,12 +265,12 @@ export function VerificationAndAiView() {
                         idleClarificationThresholdMinutes: Number(e.target.value),
                       }))
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white font-mono"
+                    className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-slate-400 block">
-                    Deep-Work No-Input Window (min)
+                  <span className="text-zinc-500 dark:text-zinc-400 block">
+                    Deep-Work Window (min)
                   </span>
                   <input
                     type="number"
@@ -298,12 +283,12 @@ export function VerificationAndAiView() {
                         deepWorkNoInputWindowMinutes: Number(e.target.value),
                       }))
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white font-mono"
+                    className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-slate-400 block">
-                    R-06 Estimate Variance Notice (%)
+                  <span className="text-zinc-500 dark:text-zinc-400 block">
+                    Estimate Variance Notice (%)
                   </span>
                   <input
                     type="number"
@@ -316,15 +301,15 @@ export function VerificationAndAiView() {
                         estimateVarianceAlertPercent: Number(e.target.value),
                       }))
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white font-mono"
+                    className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                 </label>
               </div>
 
-              {/* Rule Toggles R-01..R-08 */}
+              {/* Rule Toggles */}
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-slate-300">
-                  Rules R-01 through R-08 Configuration
+                <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Rule Configuration
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {ALL_RULE_CODES.map((code) => {
@@ -333,7 +318,7 @@ export function VerificationAndAiView() {
                     return (
                       <label
                         key={code}
-                        className="rounded-lg border border-slate-800 bg-slate-950/90 p-2.5 flex items-start gap-2.5 text-xs cursor-pointer"
+                        className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/90 p-2.5 flex items-start gap-2.5 text-xs cursor-pointer"
                       >
                         <input
                           type="checkbox"
@@ -350,13 +335,10 @@ export function VerificationAndAiView() {
                           className="mt-0.5"
                         />
                         <div className="space-y-0.5">
-                          <div className="font-mono font-bold text-indigo-300">
-                            {code}: {meta.title}
+                          <div className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">
+                            {meta.title}
                           </div>
-                          <div className="text-[11px] text-slate-400">{meta.triggerSummary}</div>
-                          <div className="text-[10px] text-rose-300/90">
-                            Guardrail: {meta.prohibitedInference}
-                          </div>
+                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400">{meta.triggerSummary}</div>
                         </div>
                       </label>
                     )
@@ -368,15 +350,15 @@ export function VerificationAndAiView() {
                 <button
                   type="button"
                   onClick={handleRunSimulation}
-                  className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-semibold text-white cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 text-xs font-semibold text-zinc-900 dark:text-white cursor-pointer"
                 >
-                  Preview Policy Simulation (F3-007)
+                  Preview Simulation
                 </button>
                 {isOwnerOrManager && (
                   <button
                     type="button"
                     onClick={handlePublishRuleSet}
-                    className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white cursor-pointer"
+                    className="px-3.5 py-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white cursor-pointer"
                   >
                     Publish New Rule Version
                   </button>
@@ -386,39 +368,38 @@ export function VerificationAndAiView() {
 
             {/* Simulation Output + Published Version History */}
             <div className="lg:col-span-5 space-y-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-                  Policy Simulation Impact Preview
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
+                  Simulation Preview
                 </div>
                 {!simReport ? (
-                  <p className="text-xs text-slate-400">
-                    Adjust thresholds or rule toggles on the left and click{' '}
-                    <strong>Preview Policy Simulation</strong> to inspect impact before publishing.
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Run a simulation to preview changes.
                   </p>
                 ) : (
                   <div className="space-y-3 text-xs">
                     <div className="grid grid-cols-2 gap-2 font-mono">
-                      <div className="rounded-lg bg-slate-950 border border-slate-800 p-2.5">
-                        <div className="text-[10px] text-slate-400">Intervals Evaluated</div>
-                        <div className="text-base font-bold text-white">
+                      <div className="rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-2.5">
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400">Intervals Evaluated</div>
+                        <div className="text-base font-bold text-zinc-900 dark:text-white">
                           {simReport.totalEvaluatedSegments}
                         </div>
                       </div>
-                      <div className="rounded-lg bg-slate-950 border border-slate-800 p-2.5">
-                        <div className="text-[10px] text-slate-400">Status Deltas</div>
-                        <div className="text-base font-bold text-indigo-300">
+                      <div className="rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-2.5">
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400">Status Deltas</div>
+                        <div className="text-base font-bold text-[#6d25da] dark:text-[#c5a8f0]">
                           {simReport.statusChangedCount}
                         </div>
                       </div>
-                      <div className="rounded-lg bg-emerald-950/30 border border-emerald-800/60 p-2.5">
-                        <div className="text-[10px] text-emerald-300">Retroactive Mutations</div>
-                        <div className="text-base font-bold text-emerald-200">
+                      <div className="rounded-lg bg-zinc-50 dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 p-2.5">
+                        <div className="text-[10px] text-zinc-800 dark:text-zinc-200">Retroactive Mutations</div>
+                        <div className="text-base font-bold text-zinc-800 dark:text-zinc-200">
                           {simReport.retroactiveHistoricalMutations}
                         </div>
                       </div>
-                      <div className="rounded-lg bg-emerald-950/30 border border-emerald-800/60 p-2.5">
-                        <div className="text-[10px] text-emerald-300">Auto Pay Deductions</div>
-                        <div className="text-base font-bold text-emerald-200">
+                      <div className="rounded-lg bg-zinc-50 dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 p-2.5">
+                        <div className="text-[10px] text-zinc-800 dark:text-zinc-200">Auto Pay Deductions</div>
+                        <div className="text-base font-bold text-zinc-800 dark:text-zinc-200">
                           ${simReport.automatedPayDeductions}
                         </div>
                       </div>
@@ -426,10 +407,10 @@ export function VerificationAndAiView() {
                     {simReport.deltas.map((d) => (
                       <div
                         key={d.segmentId}
-                        className="rounded border border-slate-800 bg-slate-950 p-2 text-[11px] font-mono"
+                        className="rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-2 text-[11px] font-mono"
                       >
-                        <div className="text-slate-200">{d.label}</div>
-                        <div className="text-indigo-300">
+                        <div className="text-zinc-800 dark:text-zinc-200">{d.label}</div>
+                        <div className="text-[#6d25da] dark:text-[#c5a8f0]">
                           {d.currentStatus} → {d.simulatedStatus}
                         </div>
                       </div>
@@ -438,28 +419,28 @@ export function VerificationAndAiView() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-2.5">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Rule Set Version Lineage (F3-001)
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-2.5">
+                <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  Version History
                 </div>
                 {ruleSets.map((rs) => (
                   <div
                     key={rs.id}
-                    className="rounded-lg border border-slate-800 bg-slate-950 p-3 flex items-center justify-between text-xs"
+                    className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3 flex items-center justify-between text-xs"
                   >
                     <div>
-                      <div className="font-semibold text-white">
+                      <div className="font-semibold text-zinc-900 dark:text-white">
                         v{rs.versionNumber} - {rs.versionLabel}
                       </div>
-                      <div className="text-[11px] text-slate-400 font-mono">
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
                         Idle: {rs.rulesConfig.idleClarificationThresholdMinutes}m • DeepWork:{' '}
                         {rs.rulesConfig.deepWorkNoInputWindowMinutes}m • By {rs.createdByName}
                       </div>
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${rs.status === 'active'
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
-                          : 'bg-slate-800 text-slate-400'
+                          ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
                         }`}
                     >
                       {rs.status}
@@ -475,46 +456,42 @@ export function VerificationAndAiView() {
       {/* TAB 2: EVIDENCE CORRELATION GRAPH & HISTORICAL EFFORT VARIANCE */}
       {tab === 'correlation' && (
         <div className="space-y-6">
-          {/* F3-009: Historical Effort Variance */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+          {/* Effort Variance */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-                F3-008 & F3-009 • Outcome Association & Historical Effort Variance
+              <div className="text-xs font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
+                Effort Variance
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Compares task estimates against claimed, supported, and approved hours with
-                engineering complexity reason codes.
-              </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {taskVariances.map((tv) => (
                 <div
                   key={tv.taskId}
-                  className="rounded-xl border border-slate-800 bg-slate-950/90 p-4 space-y-2 text-xs"
+                  className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/90 p-4 space-y-2 text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-indigo-300">{tv.taskCode}</span>
+                    <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">{tv.taskCode}</span>
                     <span
                       className={`px-2 py-0.5 rounded font-mono text-[10px] ${tv.variancePercent > 125
-                          ? 'bg-amber-950 text-amber-300 border border-amber-700'
-                          : 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                          ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700'
+                          : 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
                         }`}
                     >
                       {tv.variancePercent}% of est.
                     </span>
                   </div>
-                  <div className="font-semibold text-white">{tv.taskTitle}</div>
-                  <div className="grid grid-cols-3 gap-1.5 font-mono text-[11px] bg-slate-900 p-2 rounded border border-slate-800">
+                  <div className="font-semibold text-zinc-900 dark:text-white">{tv.taskTitle}</div>
+                  <div className="grid grid-cols-3 gap-1.5 font-mono text-[11px] bg-white dark:bg-zinc-900 p-2 rounded border border-zinc-200 dark:border-zinc-800">
                     <div>
                       <span className="text-slate-500 block text-[10px]">Est</span>
                       <span>{tv.estimateMinutes}m</span>
                     </div>
                     <div>
-                      <span className="text-blue-400 block text-[10px]">Claimed</span>
+                      <span className="text-[#6d25da] dark:text-[#a87ce9] block text-[10px]">Claimed</span>
                       <span>{tv.claimedMinutes}m</span>
                     </div>
                     <div>
-                      <span className="text-emerald-400 block text-[10px]">Approved</span>
+                      <span className="text-[#6d25da] dark:text-[#a87ce9] block text-[10px]">Approved</span>
                       <span>{tv.approvedMinutes}m</span>
                     </div>
                   </div>
@@ -522,28 +499,28 @@ export function VerificationAndAiView() {
                     {tv.reasonCodes.map((code) => (
                       <span
                         key={code}
-                        className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]"
+                        className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono text-[10px]"
                       >
                         {code}
                       </span>
                     ))}
                   </div>
-                  <div className="text-[11px] text-slate-400">
-                    Deliverables linked: <strong className="text-slate-200">{tv.linkedDeliverableCount}</strong>
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Deliverables linked: <strong className="text-zinc-800 dark:text-zinc-200">{tv.linkedDeliverableCount}</strong>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* F3-004: Evidence Correlation Graph Edges */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-teal-400">
-              F3-004 • Evidence Correlation Graph ({correlationEdges.length} Directed Edges)
+          {/* Evidence Correlation Graph Edges */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
+              Evidence Correlation Graph ({correlationEdges.length})
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="text-[11px] uppercase text-slate-400 border-b border-slate-800">
+                <thead className="text-[11px] uppercase text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                   <tr>
                     <th className="py-2 pr-3">Source Node</th>
                     <th className="py-2 pr-3">Edge Relation</th>
@@ -552,15 +529,15 @@ export function VerificationAndAiView() {
                     <th className="py-2">Traceability Rationale</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/70">
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/70">
                   {correlationEdges.slice(0, 25).map((edge) => (
-                    <tr key={edge.id} className="text-slate-300">
+                    <tr key={edge.id} className="text-zinc-700 dark:text-zinc-300">
                       <td className="py-2 pr-3 font-mono text-[11px]">
                         <span className="text-slate-500">[{edge.sourceNodeType}]</span>{' '}
                         {edge.sourceLabel}
                       </td>
                       <td className="py-2 pr-3">
-                        <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-mono text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-[#f0e9fb] dark:bg-[#6d25da]/15 text-[#6d25da] dark:text-[#c5a8f0] border border-[#c5a8f0] dark:border-[#6d25da]/50 font-mono text-[10px]">
                           {edge.edgeType}
                         </span>
                       </td>
@@ -568,10 +545,10 @@ export function VerificationAndAiView() {
                         <span className="text-slate-500">[{edge.targetNodeType}]</span>{' '}
                         {edge.targetLabel}
                       </td>
-                      <td className="py-2 pr-3 font-mono text-emerald-300">
+                      <td className="py-2 pr-3 font-mono text-zinc-800 dark:text-zinc-200">
                         {Math.round(edge.confidence * 100)}%
                       </td>
-                      <td className="py-2 text-slate-400">{edge.rationale}</td>
+                      <td className="py-2 text-zinc-500 dark:text-zinc-400">{edge.rationale}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -585,38 +562,34 @@ export function VerificationAndAiView() {
       {tab === 'ai' && (
         <div className="space-y-6">
           {/* F3-027 Tenant AI Opt-Out Gate & Generator Controls */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-                  F3-020..F3-027 • Guardrailed AI Assistance & Tenant Opt-Out Gate
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
+                  AI Draft Studio
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Strict guardrails: 100% of cited IDs are verified against stored tenant events/artifacts;
-                  raw code, keystrokes, and private URLs are stripped; drafts require human confirmation.
-                </p>
               </div>
 
-              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-700 bg-slate-950 text-xs cursor-pointer">
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-xs cursor-pointer">
                 <input
                   type="checkbox"
                   checked={aiEnabled}
                   onChange={(e) => toggleTenantAi(e.target.checked)}
                 />
-                <span className="font-semibold text-white">
-                  Tenant AI Assistance (F3-027):{' '}
-                  <span className={aiEnabled ? 'text-emerald-300' : 'text-amber-300'}>
-                    {aiEnabled ? 'ON' : 'OFF (Deterministic Only)'}
+                <span className="font-semibold text-zinc-900 dark:text-white">
+                  AI Assistance:{' '}
+                  <span className={aiEnabled ? 'text-zinc-800 dark:text-zinc-200' : 'text-amber-700 dark:text-amber-300'}>
+                    {aiEnabled ? 'ON' : 'OFF'}
                   </span>
                 </span>
               </label>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 text-xs pt-2 border-t border-slate-800">
+            <div className="flex flex-wrap items-center gap-2 text-xs pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <select
                 value={selectedTaskId || tasks[0]?.id || ''}
                 onChange={(e) => setSelectedTaskId(e.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
               >
                 {tasks.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -628,44 +601,44 @@ export function VerificationAndAiView() {
               <button
                 type="button"
                 onClick={() => handleGenerateAi('daily_summary')}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white font-semibold cursor-pointer"
               >
-                Daily Summary Draft (F3-020)
+                Daily Summary
               </button>
               <button
                 type="button"
                 onClick={() => handleGenerateAi('reviewer_digest')}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-semibold cursor-pointer"
               >
-                Reviewer Digest (F3-023)
+                Reviewer Digest
               </button>
               <button
                 type="button"
                 onClick={() => handleGenerateAi('gap_explanation')}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-semibold cursor-pointer"
               >
-                Gap Explanation (F3-022)
+                Gap Explanation
               </button>
               <button
                 type="button"
                 onClick={() => handleGenerateAi('task_mapping')}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-semibold cursor-pointer"
               >
-                Task Mapping (F3-021)
+                Task Mapping
               </button>
               <button
                 type="button"
                 onClick={() => handleGenerateAi('debug_investigation')}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-semibold cursor-pointer"
               >
-                Debug Draft (F3-024)
+                Debug Draft
               </button>
               <button
                 type="button"
                 onClick={() => handleGenerateAi('pattern_cluster')}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-semibold cursor-pointer"
               >
-                Pattern Cluster (F3-025)
+                Pattern Cluster
               </button>
             </div>
           </div>
@@ -673,7 +646,7 @@ export function VerificationAndAiView() {
           {/* Generated Drafts List */}
           <div className="space-y-4">
             {aiGenerations.length === 0 ? (
-              <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center text-xs text-slate-400">
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-8 text-center text-xs text-zinc-500 dark:text-zinc-400">
                 No AI or template drafts generated yet. Pick a task above and generate a draft.
               </div>
             ) : (
@@ -683,36 +656,36 @@ export function VerificationAndAiView() {
                 return (
                   <div
                     key={gen.id}
-                    className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3 text-xs"
+                    className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-3 text-xs"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700 font-mono uppercase text-[10px] font-bold">
+                        <span className="px-2 py-0.5 rounded bg-[#f0e9fb] dark:bg-[#6d25da]/15 text-[#6d25da] dark:text-[#c5a8f0] border border-[#c5a8f0] dark:border-[#6d25da]/50 font-mono uppercase text-[10px] font-bold">
                           {gen.generationMode === 'ai_guardrailed'
-                            ? 'AI-Drafted (F3-026)'
-                            : 'Deterministic Template (0 LLM Tokens)'}
+                            ? 'AI-Drafted'
+                            : 'Template'}
                         </span>
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-zinc-900 dark:text-white">
                           {gen.targetType.replace('_', ' ').toUpperCase()} • {gen.targetLabel}
                         </span>
-                        <span className="font-mono text-[11px] text-slate-400">
+                        <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
                           model: {gen.modelId} • tokens: {gen.tokensUsed}
                         </span>
                       </div>
 
                       <span
                         className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase border ${gen.status === 'edited_approved'
-                            ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                            ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
                             : gen.status === 'discarded'
-                              ? 'bg-slate-800 text-slate-400 border-slate-700'
-                              : 'bg-amber-950 text-amber-300 border-amber-700'
+                              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
+                              : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700'
                           }`}
                       >
                         {gen.status}
                       </span>
                     </div>
 
-                    <div className="font-mono text-[11px] text-teal-300">
+                    <div className="font-mono text-[11px] text-zinc-800 dark:text-zinc-200">
                       Cited Stored Event IDs: {gen.citedEventIds.length} • Cited Artifact IDs:{' '}
                       {gen.citedArtifactIds.length}
                     </div>
@@ -727,19 +700,19 @@ export function VerificationAndAiView() {
                             [gen.id]: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-slate-200 font-mono text-xs"
+                        className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 p-3 text-zinc-800 dark:text-zinc-200 font-mono text-xs"
                       />
                     ) : (
-                      <pre className="whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950 p-3 text-slate-200 font-mono text-xs">
+                      <pre className="whitespace-pre-wrap rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-3 text-zinc-800 dark:text-zinc-200 font-mono text-xs">
                         {gen.humanApprovedMarkdown ?? gen.draftMarkdown}
                       </pre>
                     )}
 
-                    <details className="text-[11px] text-slate-400">
-                      <summary className="cursor-pointer hover:text-slate-200">
-                        Inspect Sanitized Allowlisted Prompt Payload (Zero Raw Code / Keystrokes)
+                    <details className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      <summary className="cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200">
+                        Inspect Prompt Payload
                       </summary>
-                      <pre className="mt-2 rounded-lg bg-slate-950 border border-slate-800 p-2.5 overflow-x-auto text-[10px] text-emerald-300">
+                      <pre className="mt-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-2.5 overflow-x-auto text-[10px] text-zinc-800 dark:text-zinc-200">
                         {JSON.stringify(gen.sanitizedPromptPayload, null, 2)}
                       </pre>
                     </details>
@@ -752,7 +725,7 @@ export function VerificationAndAiView() {
                             approveAiGeneration(gen.id, textValue)
                             setBanner({
                               ok: true,
-                              text: 'Confirmed & approved draft with source traceability (F3-020, F3-026).',
+                              text: 'Draft approved.',
                             })
                           }}
                           className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold cursor-pointer"
@@ -762,7 +735,7 @@ export function VerificationAndAiView() {
                         <button
                           type="button"
                           onClick={() => discardAiGeneration(gen.id)}
-                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 cursor-pointer"
                         >
                           Discard
                         </button>

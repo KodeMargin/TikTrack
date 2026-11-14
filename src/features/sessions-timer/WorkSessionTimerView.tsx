@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import type { WorkMode } from '@/types/domain.types'
+import { InfoTooltip } from '@/components/InfoTooltip'
 
 const WORK_MODE_DETAILS: {
   mode: WorkMode
@@ -151,7 +152,7 @@ export function WorkSessionTimerView() {
   return (
     <div className="space-y-6">
       {timer.recoveredFromCrash && (
-        <div className="rounded-xl border border-indigo-500/50 bg-indigo-950/60 px-4 py-3 text-xs text-indigo-200 flex items-center justify-between">
+        <div className="rounded-xl border border-[#6d25da]/50 bg-[#f0e9fb] dark:bg-[#6d25da]/15 px-4 py-3 text-xs text-[#6d25da] dark:text-[#c5a8f0] flex items-center justify-between">
           <span>
             <strong>Crash Recovery (F1-022):</strong> Restored your in-progress session timer (
             <span className="font-mono">{formatSecondsHms(timer.elapsedSeconds)}</span>) from local persistence.
@@ -159,7 +160,7 @@ export function WorkSessionTimerView() {
           <button
             type="button"
             onClick={resetTimerClock}
-            className="underline text-indigo-300 cursor-pointer"
+            className="underline text-[#6d25da] dark:text-[#c5a8f0] cursor-pointer"
           >
             Discard Recovered Clock
           </button>
@@ -169,8 +170,8 @@ export function WorkSessionTimerView() {
       {feedbackBanner && (
         <div
           className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${feedbackBanner.ok
-              ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
-              : 'border-rose-700 bg-rose-950/60 text-rose-200'
+              ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
+              : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200'
             }`}
         >
           <span>{feedbackBanner.text}</span>
@@ -186,30 +187,26 @@ export function WorkSessionTimerView() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left 7 Columns: Active Session Timer & Deep-Work Controls */}
-        <div className="lg:col-span-7 rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-xl">
+        <div className="lg:col-span-7 rounded-2xl border border-zinc-200 bg-white dark:bg-zinc-900/90 overflow-hidden">
           {/* Visible Tracking Tray Bar (F1-027) */}
           <div
-            className={`px-5 py-3 border-b flex flex-wrap items-center justify-between gap-2 text-xs font-semibold ${timer.lifecycle === 'running'
-                ? 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
-                : timer.lifecycle === 'on_break'
-                  ? 'bg-indigo-950/80 border-indigo-800 text-indigo-200'
-                  : timer.elapsedSeconds > 0
-                    ? 'bg-amber-950/80 border-amber-800 text-amber-200'
-                    : 'bg-slate-800 border-slate-700 text-slate-300'
+            className={`px-5 py-3.5 border-b border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold transition-colors duration-300 ${timer.lifecycle === 'running'
+                ? 'bg-gradient-to-r from-[#6d25da]/10 via-[#6d25da]/5 to-transparent dark:from-[#6d25da]/20 dark:via-[#6d25da]/8 dark:to-transparent'
+                : 'bg-[#f4f3fa]/80 dark:bg-white/[0.03]'
               }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <span
                 className={`h-2.5 w-2.5 rounded-full ${timer.lifecycle === 'running'
-                    ? 'bg-emerald-400 animate-pulse'
+                    ? 'dp-beacon text-[#8b51e1] bg-[#8b51e1]'
                     : timer.lifecycle === 'on_break'
-                      ? 'bg-indigo-400'
+                      ? 'bg-zinc-400'
                       : timer.elapsedSeconds > 0
-                        ? 'bg-amber-400'
-                        : 'bg-slate-500'
+                        ? 'bg-amber-500'
+                        : 'bg-zinc-500'
                   }`}
               />
-              <span>
+              <span className={timer.lifecycle === 'running' ? 'text-[#6d25da] dark:text-[#a87ce9] font-bold' : 'text-zinc-700 dark:text-zinc-300'}>
                 {timer.lifecycle === 'running'
                   ? `VISIBLE TRACKING ACTIVE • MODE: ${timer.workMode.toUpperCase()}`
                   : timer.lifecycle === 'on_break'
@@ -220,15 +217,15 @@ export function WorkSessionTimerView() {
               </span>
             </div>
             <div className="flex items-center gap-3 font-mono text-[11px]">
-              <span className="text-white font-bold">
+              <span className="font-bold text-zinc-900 dark:text-zinc-100">
                 {formatSecondsHms(timer.elapsedSeconds)}
               </span>
               {timer.breakSeconds > 0 && (
-                <span className="text-amber-300">
+                <span className="text-amber-600 dark:text-amber-400">
                   Break: {formatSecondsHms(timer.breakSeconds)}
                 </span>
               )}
-              <span>
+              <span className="text-zinc-500 dark:text-zinc-400">
                 {timer.isOfflineQueueActive ? '⚡ OFFLINE QUEUE' : '● SYNCED'}
               </span>
             </div>
@@ -238,8 +235,8 @@ export function WorkSessionTimerView() {
             {/* Project & Task Picker (F1-021) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                  Assigned Project (Tenant: {activeTenant.slug})
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1">
+                  Project
                 </label>
                 <select
                   value={activeProjectId}
@@ -252,10 +249,10 @@ export function WorkSessionTimerView() {
                       timer.workMode
                     )
                   }}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
                 >
                   {projects.length === 0 && (
-                    <option value="">No projects yet - create one in Projects &amp; Tasks</option>
+                    <option value="">No projects yet</option>
                   )}
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -266,8 +263,8 @@ export function WorkSessionTimerView() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                  Assigned Task (F1-013, F1-021)
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1">
+                  Task
                 </label>
                 <select
                   value={currentTask?.id ?? ''}
@@ -278,10 +275,10 @@ export function WorkSessionTimerView() {
                       timer.workMode
                     )
                   }
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
                 >
                   {projectTasks.length === 0 && (
-                    <option value="">No tasks yet for this project</option>
+                    <option value="">No tasks yet</option>
                   )}
                   {projectTasks.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -292,15 +289,19 @@ export function WorkSessionTimerView() {
               </div>
             </div>
 
-            {/* Work Mode Picker with Deep-Work Highlight (F1-023) */}
+            {/* Work Mode Picker */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Select Work Mode (F1-014, F1-023)
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <span>Work Mode</span>
+                  <InfoTooltip
+                    align="left"
+                    text="Deep-work modes (Thinking, Research, Review, Meeting, Design) do not require continuous keyboard input."
+                  />
                 </span>
                 {currentModeInfo.deepWork && (
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
-                    Deep-Work Mode: Protected From Low-Input Suspicion
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#6d25da]/10 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#c5a8f0] font-medium">
+                    Deep Work
                   </span>
                 )}
               </div>
@@ -320,29 +321,25 @@ export function WorkSessionTimerView() {
                         )
                       }
                       className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${active
-                          ? 'border-indigo-500 bg-indigo-950/60 text-white'
-                          : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700'
+                          ? 'border-[#6d25da] bg-[#f0e9fb] text-[#6d25da] dark:bg-[#6d25da]/20 dark:text-[#c5a8f0] dark:border-[#8b51e1]'
+                          : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700'
                         }`}
                     >
                       <div className="text-xs font-semibold">{item.label}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
-                        {item.deepWork ? 'Deep Work (No Input Req)' : 'Standard Mode'}
-                      </div>
                     </button>
                   )
                 })}
               </div>
-              <p className="text-xs text-slate-400">{currentModeInfo.description}</p>
             </div>
 
-            {/* Lifecycle State Controls (F1-022, F1-024, F1-025) */}
+            {/* Lifecycle State Controls */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => transitionTimer('running')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${timer.lifecycle === 'running'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${timer.lifecycle === 'running'
+                    ? 'bg-[#702fe3] hover:bg-[#5f21cc] text-white shadow-xs'
+                    : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
                   }`}
               >
                 ▶ Start / Resume
@@ -350,9 +347,9 @@ export function WorkSessionTimerView() {
               <button
                 type="button"
                 onClick={() => transitionTimer('paused')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${timer.lifecycle === 'paused'
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${timer.lifecycle === 'paused'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
                   }`}
               >
                 ❚❚ Pause
@@ -360,68 +357,68 @@ export function WorkSessionTimerView() {
               <button
                 type="button"
                 onClick={() => transitionTimer('on_break')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${timer.lifecycle === 'on_break'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${timer.lifecycle === 'on_break'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
                   }`}
               >
-                ☕ Break (F1-024)
+                ☕ Break
               </button>
               <button
                 type="button"
                 onClick={toggleOfflineMode}
-                className={`ml-auto px-3 py-2 rounded-lg text-xs font-medium border cursor-pointer ${timer.isOfflineQueueActive
-                    ? 'border-amber-500 bg-amber-950/60 text-amber-200'
-                    : 'border-slate-700 bg-slate-800 text-slate-300'
+                className={`ml-auto px-3 py-2 rounded-lg text-xs font-medium border transition cursor-pointer ${timer.isOfflineQueueActive
+                    ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300'
                   }`}
               >
                 {timer.isOfflineQueueActive
-                  ? '⚡ Reconnect & Deduplicate Offline Queue (F1-025)'
-                  : 'Simulate Offline Queue'}
+                  ? '⚡ Reconnect & Sync'
+                  : 'Offline Mode'}
               </button>
             </div>
 
-            {/* Contemporaneous Session Note & Record Segment Form (F1-024, F1-026, F1-029) */}
-            <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-4 space-y-3">
-              <div className="text-xs font-semibold text-white">
-                Log Completed Session to Canonical Timesheet (Break Subtraction F1-024 & Overlap Guard F1-029)
+            {/* Log Completed Session */}
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/90 p-4 space-y-3">
+              <div className="text-xs font-semibold text-zinc-900 dark:text-white">
+                Log Completed Session
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
                 <div>
-                  <label className="block text-[10px] text-slate-400 mb-1">
+                  <label className="block text-[10px] text-zinc-500 dark:text-zinc-400 mb-1">
                     Work Date
                   </label>
                   <input
                     type="date"
                     value={sessionDate}
                     onChange={(e) => setSessionDate(e.target.value)}
-                    className="w-full rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+                    className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-400 mb-1">
+                  <label className="block text-[10px] text-zinc-500 dark:text-zinc-400 mb-1">
                     Start Time
                   </label>
                   <input
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+                    className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-400 mb-1">
+                  <label className="block text-[10px] text-zinc-500 dark:text-zinc-400 mb-1">
                     End Time
                   </label>
                   <input
                     type="time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+                    className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-slate-400 mb-1">
+                  <label className="block text-[10px] text-zinc-500 dark:text-zinc-400 mb-1">
                     Elapsed (Mins)
                   </label>
                   <input
@@ -430,11 +427,11 @@ export function WorkSessionTimerView() {
                     max={480}
                     value={durationMinutes}
                     onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                    className="w-full rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white font-mono"
+                    className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-amber-300 mb-1">
+                  <label className="block text-[10px] text-amber-700 dark:text-amber-300 mb-1">
                     Break Excl (Mins)
                   </label>
                   <input
@@ -443,7 +440,7 @@ export function WorkSessionTimerView() {
                     max={120}
                     value={Math.max(breakMinutes, liveBreakMins)}
                     onChange={(e) => setBreakMinutes(Number(e.target.value))}
-                    className="w-full rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-amber-200 font-mono"
+                    className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-amber-800 dark:text-amber-200 font-mono"
                   />
                 </div>
               </div>
@@ -452,64 +449,61 @@ export function WorkSessionTimerView() {
                 rows={2}
                 value={timer.sessionNote}
                 onChange={(e) => transitionTimer(timer.lifecycle, e.target.value)}
-                placeholder="Session note / outcome summary (F1-026)..."
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white"
+                placeholder="Session note..."
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white"
               />
 
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
                   Net Claimed:{' '}
-                  <strong className="font-mono text-white">
+                  <strong className="font-mono text-zinc-900 dark:text-white">
                     {Math.max(0, durationMinutes - Math.max(breakMinutes, liveBreakMins))}m
-                  </strong>{' '}
-                  (Elapsed {durationMinutes}m minus {Math.max(breakMinutes, liveBreakMins)}m break)
+                  </strong>
                 </span>
                 <button
                   type="button"
                   onClick={handleCompleteSession}
                   className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer"
                 >
-                  ✓ Stop & Commit Session to Timesheet
+                  ✓ Log Session
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right 5 Columns: Manual Time Entry (F1-028) & Policy Consent Status (F1-030) */}
+        {/* Right 5 Columns: Manual Time Entry & Policy */}
         <div className="lg:col-span-5 space-y-5">
           <form
             onSubmit={handleManualSubmit}
-            className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3.5"
+            className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-3.5"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-                F1-028 • Manual Time Entry (Provenance: manual_entry)
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-200 border border-amber-800">
-                Requires Audit Reason
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                <span>Manual Time Entry</span>
+                <InfoTooltip
+                  align="left"
+                  text="Log offline work or missed timers separately from tracked telemetry for manager review."
+                />
               </span>
             </div>
-            <p className="text-xs text-slate-400">
-              Offline whiteboarding, paper design, or forgotten timers can be claimed manually. Marked distinctly from observed telemetry and routed for manager sign-off.
-            </p>
 
             <div className="grid grid-cols-2 gap-2.5 text-xs">
               <div>
-                <label className="block text-[10px] text-slate-400 mb-1">Work Date</label>
+                <label className="block text-[10px] text-zinc-500 dark:text-zinc-400 mb-1">Work Date</label>
                 <input
                   type="date"
                   value={manualDate}
                   onChange={(e) => setManualDate(e.target.value)}
-                  className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white font-mono"
+                  className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-slate-400 mb-1">Work Mode</label>
+                <label className="block text-[10px] text-zinc-500 dark:text-zinc-400 mb-1">Work Mode</label>
                 <select
                   value={manualMode}
                   onChange={(e) => setManualMode(e.target.value as WorkMode)}
-                  className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
+                  className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1.5 text-zinc-900 dark:text-white"
                 >
                   {WORK_MODE_DETAILS.map((m) => (
                     <option key={m.mode} value={m.mode}>
@@ -519,7 +513,7 @@ export function WorkSessionTimerView() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] text-slate-400 mb-1">
+                <label className="block text-[10px] text-zinc-500 dark:text-zinc-400 mb-1">
                   Start – End Window
                 </label>
                 <div className="flex items-center gap-1">
@@ -527,19 +521,19 @@ export function WorkSessionTimerView() {
                     type="time"
                     value={manualStart}
                     onChange={(e) => setManualStart(e.target.value)}
-                    className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-white font-mono"
+                    className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                   <span>–</span>
                   <input
                     type="time"
                     value={manualEnd}
                     onChange={(e) => setManualEnd(e.target.value)}
-                    className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-white font-mono"
+                    className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2 py-1.5 text-zinc-900 dark:text-white font-mono"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] text-slate-400 mb-1">
+                <label className="block text-[10px] text-zinc-500 dark:text-zinc-400 mb-1">
                   Claimed Minutes
                 </label>
                 <input
@@ -548,33 +542,37 @@ export function WorkSessionTimerView() {
                   max={480}
                   value={manualDuration}
                   onChange={(e) => setManualDuration(Number(e.target.value))}
-                  className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white font-mono"
+                  className="w-full rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-amber-300 mb-1">
-                Mandatory Manual Entry Reason (Min 10 chars - Enforced by DB Check Constraint)
+              <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                <span>Reason</span>
+                <InfoTooltip
+                  align="left"
+                  text="Minimum 10 characters required for audit review."
+                />
               </label>
               <input
                 type="text"
                 value={manualReason}
                 onChange={(e) => setManualReason(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-900 dark:text-white"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[11px] text-slate-400 mb-1">
-                Deliverable / Work Outcome Note
+              <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">
+                Work Note
               </label>
               <input
                 type="text"
                 value={manualNote}
                 onChange={(e) => setManualNote(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-900 dark:text-white"
                 required
               />
             </div>
@@ -583,28 +581,29 @@ export function WorkSessionTimerView() {
               type="submit"
               className="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-semibold text-white transition cursor-pointer"
             >
-              + Submit Manual Time Claim for Review
+              + Submit Manual Entry
             </button>
           </form>
 
-          {/* Policy Consent & Provenance Card (F1-030) */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-2.5 text-xs">
+          {/* Policy Consent */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">
-                Active Policy Consent & Collection Scope (F1-030)
+              <span className="inline-flex items-center gap-1.5 font-semibold text-zinc-900 dark:text-white">
+                <span>Policy Consent</span>
+                <InfoTooltip
+                  align="left"
+                  text="Sessions record the active tracking policy version in effect when started."
+                />
               </span>
-              <span className="font-mono text-emerald-300">
+              <span className="font-mono text-zinc-800 dark:text-zinc-200">
                 {activeUser.consentedPolicyVersion ?? 'Unacknowledged'}
               </span>
             </div>
-            <p className="text-slate-400">
-              Logged in as <strong>{activeUser.name}</strong> ({activeUser.role}). All sessions record the exact policy version in effect at `started_at_utc`.
-            </p>
             {activeUser.consentedPolicyVersion !== activeTenant.policyVersion && (
               <button
                 type="button"
                 onClick={acknowledgeCurrentPolicy}
-                className="px-3 py-1.5 rounded bg-indigo-600 text-white font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded bg-[#702fe3] text-white font-semibold cursor-pointer"
               >
                 Acknowledge Policy {activeTenant.policyVersion}
               </button>

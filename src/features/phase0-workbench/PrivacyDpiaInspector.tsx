@@ -119,15 +119,12 @@ export function PrivacyDpiaInspector() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div className="lg:col-span-7 rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+      <div className="lg:col-span-7 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-white">
-              D-003: Live Event Envelope & DPIA Guardrail Validator
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+              Event Envelope Validator
             </h3>
-            <p className="text-xs text-slate-400">
-              Test how both the Tauri client and Supabase Edge Function (`POST /v1/tracking/events:batch`) reject prohibited fields.
-            </p>
           </div>
         </div>
 
@@ -137,7 +134,7 @@ export function PrivacyDpiaInspector() {
               key={preset.id}
               type="button"
               onClick={() => setRawJson(preset.json)}
-              className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-950 hover:border-indigo-500 text-xs text-slate-200 transition cursor-pointer"
+              className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 hover:border-[#6d25da] text-xs text-zinc-800 dark:text-zinc-200 transition cursor-pointer"
             >
               {preset.label}
             </button>
@@ -148,7 +145,7 @@ export function PrivacyDpiaInspector() {
           rows={16}
           value={rawJson}
           onChange={(e) => setRawJson(e.target.value)}
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-800 dark:text-zinc-200 focus:border-[#6d25da] focus:outline-none"
         />
       </div>
 
@@ -156,8 +153,8 @@ export function PrivacyDpiaInspector() {
         <div
           className={`rounded-xl border p-5 space-y-3 ${
             validation.valid
-              ? 'border-emerald-800 bg-emerald-950/25'
-              : 'border-rose-800 bg-rose-950/30'
+              ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70'
+              : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30'
           }`}
         >
           <div className="flex items-center justify-between">
@@ -167,8 +164,8 @@ export function PrivacyDpiaInspector() {
             <span
               className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                 validation.valid
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                  ? 'bg-emerald-500/20 text-zinc-800 dark:text-zinc-200 border border-emerald-500/40'
+                  : 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40'
               }`}
             >
               {validation.valid ? '202 ACCEPTED (ALLOWLISTED)' : '422 REJECTED BY GUARDRAIL'}
@@ -176,15 +173,15 @@ export function PrivacyDpiaInspector() {
           </div>
 
           {validation.valid ? (
-            <p className="text-xs text-emerald-200 leading-relaxed">
+            <p className="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed">
               Envelope conforms to canonical schema v1, carries an active policy consent version, and contains zero prohibited surveillance fields.
             </p>
           ) : (
-            <ul className="space-y-2 text-xs text-rose-200">
+            <ul className="space-y-2 text-xs text-rose-800 dark:text-rose-200">
               {validation.errors.map((err, idx) => (
                 <li
                   key={idx}
-                  className="rounded-lg bg-rose-950/70 border border-rose-800/80 p-2.5 font-mono text-[11px]"
+                  className="rounded-lg bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800/80 p-2.5 font-mono text-[11px]"
                 >
                   {err}
                 </li>
@@ -193,18 +190,15 @@ export function PrivacyDpiaInspector() {
           )}
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Hard-Blocked Surveillance Keys (Section 15.1)
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            Blocked Surveillance Keys
           </h4>
-          <p className="text-xs text-slate-400">
-            Any metadata property matching these substrings is blocked on-device and at the server ingestion edge:
-          </p>
           <div className="flex flex-wrap gap-1.5">
             {PROHIBITED_METADATA_KEYS.map((key) => (
               <span
                 key={key}
-                className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-rose-300"
+                className="font-mono text-[11px] px-2 py-0.5 rounded bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-rose-700 dark:text-rose-300"
               >
                 {key}
               </span>

@@ -3,302 +3,648 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* 5 Canonical Time Concept Tokens */
-  --color-time-elapsed: oklch(0.64 0.04 255);
-  --color-time-claimed: oklch(0.60 0.17 255);
-  --color-time-observed: oklch(0.66 0.14 200);
-  --color-time-supported: oklch(0.68 0.16 155);
-  --color-time-approved: oklch(0.62 0.19 145);
+  /* Comfortable, readable typography scale */
+  --text-xs: 0.84375rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.45;
+  --text-base: 1.03125rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.3125rem;
+  --text-xl--line-height: 1.35;
 
-  /* 7 Evidence Status Tokens */
-  --color-status-declared: oklch(0.66 0.08 250);
-  --color-status-observed: oklch(0.67 0.14 205);
-  --color-status-context: oklch(0.68 0.15 170);
-  --color-status-corroborated: oklch(0.65 0.17 150);
-  --color-status-clarify: oklch(0.76 0.16 75);
-  --color-status-approved: oklch(0.62 0.19 145);
-  --color-status-disputed: oklch(0.62 0.21 25);
+  /* Royal Violet Brand Palette (Matching TikTrack-Web) */
+  --color-royal-violet-50: #f0e9fb;
+  --color-royal-violet-100: #e2d3f8;
+  --color-royal-violet-200: #c5a8f0;
+  --color-royal-violet-300: #a87ce9;
+  --color-royal-violet-400: #8b51e1;
+  --color-royal-violet-500: #6d25da;
+  --color-royal-violet-600: #581eae;
+  --color-royal-violet-700: #421683;
+  --color-royal-violet-800: #2c0f57;
+  --color-royal-violet-900: #16072c;
+  --color-royal-violet-950: #0f051f;
 }
 
 :root {
   color-scheme: light;
-  --dp-canvas: #f8fafc;
+  --dp-canvas: #ffffff;
   --dp-surface: #ffffff;
-  --dp-surface-subtle: #f1f5f9;
-  --dp-border: #cbd5e1;
-  --dp-text: #0f172a;
-  --dp-text-muted: #475569;
+  --dp-surface-subtle: #f7f7fa;
+  --dp-surface-recessed: rgba(15, 5, 31, 0.028);
+  --dp-border: rgba(15, 5, 31, 0.07);
+  --dp-hairline: rgba(15, 5, 31, 0.065);
+  --dp-text: #09090b;
+  --dp-text-muted: #71717a;
+  --dp-shadow-popover:
+    0 18px 48px -12px rgba(15, 5, 31, 0.16),
+    0 4px 14px -4px rgba(15, 5, 31, 0.07),
+    0 0 0 1px rgba(15, 5, 31, 0.06);
+  --dp-shadow-pill:
+    0 1px 2px rgba(15, 5, 31, 0.04),
+    0 0 0 1px rgba(15, 5, 31, 0.065);
 }
 
 html.dark {
   color-scheme: dark;
-  --dp-canvas: #090c14;
-  --dp-surface: #111623;
-  --dp-surface-subtle: #161d2e;
-  --dp-border: rgba(148, 163, 184, 0.16);
-  --dp-text: #f1f5f9;
-  --dp-text-muted: #94a3b8;
+  --dp-canvas: #09090c;
+  --dp-surface: #0e0e13;
+  --dp-surface-subtle: #14141a;
+  --dp-surface-recessed: rgba(255, 255, 255, 0.032);
+  --dp-border: rgba(255, 255, 255, 0.07);
+  --dp-hairline: rgba(255, 255, 255, 0.065);
+  --dp-text: #f4f4f5;
+  --dp-text-muted: #a1a1aa;
+  --dp-shadow-popover:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 24px 60px -12px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  --dp-shadow-pill:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 2px 8px -2px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-@layer base {
-  body {
-    font-family: var(--font-sans);
-    font-optical-sizing: auto;
-    background-color: var(--dp-canvas);
-    color: var(--dp-text);
-    margin: 0;
-    -webkit-font-smoothing: auto;
-    -moz-osx-font-smoothing: auto;
-    transition: background-color 180ms ease, color 180ms ease;
+html {
+  scroll-behavior: smooth;
+  font-family: var(--font-sans);
+}
+
+html.dark,
+html.dark body {
+  background-color: var(--dp-canvas);
+  color: #f4f4f5;
+}
+
+html.light,
+html.light body {
+  background-color: var(--dp-canvas);
+  color: #09090b;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--dp-canvas);
+  color: var(--dp-text);
+  margin: 0;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Use Google Sans across UI elements (matching TikTrack-Web); keep monospace only for code/pre blocks */
+.font-mono {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+pre,
+code,
+pre .font-mono,
+code .font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Boost micro-text utilities across the portal for better readability */
+.text-\[9px\] {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+.text-\[10px\] {
+  font-size: 11.5px !important;
+  line-height: 1.4 !important;
+}
+
+.text-\[11px\] {
+  font-size: 12.5px !important;
+  line-height: 1.4 !important;
+}
+
+/* Content Section (<main>) Typography Boost for comfortable reading */
+main {
+  font-size: 0.96875rem;
+  line-height: 1.5;
+}
+
+main .text-\[9px\] {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+main .text-\[10px\] {
+  font-size: 12.5px !important;
+  line-height: 1.4 !important;
+}
+
+main .text-\[11px\] {
+  font-size: 13.5px !important;
+  line-height: 1.45 !important;
+}
+
+main .text-xs {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+main .text-sm {
+  font-size: 1.03125rem;
+  line-height: 1.5;
+}
+
+main .text-base {
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+
+main .text-lg {
+  font-size: 1.3125rem;
+  line-height: 1.4;
+}
+
+main .text-xl {
+  font-size: 1.5rem;
+  line-height: 1.35;
+}
+
+main select {
+  font-size: 0.9375rem !important;
+  line-height: 1.45rem !important;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(15, 5, 31, 0.12);
+  border-radius: 9999px;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 5, 31, 0.22);
+}
+
+/* =========================================================================
+   KEYFRAMES & MICRO-INTERACTIONS
+   ========================================================================= */
+
+@keyframes dp-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
-
-  html.dark body {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/*
- * Adaptive Light Mode Surface & High-Contrast Typography Bridge
- * Guarantees crisp readability (WCAG AA+ ink contrast) across all views.
- */
-html:not(.dark) main .bg-slate-950,
-html:not(.dark) main .bg-slate-950\/90,
-html:not(.dark) main .bg-slate-950\/85,
-html:not(.dark) main .bg-slate-950\/80,
-html:not(.dark) main .bg-slate-950\/75,
-html:not(.dark) main .bg-slate-950\/70,
-html:not(.dark) main .bg-slate-950\/60,
-html:not(.dark) main .bg-slate-950\/50 {
-  background-color: #f8fafc;
+@keyframes dp-popover-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-html:not(.dark) main .bg-slate-900,
-html:not(.dark) main .bg-slate-900\/90,
-html:not(.dark) main .bg-slate-900\/85,
-html:not(.dark) main .bg-slate-900\/80,
-html:not(.dark) main .bg-slate-900\/75,
-html:not(.dark) main .bg-slate-900\/70,
-html:not(.dark) main .bg-slate-900\/60,
-html:not(.dark) main .bg-slate-900\/50 {
-  background-color: #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+@keyframes dp-beacon-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.75;
+  }
+  70% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
 }
 
-html:not(.dark) main .bg-slate-800,
-html:not(.dark) main .bg-slate-800\/80 {
-  background-color: #f1f5f9;
+.dp-view-enter {
+  animation: dp-view-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-html:not(.dark) main .border-slate-800,
-html:not(.dark) main .border-slate-800\/90,
-html:not(.dark) main .border-slate-800\/80,
-html:not(.dark) main .border-slate-700 {
-  border-color: #cbd5e1;
+.dp-popover-enter {
+  transform-origin: top right;
+  animation: dp-popover-enter 170ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-html:not(.dark) main .text-white,
-html:not(.dark) main .text-slate-100,
-html:not(.dark) main .text-slate-200 {
-  color: #0f172a;
+.dp-beacon {
+  position: relative;
+}
+.dp-beacon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: dp-beacon-ring 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 
-html:not(.dark) main .text-slate-300 {
-  color: #1e293b;
+/* =========================================================================
+   BESPOKE EDITORIAL SAAS LAYOUT (NO AI CARD-BOX CLUTTER)
+   Removes repetitive boxed cards & plain borders across all portal views.
+   Uses a unified clean canvas, subtle tonal strips, hairline dividers,
+   and crisp typography—like Linear, Stripe, and GitHub Settings.
+   Contrast-safe: only targets neutral surface containers, never colored/dark-only blocks.
+   ========================================================================= */
+
+/* 1. Un-box neutral section containers inside <main> (keep fixed modals & colored blocks intact) */
+html:not(.high-contrast) main div.rounded-xl.border:not(.fixed):not([class*="text-white"]),
+html:not(.high-contrast) main div.rounded-2xl.border:not(.fixed):not([class*="text-white"]),
+html:not(.high-contrast) main form.rounded-xl.border:not([class*="text-white"]),
+html:not(.high-contrast) main form.rounded-2xl.border:not([class*="text-white"]),
+html:not(.high-contrast) main section.rounded-xl.border:not([class*="text-white"]),
+html:not(.high-contrast) main section.rounded-2xl.border:not([class*="text-white"]) {
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
-html:not(.dark) main .text-slate-400,
-html:not(.dark) main .text-slate-500 {
-  color: #475569;
+/* Strip neutral card backgrounds so sections sit directly on the clean canvas */
+html:not(.dark):not(.high-contrast) main div.rounded-xl.border.bg-white:not(.fixed),
+html:not(.dark):not(.high-contrast) main div.rounded-2xl.border.bg-white:not(.fixed),
+html:not(.dark):not(.high-contrast) main div.rounded-xl.border[class*="bg-white/"]:not(.fixed),
+html:not(.dark):not(.high-contrast) main div.rounded-2xl.border[class*="bg-white/"]:not(.fixed),
+html:not(.dark):not(.high-contrast) main div.rounded-xl.border[class*="bg-zinc-50"]:not(.fixed),
+html:not(.dark):not(.high-contrast) main div.rounded-xl.border[class*="bg-slate-50"]:not(.fixed) {
+  background: transparent !important;
+  border-radius: 0 !important;
 }
 
-/* Form controls in Light Mode */
-html:not(.dark) main input,
-html:not(.dark) main select,
-html:not(.dark) main textarea {
-  color: #0f172a;
-  border-color: #cbd5e1;
+html.dark:not(.high-contrast) main div.rounded-xl.border[class*="dark:bg-zinc-900"]:not(.fixed),
+html.dark:not(.high-contrast) main div.rounded-2xl.border[class*="dark:bg-zinc-900"]:not(.fixed),
+html.dark:not(.high-contrast) main div.rounded-xl.border[class*="dark:bg-slate-900"]:not(.fixed),
+html.dark:not(.high-contrast) main div.rounded-2xl.border[class*="dark:bg-slate-900"]:not(.fixed),
+html.dark:not(.high-contrast) main div.rounded-xl.border[class*="dark:bg-[#1212"]:not(.fixed),
+html.dark:not(.high-contrast) main div.rounded-xl.border[class*="dark:bg-white/"]:not(.fixed) {
+  background: transparent !important;
+  border-radius: 0 !important;
 }
 
-html:not(.dark) main input::placeholder,
-html:not(.dark) main textarea::placeholder {
-  color: #64748b;
+/* Clean horizontal hairline between major stacked neutral sections */
+html:not(.high-contrast) main .space-y-6 > div.rounded-xl.border:not(.fixed):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]),
+html:not(.high-contrast) main .space-y-6 > div.rounded-2xl.border:not(.fixed):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]),
+html:not(.high-contrast) main .space-y-5 > div.rounded-xl.border:not(.fixed):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]),
+html:not(.high-contrast) main .space-y-8 > div.rounded-xl.border:not(.fixed):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 1.75rem !important;
+  border-bottom: 1px solid var(--dp-hairline) !important;
 }
 
-/* Indigo & Purple */
-html:not(.dark) main .bg-indigo-950,
-html:not(.dark) main .bg-indigo-950\/90,
-html:not(.dark) main .bg-indigo-950\/80,
-html:not(.dark) main .bg-indigo-950\/60,
-html:not(.dark) main .bg-indigo-950\/50,
-html:not(.dark) main .bg-indigo-950\/40,
-html:not(.dark) main .bg-indigo-950\/30,
-html:not(.dark) main .bg-indigo-950\/20,
-html:not(.dark) main .bg-purple-950\/30 {
-  background-color: #eef2ff;
-}
-html:not(.dark) main .text-indigo-200,
-html:not(.dark) main .text-indigo-300,
-html:not(.dark) main .text-indigo-300\/80,
-html:not(.dark) main .text-indigo-400,
-html:not(.dark) main .text-purple-200 {
-  color: #3730a3;
-}
-html:not(.dark) main .border-indigo-700,
-html:not(.dark) main .border-indigo-700\/70,
-html:not(.dark) main .border-indigo-700\/60,
-html:not(.dark) main .border-indigo-800\/80,
-html:not(.dark) main .border-indigo-500\/30 {
-  border-color: #c7d2fe;
+html:not(.high-contrast) main .space-y-6 > div.rounded-xl.border:last-child,
+html:not(.high-contrast) main .space-y-6 > div.rounded-2xl.border:last-child,
+html:not(.high-contrast) main .space-y-5 > div.rounded-xl.border:last-child,
+html:not(.high-contrast) main .space-y-8 > div.rounded-xl.border:last-child {
+  border-bottom: none !important;
+  padding-bottom: 0.5rem !important;
 }
 
-/* Emerald & Green */
-html:not(.dark) main .bg-emerald-950,
-html:not(.dark) main .bg-emerald-950\/80,
-html:not(.dark) main .bg-emerald-950\/70,
-html:not(.dark) main .bg-emerald-950\/50,
-html:not(.dark) main .bg-emerald-950\/40,
-html:not(.dark) main .bg-emerald-950\/30,
-html:not(.dark) main .bg-emerald-950\/25,
-html:not(.dark) main .bg-emerald-950\/20 {
-  background-color: #ecfdf5;
-}
-html:not(.dark) main .text-emerald-200,
-html:not(.dark) main .text-emerald-300,
-html:not(.dark) main .text-emerald-400,
-html:not(.dark) main .text-emerald-400\/80,
-html:not(.dark) main .text-green-300 {
-  color: #065f46;
-}
-html:not(.dark) main .border-emerald-700,
-html:not(.dark) main .border-emerald-800,
-html:not(.dark) main .border-emerald-800\/80,
-html:not(.dark) main .border-emerald-800\/50,
-html:not(.dark) main .border-emerald-700\/50 {
-  border-color: #a7f3d0;
+/* Grid columns sit side-by-side cleanly without boxed borders */
+html:not(.high-contrast) main .grid > div.rounded-xl.border:not(.fixed):not([class*="text-white"]),
+html:not(.high-contrast) main .grid > div.rounded-2xl.border:not(.fixed):not([class*="text-white"]) {
+  padding: 0.25rem 0 !important;
 }
 
-/* Amber */
-html:not(.dark) main .bg-amber-950,
-html:not(.dark) main .bg-amber-950\/80,
-html:not(.dark) main .bg-amber-950\/40,
-html:not(.dark) main .bg-amber-950\/25,
-html:not(.dark) main .bg-amber-950\/20,
-html:not(.dark) main .bg-amber-950\/15 {
-  background-color: #fffbeb;
-}
-html:not(.dark) main .text-amber-200,
-html:not(.dark) main .text-amber-200\/80,
-html:not(.dark) main .text-amber-300,
-html:not(.dark) main .text-amber-400 {
-  color: #92400e;
-}
-html:not(.dark) main .border-amber-700,
-html:not(.dark) main .border-amber-800,
-html:not(.dark) main .border-amber-700\/60,
-html:not(.dark) main .border-amber-500\/40 {
-  border-color: #fcd34d;
+/* 2. Neutral inner list rows / compact tiles: flat tonal surface, zero harsh border */
+html:not(.high-contrast) main div.rounded-lg.border:not(.fixed):not([class*="text-white"]):not([class*="bg-zinc-950"]):not([class*="bg-slate-950"]),
+html:not(.high-contrast) main form.rounded-lg.border:not([class*="text-white"]) {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0.625rem !important;
+  transition: background-color 160ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Blue, Sky, Cyan & Teal */
-html:not(.dark) main .bg-blue-950\/20,
-html:not(.dark) main .bg-blue-950\/30 {
-  background-color: #eff6ff;
-}
-html:not(.dark) main .border-blue-900\/60 {
-  border-color: #bfdbfe;
-}
-html:not(.dark) main .text-blue-200,
-html:not(.dark) main .text-blue-300,
-html:not(.dark) main .text-blue-400,
-html:not(.dark) main .text-blue-400\/80 {
-  color: #1e40af;
+html:not(.dark):not(.high-contrast) main div.rounded-lg.border[class*="bg-zinc-50"]:not(.fixed),
+html:not(.dark):not(.high-contrast) main div.rounded-lg.border[class*="bg-slate-50"]:not(.fixed),
+html:not(.dark):not(.high-contrast) main div.rounded-lg.border.bg-white:not(.fixed),
+html:not(.dark):not(.high-contrast) main form.rounded-lg.border[class*="bg-zinc-50"] {
+  background-color: var(--dp-surface-recessed) !important;
 }
 
-html:not(.dark) main .bg-cyan-950,
-html:not(.dark) main .bg-sky-950\/20,
-html:not(.dark) main .bg-sky-950\/30 {
-  background-color: #f0f9ff;
-}
-html:not(.dark) main .border-sky-900\/60,
-html:not(.dark) main .border-cyan-700 {
-  border-color: #bae6fd;
-}
-html:not(.dark) main .text-cyan-200,
-html:not(.dark) main .text-cyan-300,
-html:not(.dark) main .text-sky-200,
-html:not(.dark) main .text-sky-300,
-html:not(.dark) main .text-sky-400,
-html:not(.dark) main .text-sky-400\/80 {
-  color: #075985;
+html.dark:not(.high-contrast) main div.rounded-lg.border[class*="dark:bg-zinc-900"]:not(.fixed),
+html.dark:not(.high-contrast) main div.rounded-lg.border[class*="dark:bg-slate-900"]:not(.fixed),
+html.dark:not(.high-contrast) main div.rounded-lg.border[class*="dark:bg-white/"]:not(.fixed),
+html.dark:not(.high-contrast) main form.rounded-lg.border[class*="dark:bg-zinc-900"] {
+  background-color: var(--dp-surface-recessed) !important;
 }
 
-html:not(.dark) main .bg-teal-950\/20,
-html:not(.dark) main .bg-teal-950\/30 {
-  background-color: #f0fdfa;
+html:not(.high-contrast) main div.rounded-lg.border.cursor-pointer:hover {
+  background-color: rgba(109, 37, 218, 0.055) !important;
 }
-html:not(.dark) main .border-teal-900\/60 {
-  border-color: #99f6e4;
-}
-html:not(.dark) main .text-teal-200,
-html:not(.dark) main .text-teal-300,
-html:not(.dark) main .text-teal-400,
-html:not(.dark) main .text-teal-400\/80 {
-  color: #115e59;
+html.dark:not(.high-contrast) main div.rounded-lg.border.cursor-pointer:hover {
+  background-color: rgba(255, 255, 255, 0.055) !important;
 }
 
-/* Rose */
-html:not(.dark) main .bg-rose-950,
-html:not(.dark) main .bg-rose-950\/90,
-html:not(.dark) main .bg-rose-950\/80,
-html:not(.dark) main .bg-rose-950\/60,
-html:not(.dark) main .bg-rose-950\/40,
-html:not(.dark) main .bg-rose-950\/20 {
-  background-color: #fff1f2;
+/* 3. Semantic feedback banners & alerts: clean left-accent bar instead of boxed card */
+html:not(.high-contrast) main div[class*="border-rose-"]:not([class*="text-white"]) {
+  background-color: rgba(244, 63, 94, 0.07) !important;
+  border-left: 3px solid #f43f5e !important;
+  border-radius: 0.5rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
 }
-html:not(.dark) main .text-rose-200,
-html:not(.dark) main .text-rose-300,
-html:not(.dark) main .text-rose-300\/90 {
-  color: #9f1239;
+html:not(.high-contrast) main div[class*="border-emerald-"]:not([class*="text-white"]) {
+  background-color: rgba(16, 185, 129, 0.07) !important;
+  border-left: 3px solid #10b981 !important;
+  border-radius: 0.5rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
 }
-html:not(.dark) main .border-rose-700,
-html:not(.dark) main .border-rose-700\/60 {
-  border-color: #fecdd3;
+html:not(.high-contrast) main div[class*="border-amber-"]:not([class*="text-white"]) {
+  background-color: rgba(245, 158, 11, 0.075) !important;
+  border-left: 3px solid #f59e0b !important;
+  border-radius: 0.5rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+html:not(.high-contrast) main div[class*="border-[#6d25da]"]:not([class*="text-white"]),
+html:not(.high-contrast) main div[class*="border-[#8b51e1]"]:not([class*="text-white"]) {
+  background-color: rgba(109, 37, 218, 0.065) !important;
+  border-left: 3px solid #6d25da !important;
+  border-radius: 0.5rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
 }
 
-/* Preserve crisp white text on solid colored buttons in Light Mode */
-html:not(.dark) main button.bg-indigo-600,
-html:not(.dark) main button.bg-indigo-500,
-html:not(.dark) main button.bg-emerald-600,
-html:not(.dark) main button.bg-emerald-700,
-html:not(.dark) main button.bg-emerald-500,
-html:not(.dark) main button.bg-amber-600,
-html:not(.dark) main button.bg-amber-500,
-html:not(.dark) main button.bg-cyan-600,
-html:not(.dark) main button.bg-cyan-700,
-html:not(.dark) main button.bg-teal-600,
-html:not(.dark) main button.bg-teal-500,
-html:not(.dark) main button.bg-rose-600,
-html:not(.dark) main button.bg-rose-500 {
+/* 4. Elevated Modals (fixed overlays) keep clean popover shadow & surface */
+html:not(.high-contrast) .fixed .rounded-xl.border,
+html:not(.high-contrast) .fixed .rounded-2xl.border {
+  border-color: transparent !important;
+  box-shadow: var(--dp-shadow-popover) !important;
+  border-radius: 1rem !important;
+}
+
+/* Soft hairline dividers inside sections */
+html:not(.high-contrast) .border-t[class*="border-zinc-"],
+html:not(.high-contrast) .border-b[class*="border-zinc-"],
+html:not(.high-contrast) .border-t[class*="border-slate-"],
+html:not(.high-contrast) .border-b[class*="border-slate-"] {
+  border-color: var(--dp-hairline) !important;
+}
+
+/* Clean borderless tables with smooth row hover */
+main table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+main table thead th {
+  border-bottom: 1px solid var(--dp-hairline) !important;
+}
+main table tbody tr {
+  transition: background-color 150ms ease;
+}
+html:not(.dark) main table tbody tr:hover {
+  background-color: rgba(109, 37, 218, 0.03);
+}
+html.dark main table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.025);
+}
+main table tbody td {
+  border-bottom: 1px solid var(--dp-hairline) !important;
+}
+main table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Tactile micro-interactions for all buttons & interactive links */
+button,
+[role="button"] {
+  transition:
+    transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    opacity 150ms ease;
+}
+
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.975);
+}
+
+/* =========================================================================
+   CUSTOM SLEEK DROPDOWNS (<select>)
+   ========================================================================= */
+
+select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.75rem center !important;
+  background-size: 1rem 1rem !important;
+  padding-right: 2.25rem !important;
+  padding-left: 0.75rem !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  border-radius: 0.5rem !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.35rem !important;
+  cursor: pointer !important;
+  transition: box-shadow 160ms ease, background-color 160ms ease !important;
+}
+
+html.dark select {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-color: rgba(255, 255, 255, 0.045) !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  color: #f4f4f5 !important;
+}
+
+html:not(.dark) select {
+  background-color: #f9f9fb !important;
+  border: 1px solid transparent !important;
+  color: #09090b !important;
+  box-shadow: 0 0 0 1px rgba(15, 5, 31, 0.08) !important;
+}
+
+select:hover {
+  box-shadow: 0 0 0 1px rgba(139, 81, 225, 0.45) !important;
+}
+
+select:focus,
+select:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(109, 37, 218, 0.16), 0 0 0 1px #6d25da !important;
+}
+
+select option,
+select optgroup {
+  font-family: var(--font-sans) !important;
+  font-size: 0.875rem !important;
+  padding: 8px 12px !important;
+}
+
+html:not(.dark) select option,
+html:not(.dark) select optgroup {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+}
+
+html.dark select option,
+html.dark select optgroup {
+  background-color: #141418 !important;
+  color: #f4f4f5 !important;
+}
+
+/* Form text inputs & textareas */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="search"],
+input[type="url"],
+textarea {
+  border-radius: 0.5rem !important;
+  font-family: var(--font-sans);
+  transition: box-shadow 160ms ease, background-color 160ms ease;
+}
+
+html:not(.dark) input[type="text"],
+html:not(.dark) input[type="email"],
+html:not(.dark) input[type="password"],
+html:not(.dark) input[type="number"],
+html:not(.dark) input[type="date"],
+html:not(.dark) input[type="time"],
+html:not(.dark) input[type="search"],
+html:not(.dark) input[type="url"],
+html:not(.dark) textarea {
+  background-color: #f9f9fb !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 0 0 1px rgba(15, 5, 31, 0.08) !important;
+  color: #09090b !important;
+}
+
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="number"],
+html.dark input[type="date"],
+html.dark input[type="time"],
+html.dark input[type="search"],
+html.dark input[type="url"],
+html.dark textarea {
+  background-color: rgba(255, 255, 255, 0.045) !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.085) !important;
+  color: #f4f4f5 !important;
+}
+
+input[type="text"]:hover,
+input[type="email"]:hover,
+input[type="password"]:hover,
+input[type="number"]:hover,
+input[type="date"]:hover,
+input[type="time"]:hover,
+input[type="search"]:hover,
+input[type="url"]:hover,
+textarea:hover {
+  box-shadow: 0 0 0 1px rgba(139, 81, 225, 0.38) !important;
+}
+
+input:focus,
+textarea:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(109, 37, 218, 0.16), 0 0 0 1px #6d25da !important;
+}
+
+/* =========================================================================
+   UNIFIED THEME NORMALIZATION & SUBTLE BUTTON INTERACTIONS
+   (Never hijacks light-tinted or dark:bg-.../opacity buttons)
+   ========================================================================= */
+
+/* Only apply Royal Violet CTA styling to explicit solid-fill primary buttons */
+button.bg-indigo-600,
+button.bg-indigo-500,
+button.bg-emerald-700,
+button.bg-emerald-600,
+button.bg-teal-600,
+button.bg-cyan-700,
+button.bg-cyan-600,
+a.bg-indigo-600,
+a.bg-indigo-500 {
+  background-color: #6d25da !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(109, 37, 218, 0.22) !important;
+  border-color: transparent !important;
+}
+
+button.bg-indigo-600:hover:not(:disabled),
+button.bg-indigo-500:hover:not(:disabled),
+button.bg-emerald-700:hover:not(:disabled),
+button.bg-emerald-600:hover:not(:disabled),
+button.bg-teal-600:hover:not(:disabled),
+button.bg-cyan-700:hover:not(:disabled),
+button.bg-cyan-600:hover:not(:disabled),
+a.bg-indigo-600:hover,
+a.bg-indigo-500:hover {
+  background-color: #581eae !important;
+  color: #ffffff !important;
+  transform: translateY(-0.5px);
+  box-shadow: 0 4px 12px -2px rgba(109, 37, 218, 0.3) !important;
+}
+
+button.bg-\[\#6d25da\]:hover:not(:disabled),
+button.bg-\[\#702fe3\]:hover:not(:disabled) {
+  transform: translateY(-0.5px);
+  box-shadow: 0 4px 12px -2px rgba(109, 37, 218, 0.28);
+}
+
+button.text-white,
+a.text-white {
   color: #ffffff;
 }
 
-html:not(.dark) select option {
-  background-color: #ffffff;
-  color: #0f172a;
+html:not(.dark) input:not([type='checkbox']):not([type='radio']):not([type='range']),
+html:not(.dark) textarea {
+  color: #09090b;
+}
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #a1a1aa;
+}
+html.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+html.dark textarea {
+  color: #f4f4f5;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #71717a;
 }
 
-html:not(.dark) main pre {
-  background-color: #0f172a;
-  color: #e2e8f0;
-}
-
-/* F5-010: WCAG AAA High-Contrast Accessibility Mode */
+/* High-Contrast Mode */
 html.high-contrast *:focus-visible {
-  outline: 3px solid #f59e0b !important;
+  outline: 3px solid #6d25da !important;
   outline-offset: 2px !important;
 }
 
@@ -312,6 +658,20 @@ html.high-contrast.dark {
 html.high-contrast:not(.dark) {
   --dp-canvas: #ffffff;
   --dp-surface: #ffffff;
-  --dp-border: #0f172a;
+  --dp-border: #09090b;
   --dp-text: #000000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp-view-enter,
+  .dp-popover-enter,
+  .dp-beacon::after {
+    animation: none !important;
+  }
+  button,
+  [role="button"],
+  main div.rounded-lg.border,
+  main .rounded-xl.border .rounded-xl.border {
+    transition: none !important;
+  }
 }

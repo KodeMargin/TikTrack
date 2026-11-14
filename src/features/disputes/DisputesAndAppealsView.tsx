@@ -48,16 +48,12 @@ export function DisputesAndAppealsView() {
   const isClientReviewer = activeUser.role === 'client_reviewer'
   if (isClientReviewer) {
     return (
-      <div className="rounded-2xl border border-amber-500/40 bg-amber-950/20 p-6 space-y-2">
-        <div className="text-xs font-mono uppercase tracking-wider text-amber-300 font-bold">
-          Role Boundary Enforced (Section 12.4)
-        </div>
-        <h2 className="text-lg font-bold text-white">
-          Internal Dispute & Clarification Threads Restricted
+      <div className="rounded-2xl border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-6 space-y-2">
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+          Access Restricted
         </h2>
-        <p className="text-xs text-slate-300 max-w-2xl">
-          External Client Reviewers only see finalized approved deliverables and hours-never
-          internal developer/manager dispute appeals.
+        <p className="text-xs text-zinc-700 dark:text-zinc-300 max-w-2xl">
+          Client Reviewers can only view finalized deliverables and approved hours.
         </p>
       </div>
     )
@@ -127,8 +123,8 @@ export function DisputesAndAppealsView() {
       {banner && (
         <div
           className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${banner.ok
-              ? 'border-emerald-700 bg-emerald-950/50 text-emerald-200'
-              : 'border-rose-700 bg-rose-950/60 text-rose-200'
+              ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
+              : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200'
             }`}
         >
           <span>{banner.text}</span>
@@ -142,57 +138,50 @@ export function DisputesAndAppealsView() {
         </div>
       )}
 
-      {/* Header + Contractual Audit Export (F3-035) */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-wrap items-center justify-between gap-4">
+      {/* Header + Audit Export */}
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-wider text-rose-400 font-semibold">
-            Phase 3 Milestone 3.3 • Fair Dispute, Independent Review & Appeals
-          </div>
-          <h2 className="text-lg font-bold text-white mt-0.5">
-            Structured Disputes, Escalations & Contractual Audit Exports
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
+            Disputes & Appeals
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Uncontested hours bill via Partial Approval while disputed entries follow a transparent,
-            immutable appeal and independent second-review workflow.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <button
             type="button"
             onClick={() => handleDownloadAuditBundle('json')}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-semibold cursor-pointer"
           >
-            Export Audit Bundle (.json) (F3-035)
+            Export Audit (.json)
           </button>
           <button
             type="button"
             onClick={() => handleDownloadAuditBundle('markdown')}
-            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white font-semibold cursor-pointer"
           >
-            Export Audit Report (.md)
+            Export Report (.md)
           </button>
         </div>
       </div>
 
-      {/* Open Clarification Request / Appeal Form (F3-030, F3-031) */}
+      {/* Open Clarification Request / Appeal Form */}
       <form
         onSubmit={handleOpenDispute}
-        className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4 text-xs"
+        className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4 text-xs"
       >
-        <div className="font-semibold uppercase tracking-wider text-indigo-400">
+        <div className="font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
           {isManagerOrAuditor
-            ? 'F3-030 • Open Reviewer Clarification Request'
-            : 'F3-031 • Submit Developer Appeal / Dispute'}
+            ? 'Request Clarification'
+            : 'Open Dispute'}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <label className="md:col-span-2 space-y-1">
-            <span className="text-slate-400 block">Target Timesheet Line</span>
+            <span className="text-zinc-500 dark:text-zinc-400 block">Timesheet Line</span>
             <select
               value={selectedLineId || timesheetLines[0]?.id || ''}
               onChange={(e) => setSelectedLineId(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
             >
               {timesheetLines.map((l) => (
                 <option key={l.id} value={l.id}>
@@ -204,47 +193,47 @@ export function DisputesAndAppealsView() {
           </label>
 
           <label className="space-y-1">
-            <span className="text-slate-400 block">Disputed Minutes</span>
+            <span className="text-zinc-500 dark:text-zinc-400 block">Disputed Minutes</span>
             <input
               type="number"
               min={5}
               max={480}
               value={disputedMinutes}
               onChange={(e) => setDisputedMinutes(Number(e.target.value))}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white font-mono"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white font-mono"
             />
           </label>
 
           <label className="space-y-1">
-            <span className="text-slate-400 block">Response Due Date (F3-030)</span>
+            <span className="text-zinc-500 dark:text-zinc-400 block">Due Date</span>
             <input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white font-mono"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white font-mono"
             />
           </label>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="space-y-1">
-            <span className="text-slate-400 block">Requested Evidence / Context Type</span>
+            <span className="text-zinc-500 dark:text-zinc-400 block">Requested Evidence</span>
             <input
               type="text"
               value={requestedEvidenceType}
               onChange={(e) => setRequestedEvidenceType(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
             />
           </label>
 
           <label className="space-y-1">
-            <span className="text-slate-400 block">Attach Evidence Artifact (Optional)</span>
+            <span className="text-zinc-500 dark:text-zinc-400 block">Evidence Artifact (Optional)</span>
             <select
               value={selectedArtifactIds[0] ?? ''}
               onChange={(e) =>
                 setSelectedArtifactIds(e.target.value ? [e.target.value] : [])
               }
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
             >
               <option value="">None attached</option>
               {evidenceArtifacts.map((a) => (
@@ -260,16 +249,16 @@ export function DisputesAndAppealsView() {
           <input
             type="text"
             required
-            placeholder="Explain clarification question or developer appeal reason (>= 10 characters)..."
+            placeholder="Reason (min 10 characters)..."
             value={openReason}
             onChange={(e) => setOpenReason(e.target.value)}
-            className="flex-1 min-w-64 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white"
+            className="flex-1 min-w-64 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
           />
           <button
             type="submit"
             className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold cursor-pointer"
           >
-            {isManagerOrAuditor ? 'Send Clarification Request' : 'Open Structured Appeal'}
+            {isManagerOrAuditor ? 'Send Request' : 'Submit Dispute'}
           </button>
         </div>
       </form>
@@ -277,7 +266,7 @@ export function DisputesAndAppealsView() {
       {/* Active & Resolved Disputes List */}
       <div className="space-y-4">
         {disputes.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center text-xs text-slate-400">
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-8 text-center text-xs text-zinc-500 dark:text-zinc-400">
             No structured disputes or clarification threads yet.
           </div>
         ) : (
@@ -295,36 +284,36 @@ export function DisputesAndAppealsView() {
             return (
               <div
                 key={d.id}
-                className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-4 text-xs"
+                className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4 text-xs"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono font-bold text-indigo-300">
+                      <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">
                         {d.taskCode}
                       </span>
-                      <span className="font-semibold text-white">{d.taskTitle}</span>
-                      <span className="px-2 py-0.5 rounded font-mono text-[10px] uppercase bg-rose-950 text-rose-300 border border-rose-700">
+                      <span className="font-semibold text-zinc-900 dark:text-white">{d.taskTitle}</span>
+                      <span className="px-2 py-0.5 rounded font-mono text-[10px] uppercase bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700">
                         {d.status.replace('_', ' ')}
                       </span>
-                      <span className="font-mono text-[11px] text-slate-400">
+                      <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
                         Disputed: {d.disputedMinutes}m • Policy: {d.policyVersionCode}
                       </span>
                       {d.dueDate && (
-                        <span className="font-mono text-[11px] text-amber-300">
+                        <span className="font-mono text-[11px] text-amber-700 dark:text-amber-300">
                           Due: {d.dueDate}
                         </span>
                       )}
                     </div>
-                    <p className="text-slate-300">{d.reason}</p>
+                    <p className="text-zinc-700 dark:text-zinc-300">{d.reason}</p>
                     {d.escalatedReviewerName && (
-                      <div className="text-amber-300 font-medium">
-                        Independent Second Reviewer (F3-033): {d.escalatedReviewerName}
+                      <div className="text-amber-700 dark:text-amber-300 font-medium">
+                        Second Reviewer: {d.escalatedReviewerName}
                       </div>
                     )}
                     {d.creditInvoiceId && (
-                      <div className="text-emerald-300 font-medium">
-                        Post-Lock Adjustment Invoice Generated (F1-047 / F3-032)
+                      <div className="text-zinc-800 dark:text-zinc-200 font-medium">
+                        Adjustment Invoice Generated
                       </div>
                     )}
                   </div>
@@ -332,29 +321,29 @@ export function DisputesAndAppealsView() {
                   <button
                     type="button"
                     onClick={() => handleDownloadAuditBundle('json', d.id)}
-                    className="px-2.5 py-1 rounded border border-slate-700 bg-slate-950 text-slate-300 hover:text-white cursor-pointer"
+                    className="px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white cursor-pointer"
                   >
-                    Export Dispute Audit (.json)
+                    Export Audit (.json)
                   </button>
                 </div>
 
-                {/* Immutable Thread Messages (F3-032) */}
-                <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-3 space-y-2">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                    Immutable Decision & Message History (F3-032)
+                {/* Thread Messages */}
+                <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/70 p-3 space-y-2">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Message History
                   </div>
                   {d.messages.map((m) => (
-                    <div key={m.id} className="text-slate-300 space-y-0.5">
+                    <div key={m.id} className="text-zinc-700 dark:text-zinc-300 space-y-0.5">
                       <div>
-                        <span className="font-semibold text-white">{m.authorName}</span>{' '}
-                        <span className="text-[10px] font-mono text-indigo-300">
+                        <span className="font-semibold text-zinc-900 dark:text-white">{m.authorName}</span>{' '}
+                        <span className="text-[10px] font-mono text-[#6d25da] dark:text-[#c5a8f0]">
                           [{m.messageType}]
                         </span>{' '}
                         <span className="text-[10px] text-slate-500">{m.createdAt}</span>
                       </div>
-                      <div className="pl-2 border-l-2 border-slate-700">{m.messageMarkdown}</div>
+                      <div className="pl-2 border-l-2 border-zinc-200 dark:border-zinc-700">{m.messageMarkdown}</div>
                       {m.attachedArtifactIds.length > 0 && (
-                        <div className="pl-2 text-[11px] font-mono text-teal-300">
+                        <div className="pl-2 text-[11px] font-mono text-zinc-800 dark:text-zinc-200">
                           Attached artifacts: {m.attachedArtifactIds.length}
                         </div>
                       )}
@@ -363,24 +352,24 @@ export function DisputesAndAppealsView() {
                 </div>
 
                 {!isResolved && (
-                  <div className="space-y-3 pt-2 border-t border-slate-800">
+                  <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
                     {/* Reply with artifact */}
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         type="text"
-                        placeholder="Reply with context, explanation, or disagreement reason..."
+                        placeholder="Reply..."
                         value={replyDrafts[d.id] ?? ''}
                         onChange={(e) =>
                           setReplyDrafts((prev) => ({ ...prev, [d.id]: e.target.value }))
                         }
-                        className="flex-1 min-w-60 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+                        className="flex-1 min-w-60 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
                       />
                       <select
                         value={replyArtifacts[d.id] ?? ''}
                         onChange={(e) =>
                           setReplyArtifacts((prev) => ({ ...prev, [d.id]: e.target.value }))
                         }
-                        className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white max-w-52"
+                        className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1.5 text-zinc-900 dark:text-white max-w-52"
                       >
                         <option value="">No artifact</option>
                         {evidenceArtifacts.map((a) => (
@@ -425,7 +414,7 @@ export function DisputesAndAppealsView() {
                               [d.id]: e.target.value,
                             }))
                           }
-                          className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white"
+                          className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1.5 text-zinc-900 dark:text-white"
                         >
                           {eligibleSecondReviewers.length === 0 ? (
                             <option value="">No distinct second reviewer in workspace</option>
@@ -439,7 +428,7 @@ export function DisputesAndAppealsView() {
                         </select>
                         <input
                           type="text"
-                          placeholder="Escalation reason for independent second review (F3-033)..."
+                          placeholder="Escalation reason..."
                           value={escalateReasonByDispute[d.id] ?? ''}
                           onChange={(e) =>
                             setEscalateReasonByDispute((prev) => ({
@@ -447,7 +436,7 @@ export function DisputesAndAppealsView() {
                               [d.id]: e.target.value,
                             }))
                           }
-                          className="flex-1 min-w-56 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+                          className="flex-1 min-w-56 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
                         />
                         <button
                           type="button"
@@ -465,7 +454,7 @@ export function DisputesAndAppealsView() {
                           }}
                           className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold cursor-pointer"
                         >
-                          Escalate to 2nd Reviewer (F3-033)
+                          Escalate
                         </button>
                       </div>
                     )}
@@ -484,12 +473,12 @@ export function DisputesAndAppealsView() {
                               [d.id]: Number(e.target.value),
                             }))
                           }
-                          className="w-20 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-white font-mono"
+                          className="w-20 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
                           title="Final approved minutes"
                         />
                         <input
                           type="text"
-                          placeholder="Final resolution rationale (immutable audit entry)..."
+                          placeholder="Resolution note..."
                           value={resolveNoteByDispute[d.id] ?? ''}
                           onChange={(e) =>
                             setResolveNoteByDispute((prev) => ({
@@ -497,7 +486,7 @@ export function DisputesAndAppealsView() {
                               [d.id]: e.target.value,
                             }))
                           }
-                          className="flex-1 min-w-56 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-white"
+                          className="flex-1 min-w-56 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
                         />
                         <button
                           type="button"
@@ -531,7 +520,7 @@ export function DisputesAndAppealsView() {
                             })
                             setBanner({ ok: res.ok, text: res.message })
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white font-semibold cursor-pointer"
                         >
                           Resolve Adjusted
                         </button>
@@ -548,7 +537,7 @@ export function DisputesAndAppealsView() {
                             })
                             setBanner({ ok: res.ok, text: res.message })
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 font-semibold cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 text-zinc-800 dark:text-zinc-200 font-semibold cursor-pointer"
                         >
                           Uphold Original
                         </button>
