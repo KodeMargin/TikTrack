@@ -1439,13 +1439,13 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       prev.map((m) =>
         m.id === memberId
           ? {
-              ...m,
-              role: role as UserRole,
-              customPermissions:
-                customPermissions !== undefined
-                  ? customPermissions
-                  : m.customPermissions,
-            }
+            ...m,
+            role: role as UserRole,
+            customPermissions:
+              customPermissions !== undefined
+                ? customPermissions
+                : m.customPermissions,
+          }
           : m
       )
     )
@@ -1555,7 +1555,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     appendAudit(
       'PERMISSION_REGISTERED',
       `permissions:${cleanKey}`,
-      `Registered new granular permission "${cleanKey}" (${cleanLabel}) — auto-applied to Super Admin`
+      `Registered new granular permission "${cleanKey}" (${cleanLabel}) - auto-applied to Super Admin`
     )
     return {
       ok: true,
