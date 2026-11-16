@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && tsc -b && vite build",
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test src/lib/time-engine/__tests__/*.test.ts",
     "worker": "node --experimental-strip-types src/worker/detachableQueueWorker.ts",
