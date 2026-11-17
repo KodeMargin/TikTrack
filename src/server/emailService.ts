@@ -20,6 +20,19 @@ interface SendMagicLinkParams {
   redirectTo?: string
 }
 
+function getAppBaseUrl(): string {
+  if (process.env.APP_BASE_URL) {
+    return process.env.APP_BASE_URL.replace(/\/+$/, '')
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/\/+$/, '')}`
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/+$/, '')}`
+  }
+  return 'http://localhost:5173'
+}
+
 export function getSupabaseServerClient(): SupabaseClient | null {
   const url = process.env.VITE_SUPABASE_URL || ''
   const key =
@@ -50,7 +63,7 @@ export async function sendWorkspaceInviteEmail(
     return { ok: false, method: 'none', message: 'Supabase credentials not configured' }
   }
 
-  const defaultRedirect = `${process.env.APP_BASE_URL || 'http://localhost:5173'}/auth-privacy?invite=true`
+  const defaultRedirect = `${getAppBaseUrl()}/auth-privacy?invite=true`
   const targetRedirect = params.redirectTo || defaultRedirect
 
   // 1. Try admin invite or create with temporary password if service role key is present
@@ -165,7 +178,7 @@ export async function sendPasswordRecoveryEmail(
     return { ok: false, message: 'Supabase credentials not configured' }
   }
 
-  const defaultRedirect = `${process.env.APP_BASE_URL || 'http://localhost:5173'}/auth-privacy`
+  const defaultRedirect = `${getAppBaseUrl()}/auth-privacy`
   const targetRedirect = params.redirectTo || defaultRedirect
 
   try {
@@ -193,7 +206,7 @@ export async function sendMagicLinkEmail(
     return { ok: false, message: 'Supabase credentials not configured' }
   }
 
-  const defaultRedirect = `${process.env.APP_BASE_URL || 'http://localhost:5173'}/auth-privacy`
+  const defaultRedirect = `${getAppBaseUrl()}/auth-privacy`
   const targetRedirect = params.redirectTo || defaultRedirect
 
   try {
