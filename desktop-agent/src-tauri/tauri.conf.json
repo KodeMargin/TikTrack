@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DevProof Tray",
+  "version": "0.1.0",
+  "identifier": "com.devproof.desktopagent",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "DevProof Desktop Timer",
+        "width": 380,
+        "height": 520,
+        "resizable": false
+      }
+    ],
+    "trayIcon": {
+      "id": "devproof-tray",
+      "tooltip": "DevProof Desktop Timer - Transparent Session Status",
+      "title": "DP Idle"
+    },
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' https://*.supabase.co"
+    }
+  }
+}
+

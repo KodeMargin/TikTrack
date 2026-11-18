@@ -1,0 +1,73 @@
+{
+  "name": "devproof-vscode-telemetry",
+  "displayName": "DevProof (TikTrack) - Privacy-First Work Verification",
+  "description": "Opt-in IDE workspace/branch task mapper, debug session lifecycle, and test runner summary collector for DevProof (zero source code or keystroke exfiltration).",
+  "version": "0.2.0",
+  "type": "module",
+  "publisher": "devproof",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PathumLD/Dev-Tracker"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "devproof.confirmTaskMapping",
+        "title": "DevProof: Confirm or Override Branch-to-Task Mapping (F2-011)"
+      },
+      {
+        "command": "devproof.inspectLocalBuffer",
+        "title": "DevProof: Open Local Privacy Audit View (F2-035)"
+      },
+      {
+        "command": "devproof.flushTelemetryBatch",
+        "title": "DevProof: Flush Queued Telemetry Batch Now"
+      },
+      {
+        "command": "devproof.disconnectExtension",
+        "title": "DevProof: Disconnect IDE Integration & Pause Capture (Section 5.5)"
+      }
+    ],
+    "configuration": {
+      "title": "DevProof (TikTrack)",
+      "properties": {
+        "devproof.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable opt-in coarse IDE telemetry for active DevProof sessions."
+        },
+        "devproof.enableTerminalCategories": {
+          "type": "boolean",
+          "default": false,
+          "description": "Explicit opt-in (F2-016): capture coarse terminal command categories (build/test/git) without arguments, env vars, or output."
+        },
+        "devproof.supabaseEdgeUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:54321/functions/v1/tracking-events-batch",
+          "description": "DevProof Supabase Edge Function batch ingestion endpoint."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "package": "npx @vscode/vsce package",
+    "publish": "npx @vscode/vsce publish"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}
+

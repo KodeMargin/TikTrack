@@ -1,0 +1,69 @@
+name: Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v0.1.0)'
+        required: false
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target universal-apple-darwin'
+          - platform: 'windows-latest'
+            args: ''
+          - platform: 'ubuntu-22.04'
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'desktop-agent/package.json'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies (Ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libayatana-appindicator3-dev
+
+      - name: Install desktop-agent dependencies
+        run: |
+          cd desktop-agent
+          npm install
+
+      - name: Build Tauri Desktop App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: './desktop-agent'
+          tagName: ${{ github.ref_name || inputs.version || 'v0.1.0' }}
+          releaseName: 'DevProof Desktop Tray ${{ github.ref_name || inputs.version || 'v0.1.0' }}'
+          releaseBody: 'Production release for macOS (.dmg), Windows (.msi/.exe), and Linux (.deb).'
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
