@@ -30,6 +30,7 @@ export function IntegrationsAndDevicesView() {
   const [whRetrospective, setWhRetrospective] = useState(true)
   const [whTamperSig, setWhTamperSig] = useState(false)
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null)
+  const [copiedToken, setCopiedToken] = useState(false)
 
   const isFinanceOrClient =
     activeUser.role === 'finance' || activeUser.role === 'client_reviewer'
@@ -115,6 +116,114 @@ export function IntegrationsAndDevicesView() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Developer Apps Download & Connection Center */}
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 p-5 space-y-4">
+        <div>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[#702fe3] dark:text-[#a87ce9] font-bold">
+            Companion Apps & Developer Tools
+          </span>
+          <h3 className="text-base font-bold text-zinc-900 dark:text-white mt-0.5">
+            Download Desktop App or Connect VS Code Extension
+          </h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-2xl">
+            Choose your preferred companion tool to track focus time, sync Git commits, and verify engineering effort automatically.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card 1: VS Code Extension */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/70 p-4 flex flex-col justify-between space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold">
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.94-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zM18 17.818l-7.391-5.818L18 6.182v11.636z" />
+                  </svg>
+                  VS Code Extension (Recommended)
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono">v0.2.0</span>
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                Track code edits, Git branch switches, and test runs directly inside VS Code or Cursor with 0 manual effort.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <a
+                href="vscode:extension/devproof.devproof-vscode-telemetry"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white transition shadow-sm"
+              >
+                ⚡ Install in VS Code (1-Click)
+              </a>
+              <a
+                href="https://marketplace.visualstudio.com/items?itemName=devproof.devproof-vscode-telemetry"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
+              >
+                View on Marketplace
+              </a>
+            </div>
+          </div>
+
+          {/* Card 2: Desktop Tray App */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/70 p-4 flex flex-col justify-between space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-semibold">
+                  🖥️ Desktop Tray App
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono">v0.1.0</span>
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                Lightweight system tray timer for macOS, Windows, and Linux. Transparently displays your active focus mode and idle reconciliation.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <a
+                href="https://github.com/PathumLD/Dev-Tracker/releases/latest"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold transition shadow-sm"
+              >
+                🍏 Download for Mac (.dmg)
+              </a>
+              <a
+                href="https://github.com/PathumLD/Dev-Tracker/releases/latest"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
+              >
+                🪟 Windows (.exe)
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Sync Token helper */}
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/60 dark:bg-zinc-900/50 p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-zinc-700 dark:text-zinc-300">Your Developer Sync Token:</span>
+            <code className="px-2 py-0.5 rounded bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
+              dp_live_{activeUser.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}_sync
+            </code>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const token = `dp_live_${activeUser.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}_sync`
+              void navigator.clipboard.writeText(token)
+              setCopiedToken(true)
+              setTimeout(() => setCopiedToken(false), 2000)
+            }}
+            className="px-2.5 py-1 rounded-md bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium cursor-pointer transition"
+          >
+            {copiedToken ? '✓ Copied Token!' : '📋 Copy Token'}
+          </button>
+        </div>
       </div>
 
       {/* Connected Integrations (F2-015, F2-016, F2-020, F2-025, F2-026) */}
