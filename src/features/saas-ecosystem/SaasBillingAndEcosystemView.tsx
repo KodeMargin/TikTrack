@@ -559,7 +559,7 @@ export function SaasBillingAndEcosystemView() {
 
             {invoices.length === 0 ? (
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Create a client work invoice in Billing & Rates first to export to Xero or QuickBooks.
+                Create a client work invoice in Contracts & Invoicing first to export to Xero or QuickBooks.
               </p>
             ) : (
               <div className="space-y-2">

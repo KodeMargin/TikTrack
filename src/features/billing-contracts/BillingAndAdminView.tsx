@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import type { RoundingRule } from '@/types/domain.types'
-import { RolesAndPermissionsManager } from './RolesAndPermissionsManager'
 import { InfoTooltip } from '@/components/InfoTooltip'
 
 export function BillingAndAdminView() {
@@ -441,11 +440,6 @@ export function BillingAndAdminView() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Team, Roles & Granular Permissions (RBAC) */}
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5">
-        <RolesAndPermissionsManager />
       </div>
 
       <div className="grid grid-cols-1 gap-6">

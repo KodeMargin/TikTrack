@@ -3,6 +3,7 @@ import { usePhase1Store } from '@/context/Phase1Store'
 import { isSupabaseAuthConfigured, supabase } from '@/lib/supabaseClient'
 import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
 import { detectUserLocation } from '@/lib/countryTimezones'
+import { RolesAndPermissionsManager } from '@/features/billing-contracts/RolesAndPermissionsManager'
 
 export function AuthAndOnboardingView() {
   const {
@@ -463,6 +464,11 @@ export function AuthAndOnboardingView() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Team, Roles & Granular Permissions (RBAC) */}
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5">
+        <RolesAndPermissionsManager />
       </div>
 
       {/* Policy Versioning & Member Consent Matrix (F1-030) */}

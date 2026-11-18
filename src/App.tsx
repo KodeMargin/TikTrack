@@ -154,7 +154,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'billing-admin',
     path: '/billing',
-    label: 'Billing & Rates',
+    label: 'Contracts & Invoicing',
     description: 'Contracts, rate cards & client invoices',
     group: 'admin',
     allowedRoles: ['super_admin', 'tenant_owner', 'finance'],
@@ -208,7 +208,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'auth-privacy',
     path: '/auth-privacy',
     label: 'Workspace & Access',
-    description: 'Team members, MFA & tracking consent',
+    description: 'Team members, roles, MFA & consent',
     group: 'admin',
     allowedRoles: ['super_admin', 'tenant_owner'],
     icon: <NavIcon path="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-1.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />,
@@ -387,8 +387,8 @@ function DevProofShell() {
     if (item.allowedRoles.includes(activeUser.role)) return true
     const perm = NAV_PERMISSION_MAP[item.id]
     if (perm && hasPermission(perm)) return true
-    // Team & role management lives in the admin section
-    if (item.id === 'billing-admin' && (hasPermission('role:view') || hasPermission('member:invite'))) return true
+    // Team & role management lives in Workspace & Access
+    if (item.id === 'auth-privacy' && (hasPermission('role:view') || hasPermission('member:invite'))) return true
     return false
   }
 
