@@ -62,7 +62,7 @@ jobs:
         with:
           projectPath: './desktop-agent'
           tagName: ${{ github.ref_name || inputs.version || 'v0.1.0' }}
-          releaseName: 'DevProof Desktop Tray ${{ github.ref_name || inputs.version || 'v0.1.0' }}'
+          releaseName: "DevProof Desktop Tray ${{ github.ref_name || inputs.version || 'v0.1.0' }}"
           releaseBody: 'Production release for macOS (.dmg), Windows (.msi/.exe), and Linux (.deb).'
           releaseDraft: false
           prerelease: false
