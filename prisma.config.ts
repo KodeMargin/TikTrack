@@ -4,6 +4,7 @@ import { defineConfig } from 'prisma/config'
 
 // Load .env.local first (Vite convention), then fallback to .env
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
+dotenv.config({ path: path.resolve(process.cwd(), '.env.production') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 /**

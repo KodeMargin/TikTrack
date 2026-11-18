@@ -16,6 +16,8 @@
     "db:push": "prisma db push",
     "db:pull": "prisma db pull",
     "db:migrate": "prisma migrate dev",
+    "db:guards": "node --experimental-strip-types scripts/apply-live-guards.ts",
+    "db:setup": "prisma db push && npm run db:guards",
     "db:studio": "prisma studio",
     "db:seed": "node --experimental-strip-types prisma/seed.ts"
   },
