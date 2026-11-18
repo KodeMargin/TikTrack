@@ -19,7 +19,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": [
     "vite.config.ts",
@@ -27,6 +30,7 @@
     "prisma/**/*.ts",
     "src/lib/prisma.ts",
     "src/server/**/*.ts",
+    "src/**/__tests__/**/*.ts",
     "supabase/functions/**/*.ts"
   ]
 }

@@ -7,8 +7,8 @@ import {
   classifyTerminalCommandCategory,
   normalizeGitRemoteToRepoName,
   suggestTaskMappingFromGitContext,
-} from '../../../../../vscode-extension/src/taskMapper.ts'
-import { VsCodeTelemetryBuffer } from '../../../../../vscode-extension/src/telemetryBuffer.ts'
+} from '../../vscode-extension/taskMapper.ts'
+import { VsCodeTelemetryBuffer } from '../../vscode-extension/telemetryBuffer.ts'
 
 const PHASE2_POLICY: ContractBillingPolicy = {
   id: 'policy_phase2',
