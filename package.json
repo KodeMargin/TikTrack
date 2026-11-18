@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "postinstall": "prisma generate",
-    "build": "prisma generate && tsc -b && vite build",
+    "build": "prisma generate && tsc -b && vite build && npm run build:api",
+    "build:api": "rolldown src/server/vercelPrismaEntry.ts --file api/prisma/[...slug].mjs --format esm --platform node --external @prisma/client --external @prisma/adapter-pg --external pg --external dotenv --external @supabase/supabase-js",
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test src/lib/time-engine/__tests__/*.test.ts",
     "worker": "node --experimental-strip-types src/worker/detachableQueueWorker.ts",

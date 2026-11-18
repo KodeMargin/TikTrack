@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { handlePrismaApiRequest } from '../../src/server/prismaApiPlugin.ts'
+import { handlePrismaApiRequest } from './prismaApiPlugin.ts'
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const handled = await handlePrismaApiRequest(req, res)
