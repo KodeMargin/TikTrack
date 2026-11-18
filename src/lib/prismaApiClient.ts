@@ -201,7 +201,8 @@ export const createTenantViaPrisma = (input: {
   currency: string
   ownerName: string
   ownerEmail: string
-}) => postJson<{ ok: boolean; tenantId?: string; ownerId?: string }>('/api/prisma/tenants', input)
+  skipOwnerInvite?: boolean
+}) => postJson<{ ok: boolean; tenantId?: string; ownerId?: string; slug?: string }>('/api/prisma/tenants', input)
 
 export const updateTenantSettingsViaPrisma = (input: {
   tenantId: string

@@ -139,18 +139,21 @@ export async function handlePrismaApiRequest(
                 currency: string
                 ownerName: string
                 ownerEmail: string
+                skipOwnerInvite?: boolean
               }>(req)
               const tenantResult = await handleCreateTenant(body)
-              // Dispatch welcome/invite email to the owner via Supabase + Resend
-              void sendWorkspaceInviteEmail({
-                email: body.ownerEmail,
-                name: body.ownerName,
-                role: 'tenant_owner',
-                tenantId: tenantResult.tenantId,
-                tenantName: body.name,
-              }).catch((err) => {
-                console.warn('[EmailService] Owner welcome email dispatch error:', err)
-              })
+              // Dispatch welcome/invite email to the owner via Supabase + Resend unless self-service owner is already signed in
+              if (!body.skipOwnerInvite) {
+                void sendWorkspaceInviteEmail({
+                  email: body.ownerEmail,
+                  name: body.ownerName,
+                  role: 'tenant_owner',
+                  tenantId: tenantResult.tenantId,
+                  tenantName: body.name,
+                }).catch((err) => {
+                  console.warn('[EmailService] Owner welcome email dispatch error:', err)
+                })
+              }
               return sendJson(res, 201, tenantResult)
             }
 

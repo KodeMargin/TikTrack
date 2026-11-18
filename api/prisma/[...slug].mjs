@@ -3504,9 +3504,13 @@ async function handleBootstrap() {
 	};
 }
 async function handleCreateTenant(body) {
-	const slug = body.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+	const baseSlug = body.slug.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || `workspace-${crypto.randomUUID().slice(0, 6)}`;
 	const normalizedOwnerEmail = body.ownerEmail.toLowerCase().trim();
 	const created = await prisma.$transaction(async (tx) => {
+		const slug = await tx.tenant.findUnique({
+			where: { slug: baseSlug },
+			select: { id: true }
+		}) ? `${baseSlug}-${crypto.randomUUID().slice(0, 4)}` : baseSlug;
 		const existingUser = await tx.userProfile.findFirst({ where: { email: {
 			equals: normalizedOwnerEmail,
 			mode: "insensitive"
@@ -3575,7 +3579,8 @@ async function handleCreateTenant(body) {
 	return {
 		ok: true,
 		tenantId: created.tenant.id,
-		ownerId: created.user.id
+		ownerId: created.user.id,
+		slug: created.tenant.slug
 	};
 }
 async function handleRecordSession(body) {
@@ -3772,7 +3777,7 @@ async function handlePrismaApiRequest(req, res) {
 		if (req.method === "POST" && url.startsWith("/api/prisma/tenants")) {
 			const body = await readJsonBody(req);
 			const tenantResult = await handleCreateTenant(body);
-			sendWorkspaceInviteEmail({
+			if (!body.skipOwnerInvite) sendWorkspaceInviteEmail({
 				email: body.ownerEmail,
 				name: body.ownerName,
 				role: "tenant_owner",

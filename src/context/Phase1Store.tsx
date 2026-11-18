@@ -252,6 +252,7 @@ const TENANT_OWNER_PERMS_STORAGE_KEY = 'devproof_tenant_owner_perms_v1'
 
 interface Phase1StoreContextValue {
   tenants: TenantWorkspace[]
+  accessibleTenants: TenantWorkspace[]
   activeTenant: TenantWorkspace
   activeEntitlement: PlanEntitlementSpec
   setActiveTenantId: (id: string) => void
@@ -263,6 +264,14 @@ interface Phase1StoreContextValue {
     ownerName: string
     ownerEmail: string
   }) => { ok: boolean; message: string }
+  provisionWorkspaceSelfService: (input: {
+    name: string
+    slug: string
+    timezone: string
+    currency: string
+    ownerName: string
+    ownerEmail: string
+  }) => Promise<{ ok: boolean; message: string; tenantId?: string; slug?: string }>
   updateTenantSettings: (patch: Partial<TenantWorkspace>) => void
   publishPolicyVersion: (versionCode: string, summaryMarkdown: string) => void
   members: WorkspaceMember[]
@@ -270,6 +279,7 @@ interface Phase1StoreContextValue {
   isSuperAdminSession: boolean
   authChecking: boolean
   sessionUserEmail: string | null
+  sessionUserName: string | null
   signOut: () => Promise<void>
   setActiveUserId: (id: string) => void
   inviteMember: (
@@ -511,6 +521,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   const [activeUserId, setActiveUserId] = useState<string>('')
   const [authChecking, setAuthChecking] = useState(isSupabaseAuthConfigured)
   const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(null)
+  const [sessionUserName, setSessionUserName] = useState<string | null>(null)
   const [projects, setProjects] = useState<ProjectRecord[]>([])
   const [tasks, setTasks] = useState<TaskRecord[]>([])
   const [contractPolicy, setContractPolicy] =
@@ -721,14 +732,20 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
 
     void supabase.auth.getSession().then(({ data }) => {
       if (!active) return
-      const email = data.session?.user?.email?.toLowerCase().trim() ?? null
+      const user = data.session?.user
+      const email = user?.email?.toLowerCase().trim() ?? null
+      const metaName = typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name.trim() : null
       setSessionUserEmail(email)
+      setSessionUserName(metaName || (email ? email.split('@')[0] : null))
       setAuthChecking(false)
     })
 
     const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const email = session?.user?.email?.toLowerCase().trim() ?? null
+      const user = session?.user
+      const email = user?.email?.toLowerCase().trim() ?? null
+      const metaName = typeof user?.user_metadata?.full_name === 'string' ? user.user_metadata.full_name.trim() : null
       setSessionUserEmail(email)
+      setSessionUserName(metaName || (email ? email.split('@')[0] : null))
       setAuthChecking(false)
     })
 
@@ -758,13 +775,6 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [sessionUserEmail, members])
 
-  const hasWorkspace = tenants.length > 0 && members.length > 0
-  const activeTenant =
-    tenants.find((t) => t.id === activeTenantId) ??
-    tenants[0] ??
-    EMPTY_TENANT_PLACEHOLDER
-  const activeEntitlement = PLAN_ENTITLEMENTS[activeTenant.planTier]
-
   const normalizedMembers: WorkspaceMember[] = useMemo(() => {
     return members.map((m: WorkspaceMember): WorkspaceMember =>
       SUPER_ADMIN_EMAILS_SET.has(m.email.toLowerCase().trim())
@@ -772,8 +782,6 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         : m
     )
   }, [members])
-
-  const tenantMembers = normalizedMembers.filter((m) => m.tenantId === activeTenant.id)
 
   const rawSessionMember = sessionUserEmail
     ? normalizedMembers.find((m) => m.email.toLowerCase().trim() === sessionUserEmail)
@@ -788,6 +796,28 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   const isSuperAdminSession = sessionMember
     ? sessionMember.role === 'super_admin'
     : (sessionUserEmail ? SUPER_ADMIN_EMAILS_SET.has(sessionUserEmail.toLowerCase().trim()) : false)
+
+  const accessibleTenants = useMemo(() => {
+    if (!sessionUserEmail || isSuperAdminSession) return tenants
+    const myTenantIds = new Set(
+      normalizedMembers
+        .filter((m) => m.email.toLowerCase().trim() === sessionUserEmail)
+        .map((m) => m.tenantId)
+    )
+    return tenants.filter((t) => myTenantIds.has(t.id))
+  }, [tenants, normalizedMembers, sessionUserEmail, isSuperAdminSession])
+
+  const hasWorkspace = sessionUserEmail && !isSuperAdminSession
+    ? accessibleTenants.length > 0 && Boolean(sessionMember)
+    : tenants.length > 0 && members.length > 0
+
+  const activeTenant =
+    accessibleTenants.find((t) => t.id === activeTenantId) ??
+    accessibleTenants[0] ??
+    EMPTY_TENANT_PLACEHOLDER
+  const activeEntitlement = PLAN_ENTITLEMENTS[activeTenant.planTier]
+
+  const tenantMembers = normalizedMembers.filter((m) => m.tenantId === activeTenant.id)
 
   const superAdminFallbackMember: WorkspaceMember | undefined =
     isSuperAdminSession && sessionUserEmail
@@ -848,6 +878,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       }
     }
     setSessionUserEmail(null)
+    setSessionUserName(null)
     setActiveUserId('')
     try {
       Object.keys(localStorage).forEach((key) => {
@@ -908,23 +939,32 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
 
   function setActiveTenantId(id: string) {
     setActiveTenantIdState(id)
+    if (sessionUserEmail && !isSuperAdminSession) {
+      const myMember = members.find(
+        (m) => m.tenantId === id && m.email.toLowerCase().trim() === sessionUserEmail
+      )
+      if (myMember) {
+        setActiveUserId(myMember.id)
+        return
+      }
+    }
     const firstMember = members.find((m) => m.tenantId === id)
     if (firstMember) setActiveUserId(firstMember.id)
   }
 
-  function createTenantWorkspace(input: {
+  function buildLocalTenantAndOwner(input: {
     name: string
     slug: string
     timezone: string
     currency: string
     ownerName: string
     ownerEmail: string
-  }): { ok: boolean; message: string } {
-    const cleanSlug = input.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
-    if (tenants.some((t) => t.slug === cleanSlug)) {
-      return { ok: false, message: `Workspace slug "${cleanSlug}" already exists.` }
-    }
-
+  }) {
+    const cleanSlug =
+      input.slug
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/^-|-$/g, '') || `workspace-${Date.now()}`
     const newTenantId = `tenant-${Date.now()}`
     const newOwnerId = `usr-${Date.now()}`
     const newTenant: TenantWorkspace = {
@@ -961,6 +1001,51 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       assignedProjectIds: [],
     }
 
+    return { cleanSlug, newTenantId, newOwnerId, newTenant, newOwner }
+  }
+
+  function syncProvisionedIds(
+    tempTenantId: string,
+    tempOwnerId: string,
+    realTenantId: string,
+    realOwnerId: string,
+    realSlug?: string
+  ) {
+    setTenants((prev) =>
+      prev.map((t) =>
+        t.id === tempTenantId
+          ? { ...t, id: realTenantId, slug: realSlug || t.slug }
+          : t
+      )
+    )
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === tempOwnerId && m.tenantId === tempTenantId
+          ? { ...m, id: realOwnerId, tenantId: realTenantId }
+          : m.tenantId === tempTenantId
+            ? { ...m, tenantId: realTenantId }
+            : m
+      )
+    )
+    setActiveTenantIdState(realTenantId)
+    setActiveUserId(realOwnerId)
+  }
+
+  function createTenantWorkspace(input: {
+    name: string
+    slug: string
+    timezone: string
+    currency: string
+    ownerName: string
+    ownerEmail: string
+  }): { ok: boolean; message: string } {
+    const cleanSlugCheck = input.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+    if (tenants.some((t) => t.slug === cleanSlugCheck)) {
+      return { ok: false, message: `Workspace slug "${cleanSlugCheck}" already exists.` }
+    }
+
+    const { newTenantId, newOwnerId, newTenant, newOwner } = buildLocalTenantAndOwner(input)
+
     setTenants((prev) => [...prev, newTenant])
     setMembers((prev) => [...prev, newOwner])
     setActiveTenantIdState(newTenantId)
@@ -969,14 +1054,71 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     if (prismaStatus.connected) {
       void createTenantViaPrisma(input).then((res) => {
         if (res?.ok && res.tenantId && res.ownerId) {
-          setActiveTenantIdState(res.tenantId)
-          setActiveUserId(res.ownerId)
+          syncProvisionedIds(newTenantId, newOwnerId, res.tenantId, res.ownerId, res.slug)
           void refreshPrismaConnection()
         }
       })
     }
 
     return { ok: true, message: `Workspace "${input.name}" provisioned cleanly.` }
+  }
+
+  async function provisionWorkspaceSelfService(input: {
+    name: string
+    slug: string
+    timezone: string
+    currency: string
+    ownerName: string
+    ownerEmail: string
+  }): Promise<{ ok: boolean; message: string; tenantId?: string; slug?: string }> {
+    const baseSlug =
+      input.slug
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/^-|-$/g, '') || `workspace-${Date.now()}`
+    const uniqueSlug = tenants.some((t) => t.slug === baseSlug)
+      ? `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+      : baseSlug
+
+    const { newTenantId, newOwnerId, newTenant, newOwner } = buildLocalTenantAndOwner({
+      ...input,
+      slug: uniqueSlug,
+    })
+
+    setTenants((prev) => [...prev, newTenant])
+    setMembers((prev) => [...prev, newOwner])
+    setActiveTenantIdState(newTenantId)
+    setActiveUserId(newOwnerId)
+
+    if (prismaStatus.connected) {
+      try {
+        const res = await createTenantViaPrisma({
+          ...input,
+          slug: uniqueSlug,
+          skipOwnerInvite: true,
+        })
+        if (res?.ok && res.tenantId && res.ownerId) {
+          syncProvisionedIds(newTenantId, newOwnerId, res.tenantId, res.ownerId, res.slug)
+          void refreshPrismaConnection()
+          return {
+            ok: true,
+            message: `Workspace "${input.name}" is ready!`,
+            tenantId: res.tenantId,
+            slug: res.slug || uniqueSlug,
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to persist workspace'
+        return { ok: false, message: msg }
+      }
+    }
+
+    return {
+      ok: true,
+      message: `Workspace "${input.name}" is ready!`,
+      tenantId: newTenantId,
+      slug: uniqueSlug,
+    }
   }
 
   function updateTenantSettings(patch: Partial<TenantWorkspace>) {
@@ -2546,10 +2688,12 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     <Phase1StoreContext.Provider
       value={{
         tenants,
+        accessibleTenants,
         activeTenant,
         activeEntitlement,
         setActiveTenantId,
         createTenantWorkspace,
+        provisionWorkspaceSelfService,
         updateTenantSettings,
         publishPolicyVersion,
         members: tenantMembers,
@@ -2557,6 +2701,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         isSuperAdminSession,
         authChecking,
         sessionUserEmail,
+        sessionUserName,
         signOut,
         setActiveUserId,
         inviteMember,

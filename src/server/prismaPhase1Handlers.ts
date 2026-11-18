@@ -354,9 +354,19 @@ export async function handleCreateTenant(body: {
   ownerName: string
   ownerEmail: string
 }) {
-  const slug = body.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+  const baseSlug =
+    body.slug
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-|-$/g, '') || `workspace-${crypto.randomUUID().slice(0, 6)}`
   const normalizedOwnerEmail = body.ownerEmail.toLowerCase().trim()
   const created = await prisma.$transaction(async (tx) => {
+    const existingSlug = await tx.tenant.findUnique({
+      where: { slug: baseSlug },
+      select: { id: true },
+    })
+    const slug = existingSlug ? `${baseSlug}-${crypto.randomUUID().slice(0, 4)}` : baseSlug
+
     const existingUser = await tx.userProfile.findFirst({
       where: { email: { equals: normalizedOwnerEmail, mode: 'insensitive' } },
     })
@@ -446,7 +456,7 @@ export async function handleCreateTenant(body: {
     return { tenant, user }
   })
 
-  return { ok: true, tenantId: created.tenant.id, ownerId: created.user.id }
+  return { ok: true, tenantId: created.tenant.id, ownerId: created.user.id, slug: created.tenant.slug }
 }
 
 export async function handleRecordSession(body: {

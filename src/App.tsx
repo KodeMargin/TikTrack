@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from '@/context/ThemeContext'
 import type { UserRole } from '@/types/domain.types'
 import { AuthAndOnboardingView } from '@/features/auth-tenancy/AuthAndOnboardingView'
 import { AuthLoginScreen } from '@/features/auth-tenancy/AuthLoginScreen'
+import { WorkspaceOnboardingScreen } from '@/features/auth-tenancy/WorkspaceOnboardingScreen'
 import { isSupabaseAuthConfigured } from '@/lib/supabaseClient'
 import { ProjectsTasksView } from '@/features/projects-tasks/ProjectsTasksView'
 import { WorkSessionTimerView } from '@/features/sessions-timer/WorkSessionTimerView'
@@ -24,8 +25,6 @@ import { PricingPlansView } from '@/features/saas-ecosystem/PricingPlansView'
 import { EnterpriseComplianceView } from '@/features/enterprise-compliance/EnterpriseComplianceView'
 import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
 import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaInspector'
-import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
-import { detectUserLocation } from '@/lib/countryTimezones'
 
 type NavSection =
   | 'timesheets-review'
@@ -357,7 +356,7 @@ function resolveSectionFromPath(pathname: string): NavSection {
 function DevProofShell() {
   const { theme, toggleTheme } = useTheme()
   const {
-    tenants,
+    accessibleTenants,
     activeTenant,
     setActiveTenantId,
     members,
@@ -371,11 +370,8 @@ function DevProofShell() {
     timer,
     setTimerTaskAndMode,
     transitionTimer,
-    prismaStatus,
     bootstrapLoaded,
     hasWorkspace,
-    createTenantWorkspace,
-    refreshPrismaConnection,
     notifications,
     unreadNotificationCount,
     markNotificationRead,
@@ -392,16 +388,21 @@ function DevProofShell() {
     return false
   }
 
-  const [setupName, setSetupName] = useState('')
-  const [setupSlug, setSetupSlug] = useState('')
-  const [setupCurrency, setSetupCurrency] = useState('USD')
-  const [setupCountryCode, setSetupCountryCode] = useState(() => detectUserLocation().countryCode)
-  const [setupTimezone, setSetupTimezone] = useState(() => detectUserLocation().timezone)
-  const [setupOwnerName, setSetupOwnerName] = useState('')
-  const [setupOwnerEmail, setSetupOwnerEmail] = useState(
-    () => sessionUserEmail || 'iamartseeker@gmail.com'
-  )
-  const [setupError, setSetupError] = useState<string | null>(null)
+  const [onboardingActive, setOnboardingActive] = useState(false)
+  const [creatingAdditionalWorkspace, setCreatingAdditionalWorkspace] = useState(false)
+
+  useEffect(() => {
+    if (bootstrapLoaded && !authChecking && !hasWorkspace) {
+      setOnboardingActive(true)
+    }
+  }, [bootstrapLoaded, authChecking, hasWorkspace])
+
+  useEffect(() => {
+    if (!sessionUserEmail) {
+      setOnboardingActive(false)
+      setCreatingAdditionalWorkspace(false)
+    }
+  }, [sessionUserEmail])
 
   const [activeSection, setActiveSection] = useState<NavSection>(() =>
     typeof window !== 'undefined'
@@ -531,192 +532,21 @@ function DevProofShell() {
     return <AuthLoginScreen />
   }
 
-  if (!hasWorkspace) {
+  if (!hasWorkspace || onboardingActive) {
     return (
-      <div className="min-h-screen bg-white text-zinc-900 dark:bg-[#09090b] dark:text-zinc-100 flex flex-col">
-        <header className="h-14 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-[#0c0c0e]/80 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <img
-              src={theme === 'dark' ? '/images/Logo-Light2.png' : '/images/Logo-Dark2.png'}
-              alt="TikTrack"
-              className="h-8 w-auto object-contain"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void refreshPrismaConnection()}
-              className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5 cursor-pointer"
-            >
-              <span
-                className={`h-2 w-2 rounded-full ${prismaStatus.connected ? 'bg-emerald-500' : 'bg-rose-500'
-                  }`}
-              />
-              <span>
-                {prismaStatus.connected ? 'Supabase Connected' : 'DB Disconnected (Retry)'}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 text-xs font-medium cursor-pointer"
-            >
-              {theme === 'dark' ? 'Light' : 'Dark'}
-            </button>
-          </div>
-        </header>
+      <WorkspaceOnboardingScreen
+        onComplete={() => setOnboardingActive(false)}
+      />
+    )
+  }
 
-        <main className="flex-1 flex items-center justify-center p-6">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white dark:border-white/10 dark:bg-[#111623] p-6 sm:p-8 shadow-sm space-y-5">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                Clean Supabase Database (0 Rows)
-              </span>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-                Create Your Workspace
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                All dummy data has been removed. Set up your company workspace and Owner account to start tracking developers in live PostgreSQL.
-              </p>
-            </div>
-
-            {!prismaStatus.connected && (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-950/40 p-3 text-xs text-amber-800 dark:text-amber-200">
-                {prismaStatus.message}
-              </div>
-            )}
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                const slug =
-                  setupSlug.trim() ||
-                  setupName
-                    .trim()
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-|-$/g, '')
-                const res = createTenantWorkspace({
-                  name: setupName.trim(),
-                  slug,
-                  timezone: setupTimezone,
-                  currency: setupCurrency,
-                  ownerName: setupOwnerName.trim(),
-                  ownerEmail: setupOwnerEmail.trim(),
-                })
-                if (!res.ok) setSetupError(res.message)
-                else setSetupError(null)
-              }}
-              className="space-y-3 text-sm"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    Workspace / Company Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Acme Studio"
-                    value={setupName}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setSetupName(val)
-                      setSetupSlug(
-                        val
-                          .toLowerCase()
-                          .replace(/[^a-z0-9]+/g, '-')
-                          .replace(/^-|-$/g, '')
-                      )
-                    }}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    URL Slug
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. acme-studio"
-                    value={setupSlug}
-                    onChange={(e) => setSetupSlug(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    Your Name (Owner)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Your full name"
-                    value={setupOwnerName}
-                    onChange={(e) => setSetupOwnerName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    Owner Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="iamartseeker@gmail.com"
-                    value={setupOwnerEmail}
-                    onChange={(e) => setSetupOwnerEmail(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
-                  Currency
-                </label>
-                <select
-                  value={setupCurrency}
-                  onChange={(e) => setSetupCurrency(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5 px-3 py-2 text-sm"
-                >
-                  <option value="USD">USD ($)</option>
-                  <option value="LKR">LKR (Rs)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="AUD">AUD (A$)</option>
-                </select>
-              </div>
-
-              <CountryTimezonePicker
-                countryCode={setupCountryCode}
-                timezone={setupTimezone}
-                onChange={({ countryCode, timezone }) => {
-                  setSetupCountryCode(countryCode)
-                  setSetupTimezone(timezone)
-                }}
-              />
-
-              {setupError && (
-                <div className="text-xs text-rose-600 dark:text-rose-400">{setupError}</div>
-              )}
-
-              <button
-                type="submit"
-                disabled={!prismaStatus.connected}
-                className="w-full py-2.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] disabled:opacity-50 text-white text-sm font-semibold transition cursor-pointer"
-              >
-                Create Live Workspace in Supabase
-              </button>
-            </form>
-          </div>
-        </main>
-      </div>
+  if (creatingAdditionalWorkspace) {
+    return (
+      <WorkspaceOnboardingScreen
+        allowCancel
+        onCancel={() => setCreatingAdditionalWorkspace(false)}
+        onComplete={() => setCreatingAdditionalWorkspace(false)}
+      />
     )
   }
 
@@ -841,7 +671,7 @@ function DevProofShell() {
             </button>
 
             {/* Workspace Switcher: Custom Sleek Dropdown */}
-            {isSuperAdminSession || activeUser.role === 'super_admin' ? (
+            {isSuperAdminSession || activeUser.role === 'super_admin' || activeUser.role === 'tenant_owner' || accessibleTenants.length > 1 ? (
               <div className="relative" ref={workspaceMenuRef}>
                 <button
                   type="button"
@@ -871,11 +701,11 @@ function DevProofShell() {
                     <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
                       <span>Workspaces</span>
                       <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-1.5 py-0.5 rounded text-[9px] font-mono">
-                        {tenants.length}
+                        {accessibleTenants.length}
                       </span>
                     </div>
                     <div className="max-h-60 overflow-y-auto py-1 space-y-0.5">
-                      {tenants.map((t) => {
+                      {accessibleTenants.map((t) => {
                         const isSelected = t.id === activeTenant.id
                         return (
                           <button
@@ -916,6 +746,18 @@ function DevProofShell() {
                           </button>
                         )
                       })}
+                    </div>
+                    <div className="border-t border-zinc-100 dark:border-zinc-800 pt-1 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWorkspaceMenuOpen(false)
+                          setCreatingAdditionalWorkspace(true)
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-[#6d25da] dark:text-[#c5a8f0] hover:bg-[#6d25da]/10 transition cursor-pointer text-left"
+                      >
+                        <span>+ Create New Workspace</span>
+                      </button>
                     </div>
                   </div>
                 )}
