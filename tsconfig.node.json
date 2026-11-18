@@ -25,6 +25,7 @@
     }
   },
   "include": [
+    "api/**/*.ts",
     "vite.config.ts",
     "prisma.config.ts",
     "prisma/**/*.ts",

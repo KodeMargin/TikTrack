@@ -80,6 +80,14 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
 async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
+  const preParsed = (req as IncomingMessage & { body?: unknown }).body
+  if (preParsed !== undefined) {
+    if (typeof preParsed === 'string') {
+      return preParsed ? (JSON.parse(preParsed) as T) : ({} as T)
+    }
+    return preParsed as T
+  }
+
   return new Promise((resolve, reject) => {
     let raw = ''
     req.on('data', (chunk: Buffer) => {
@@ -98,25 +106,23 @@ async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
   })
 }
 
-function sendJson(res: ServerResponse, statusCode: number, payload: unknown) {
+function sendJson(res: ServerResponse, statusCode: number, payload: unknown): true {
   res.statusCode = statusCode
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(payload))
+  return true
 }
 
-export function prismaSupabaseApiPlugin(): Plugin {
-  return {
-    name: 'devproof-prisma-supabase-api',
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const url = req.url ?? ''
-        if (!url.startsWith('/api/prisma/')) {
-          next()
-          return
-        }
+export async function handlePrismaApiRequest(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<boolean> {
+  const url = req.url ?? ''
+  if (!url.startsWith('/api/prisma/')) {
+    return false
+  }
 
-        void (async () => {
-          try {
+  try {
             if (req.method === 'GET' && url.startsWith('/api/prisma/status')) {
               return sendJson(res, 200, await checkPrismaConnection())
             }
@@ -1004,12 +1010,26 @@ export function prismaSupabaseApiPlugin(): Plugin {
               return sendJson(res, 201, await handleRegisterPermissionPrisma(body))
             }
 
-            return sendJson(res, 404, { error: 'Unknown Prisma API endpoint' })
+            sendJson(res, 404, { error: 'Unknown Prisma API endpoint' })
+            return true
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
-            return sendJson(res, 500, { ok: false, error: message })
+            sendJson(res, 500, { ok: false, error: message })
+            return true
           }
-        })()
+}
+
+export function prismaSupabaseApiPlugin(): Plugin {
+  return {
+    name: 'devproof-prisma-supabase-api',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url ?? ''
+        if (!url.startsWith('/api/prisma/')) {
+          next()
+          return
+        }
+        void handlePrismaApiRequest(req, res)
       })
     },
   }
