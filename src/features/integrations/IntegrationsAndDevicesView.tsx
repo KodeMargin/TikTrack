@@ -192,13 +192,13 @@ export function IntegrationsAndDevicesView() {
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <a
-                href="vscode:extension/kodemargin.tiktrack-vscode-telemetry"
+                href="vscode:extension/kodemargin.devproof-vscode-telemetry"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white transition shadow-sm"
               >
                 ⚡ Install in VS Code (1-Click)
               </a>
               <a
-                href="https://marketplace.visualstudio.com/items?itemName=kodemargin.tiktrack-vscode-telemetry"
+                href="https://marketplace.visualstudio.com/items?itemName=kodemargin.devproof-vscode-telemetry"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"

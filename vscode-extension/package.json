@@ -1,8 +1,8 @@
 {
-  "name": "tiktrack-vscode-telemetry",
+  "name": "devproof-vscode-telemetry",
   "displayName": "TikTrack - Privacy-First Work Verification",
   "description": "Opt-in IDE workspace/branch task mapper, debug session lifecycle, and test runner summary collector for TikTrack (zero source code or keystroke exfiltration).",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "publisher": "KodeMargin",
   "icon": "icon.png",
@@ -74,4 +74,3 @@
     "typescript": "^5.8.2"
   }
 }
-

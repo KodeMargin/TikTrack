@@ -623,10 +623,14 @@ async fn login_with_password(
     guard.last_sync_at_utc = Some(Utc::now().to_rfc3339());
     guard.last_sync_error = None;
     if guard.task_id.is_empty() {
-        if let Some(first) = guard.assigned_tasks.first() {
-            guard.task_id = first.id.clone();
-            guard.project_id = first.project_id.clone();
-            guard.work_mode = first.default_work_mode.clone();
+        if let Some((task_id, project_id, work_mode)) = guard
+            .assigned_tasks
+            .first()
+            .map(|first| (first.id.clone(), first.project_id.clone(), first.default_work_mode.clone()))
+        {
+            guard.task_id = task_id;
+            guard.project_id = project_id;
+            guard.work_mode = work_mode;
         }
     }
     guard.persist_auth();
@@ -706,10 +710,14 @@ async fn login_with_pairing_token(
     guard.is_online = true;
     guard.last_sync_at_utc = Some(Utc::now().to_rfc3339());
     guard.last_sync_error = None;
-    if let Some(first) = guard.assigned_tasks.first() {
-        guard.task_id = first.id.clone();
-        guard.project_id = first.project_id.clone();
-        guard.work_mode = first.default_work_mode.clone();
+    if let Some((task_id, project_id, work_mode)) = guard
+        .assigned_tasks
+        .first()
+        .map(|first| (first.id.clone(), first.project_id.clone(), first.default_work_mode.clone()))
+    {
+        guard.task_id = task_id;
+        guard.project_id = project_id;
+        guard.work_mode = work_mode;
     }
     guard.persist_auth();
     guard.persist_tasks_cache();
@@ -845,10 +853,14 @@ async fn fetch_assigned_tasks(
             // Ensure selected task is still valid
             let still_exists = guard.assigned_tasks.iter().any(|t| t.id == guard.task_id);
             if !still_exists && guard.lifecycle == TimerLifecycle::Idle {
-                if let Some(first) = guard.assigned_tasks.first() {
-                    guard.task_id = first.id.clone();
-                    guard.project_id = first.project_id.clone();
-                    guard.work_mode = first.default_work_mode.clone();
+                if let Some((task_id, project_id, work_mode)) = guard
+                    .assigned_tasks
+                    .first()
+                    .map(|first| (first.id.clone(), first.project_id.clone(), first.default_work_mode.clone()))
+                {
+                    guard.task_id = task_id;
+                    guard.project_id = project_id;
+                    guard.work_mode = work_mode;
                 } else {
                     guard.task_id.clear();
                     guard.project_id.clear();
