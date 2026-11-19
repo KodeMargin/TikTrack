@@ -20,7 +20,8 @@
     "db:guards": "node --experimental-strip-types scripts/apply-live-guards.ts",
     "db:setup": "prisma db push && npm run db:guards",
     "db:studio": "prisma studio",
-    "db:seed": "node --experimental-strip-types prisma/seed.ts"
+    "db:seed": "node --experimental-strip-types prisma/seed.ts",
+    "release:macos": "bash scripts/release-macos-local.sh"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",

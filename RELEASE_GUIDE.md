@@ -71,7 +71,9 @@ git commit -m "chore(desktop): bump version to v0.2.1"
 git push origin main
 ```
 
-### Step 3: Trigger the Release Workflow
+### Step 3: Build & Publish Windows + Linux via GitHub Actions (Low Minutes)
+To avoid burning GitHub Actions free-tier minutes on **10×-cost `macos-latest` runners**, `.github/workflows/desktop-release.yml` defaults to **`windows-linux`** and caches Rust/npm builds.
+
 Choose either method:
 
 - **Option A - GitHub Actions UI (Recommended):**
@@ -79,19 +81,64 @@ Choose either method:
   2. Click **Run workflow**.
   3. Set **Use workflow from** to `main`.
   4. Enter **Release version tag** (e.g., `v0.2.1`).
-  5. Click **Run workflow**.
+  5. Choose **Platforms to build**:
+     - `windows-linux` *(default, recommended)* — builds Windows + Linux only (~25–30 billed min instead of ~300 min).
+     - `all` — builds macOS (ARM64 + Intel), Windows, and Linux on GitHub runners.
+     - `macos-arm64`, `macos-all`, `windows`, or `linux` — build specific platforms only.
+  6. Click **Run workflow**.
 
-- **Option B - Push a Git Tag:**
+- **Option B - Push a Git Tag (runs `windows-linux` by default):**
   ```bash
   git tag v0.2.1
   git push origin v0.2.1
   ```
 
-### Step 4: Verify the Release
-Once all 4 build jobs finish (macOS Apple Silicon, macOS Intel, Windows, Linux):
+### Step 4: Build, Sign & Publish macOS Locally (0 GitHub Actions Minutes)
+Once the `windows-linux` workflow creates the release on `KodeMargin/TikTrack-Release` (or even before it runs), build and upload macOS directly from your Mac using `scripts/release-macos-local.sh` — **no `gh` CLI required**.
+
+#### One-Time Mac Setup
+1. **Install Rust** (if `cargo` is not installed yet):
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source "$HOME/.cargo/env"
+   ```
+2. **Add your release token to `.env.local`** (`.env.local` is gitignored and never committed):
+   - Generate a Fine-Grained PAT at `https://github.com/settings/personal-access-tokens/new` scoped **only** to `KodeMargin/TikTrack-Release` with **Contents: Read and write**.
+   - Add to `TikTrack/.env.local`:
+     ```env
+     RELEASE_REPO_TOKEN=github_pat_your_token_here
+     # Optional: only if your ~/.tauri/tiktrack.key has a password
+     TAURI_SIGNING_PRIVATE_KEY_PASSWORD=your_key_password
+     ```
+
+#### Run Local macOS Release
+```bash
+cd TikTrack
+
+# Both Apple Silicon (ARM64) and Intel (x86_64) — default, version auto-read from tauri.conf.json
+npm run release:macos
+
+# Explicit tag + both architectures
+npm run release:macos -- v0.2.1
+
+# Apple Silicon (M1/M2/M3/M4) only (optional)
+npm run release:macos -- --arm64-only
+
+# Build & sign locally only (saves to desktop-agent/release-output/<tag>/ without uploading)
+npm run release:macos -- --build-only
+```
+
+What `npm run release:macos` does automatically:
+1. Reads the app version from `desktop-agent/src-tauri/tauri.conf.json` and loads `~/.tauri/tiktrack.key`.
+2. Builds and signs `.dmg`, `.app.tar.gz`, and `.app.tar.gz.sig` for `aarch64-apple-darwin` (and `x86_64-apple-darwin` with `--all`).
+3. Uploads the macOS assets directly to `KodeMargin/TikTrack-Release` via the GitHub REST API.
+4. Downloads the release's existing `latest.json`, merges `darwin-aarch64` (and `darwin-x86_64`) **without overwriting** the Windows/Linux entries from GitHub Actions, and re-uploads `latest.json`.
+
+### Step 5: Verify the Release
+Once both GitHub Actions (`windows-linux`) and local macOS publish finish:
 1. Open `https://github.com/KodeMargin/TikTrack-Release/releases`.
-2. Confirm the release contains installers for all platforms **and** `latest.json`.
-3. Open an already-installed TikTrack Desktop Agent (or click the download icon in the header) - an **Update v0.2.1 available** banner with **Update & Restart** will appear automatically.
+2. Confirm the release contains installers for all platforms (`.dmg`, `.exe`/`.msi`, `.AppImage`/`.deb`) **and** `latest.json` with all platform entries.
+3. Open an already-installed TikTrack Desktop Agent (or click the download icon in the header) — an **Update v0.2.1 available** banner with **Update & Restart** will appear automatically.
 
 ---
 
