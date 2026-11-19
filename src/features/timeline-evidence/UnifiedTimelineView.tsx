@@ -188,7 +188,7 @@ export function UnifiedTimelineView() {
           <div className="rounded-xl bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-800 p-3">
             <div className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
               <span>Observation Gaps</span>
-              <InfoTooltip text="Intervals without IDE or desktop signals are marked unobserved—never penalized as fraud." />
+              <InfoTooltip text="Intervals without IDE or desktop signals are marked unobserved-never penalized as fraud." />
             </div>
             <div className="text-lg font-bold font-mono text-amber-700 dark:text-amber-300 mt-0.5">
               {unobservedGapMinutes}m
@@ -310,10 +310,10 @@ export function UnifiedTimelineView() {
                   key={bucket.id}
                   onClick={() => setSelectedGapBucketId(bucket.id)}
                   className={`rounded-xl p-3 border transition cursor-pointer space-y-1.5 ${isUnreconciledGap
-                      ? 'border-dashed border-amber-500 bg-amber-50 dark:bg-amber-950/25 hover:bg-amber-100 dark:hover:bg-amber-950/40'
-                      : isSelected
-                        ? 'border-[#6d25da] bg-[#f0e9fb] dark:bg-[#6d25da]/15'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80 hover:border-zinc-300 dark:hover:border-zinc-700'
+                    ? 'border-dashed border-amber-500 bg-amber-50 dark:bg-amber-950/25 hover:bg-amber-100 dark:hover:bg-amber-950/40'
+                    : isSelected
+                      ? 'border-[#6d25da] bg-[#f0e9fb] dark:bg-[#6d25da]/15'
+                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                 >
                   <div className="flex items-center justify-between text-xs">
@@ -323,12 +323,12 @@ export function UnifiedTimelineView() {
                     </span>
                     <span
                       className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${isUnreconciledGap
-                          ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40'
-                          : bucket.appCategory === 'ide'
-                            ? 'bg-[#f0e9fb] dark:bg-[#6d25da]/15 text-[#6d25da] dark:text-[#c5a8f0] border border-[#c5a8f0] dark:border-[#6d25da]/50'
-                            : bucket.appCategory === 'docs_browser'
-                              ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
-                              : 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40'
+                        : bucket.appCategory === 'ide'
+                          ? 'bg-[#f0e9fb] dark:bg-[#6d25da]/15 text-[#6d25da] dark:text-[#c5a8f0] border border-[#c5a8f0] dark:border-[#6d25da]/50'
+                          : bucket.appCategory === 'docs_browser'
+                            ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                            : 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
                         }`}
                     >
                       {bucket.appCategory.toUpperCase()}
@@ -353,7 +353,7 @@ export function UnifiedTimelineView() {
 
                   {isUnreconciledGap && (
                     <div className="text-[11px] text-amber-800 dark:text-amber-200 font-medium">
-                      Observation Gap ({bucket.durationMinutes}m) — click to categorize
+                      Observation Gap ({bucket.durationMinutes}m) - click to categorize
                     </div>
                   )}
 
@@ -389,8 +389,8 @@ export function UnifiedTimelineView() {
                     setOverrideLinkType(art.linkType)
                   }}
                   className={`rounded-xl p-3 border transition cursor-pointer space-y-1.5 ${selected
-                      ? 'border-[#6d25da] bg-[#f0e9fb] dark:bg-[#6d25da]/15'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80 hover:border-zinc-300 dark:hover:border-zinc-700'
+                    ? 'border-[#6d25da] bg-[#f0e9fb] dark:bg-[#6d25da]/15'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -404,8 +404,8 @@ export function UnifiedTimelineView() {
                     </div>
                     <span
                       className={`text-[10px] font-semibold px-2 py-0.5 rounded ${art.linkType === 'retrospective_outcome'
-                          ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700/60'
-                          : 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
+                        ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700/60'
+                        : 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
                         }`}
                     >
                       {art.linkType === 'retrospective_outcome'

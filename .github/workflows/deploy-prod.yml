@@ -1,4 +1,4 @@
-name: CI/CD — Build, DB Sync & Deploy to Vercel Production
+name: CI/CD - Build, DB Sync & Deploy to Vercel Production
 
 on:
   push:

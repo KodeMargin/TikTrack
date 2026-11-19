@@ -141,7 +141,7 @@ export async function activate(context: { subscriptions: Array<{ dispose: () => 
   const taskCode = activeRuntime.currentMapping.suggestedTaskCode ?? 'unmapped'
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
   statusBar.text = `$(shield) TikTrack: ${taskCode}`
-  statusBar.tooltip = 'TikTrack Privacy-First Verification Active — Click to open panel'
+  statusBar.tooltip = 'TikTrack Privacy-First Verification Active - Click to open panel'
   statusBar.command = 'tiktrack.openDashboard'
   statusBar.show()
   context.subscriptions.push(statusBar)

@@ -19,10 +19,10 @@ export function renderTikTrackPanelHtml(runtime: VsCodeExtensionRuntime): string
     events.length === 0
       ? `<div class="tt-empty">No buffered telemetry buckets right now. Save a file or run a debug/test session to record coarse metadata.</div>`
       : events
-          .slice(-15)
-          .reverse()
-          .map(
-            (evt) => `
+        .slice(-15)
+        .reverse()
+        .map(
+          (evt) => `
           <div class="tt-event">
             <div class="tt-event-head">
               <span class="tt-event-type">${escapeHtml(evt.event_type)}</span>
@@ -30,8 +30,8 @@ export function renderTikTrackPanelHtml(runtime: VsCodeExtensionRuntime): string
             </div>
             <pre class="tt-code">${escapeHtml(JSON.stringify(evt.metadata, null, 2))}</pre>
           </div>`
-          )
-          .join('')
+        )
+        .join('')
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -345,7 +345,7 @@ export function renderTikTrackPanelHtml(runtime: VsCodeExtensionRuntime): string
           <div class="tt-logo">T</div>
           <div>
             <h1 class="tt-title">TikTrack IDE Verification</h1>
-            <div class="tt-subtitle">Zero keystrokes, zero source code capture — coarse metadata only</div>
+            <div class="tt-subtitle">Zero keystrokes, zero source code capture - coarse metadata only</div>
           </div>
         </div>
         <span class="tt-pill ${isConnected ? 'tt-pill--connected' : 'tt-pill--disconnected'}">

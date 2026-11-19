@@ -369,7 +369,7 @@ export async function sendWorkspaceInviteEmail(
 
   const resendResult = await sendViaResend({
     to: params.email,
-    subject: `Welcome to ${workspaceName} on TikTrack — Activate your profile`,
+    subject: `Welcome to ${workspaceName} on TikTrack - Activate your profile`,
     html,
     text,
   })

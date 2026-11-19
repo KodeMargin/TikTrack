@@ -127,10 +127,12 @@ function getSupabaseAdminClient$1() {
 	const url = process.env.VITE_SUPABASE_URL || "";
 	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 	if (!url || !serviceKey) return null;
-	return createClient(url, serviceKey, { auth: {
-		autoRefreshToken: false,
-		persistSession: false
-	} });
+	return createClient(url, serviceKey, {
+		auth: {
+			autoRefreshToken: false,
+			persistSession: false
+		}
+	});
 }
 function escapeHtml(value) {
 	return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -325,7 +327,7 @@ async function sendWorkspaceInviteEmail(params) {
 	].filter(Boolean).join("\n");
 	const resendResult = await sendViaResend({
 		to: params.email,
-		subject: `Welcome to ${workspaceName} on TikTrack — Activate your profile`,
+		subject: `Welcome to ${workspaceName} on TikTrack - Activate your profile`,
 		html,
 		text
 	});
@@ -399,10 +401,14 @@ async function handleIngestWebhookPrisma(body) {
 		deliveryAttemptCount: 1
 	};
 	return prisma.$transaction(async (tx) => {
-		const existingReceipt = await tx.webhookReceipt.findUnique({ where: { provider_deliveryId: {
-			provider: body.provider,
-			deliveryId: body.deliveryId
-		} } });
+		const existingReceipt = await tx.webhookReceipt.findUnique({
+			where: {
+				provider_deliveryId: {
+					provider: body.provider,
+					deliveryId: body.deliveryId
+				}
+			}
+		});
 		let deliveryAttemptCount = 1;
 		let deduplicated = false;
 		if (existingReceipt) {
@@ -415,17 +421,19 @@ async function handleIngestWebhookPrisma(body) {
 					processedAtUtc: /* @__PURE__ */ new Date()
 				}
 			})).deliveryAttemptCount;
-		} else await tx.webhookReceipt.create({ data: {
-			tenantId: body.tenantId,
-			provider: body.provider,
-			deliveryId: body.deliveryId,
-			eventType: body.eventType,
-			signatureVerified: body.signatureVerified,
-			payloadSha256: body.payloadSha256,
-			deliveryAttemptCount: 1,
-			status: body.signatureVerified ? "processed" : "rejected_signature",
-			processedAtUtc: /* @__PURE__ */ new Date()
-		} });
+		} else await tx.webhookReceipt.create({
+			data: {
+				tenantId: body.tenantId,
+				provider: body.provider,
+				deliveryId: body.deliveryId,
+				eventType: body.eventType,
+				signatureVerified: body.signatureVerified,
+				payloadSha256: body.payloadSha256,
+				deliveryAttemptCount: 1,
+				status: body.signatureVerified ? "processed" : "rejected_signature",
+				processedAtUtc: /* @__PURE__ */ new Date()
+			}
+		});
 		if (!body.signatureVerified) return {
 			ok: false,
 			deduplicated,
@@ -433,11 +441,13 @@ async function handleIngestWebhookPrisma(body) {
 			error: "Invalid HMAC signature"
 		};
 		const artifact = await tx.evidenceArtifact.upsert({
-			where: { tenantId_sourceType_externalId: {
-				tenantId: body.tenantId,
-				sourceType: body.sourceType,
-				externalId: body.externalId
-			} },
+			where: {
+				tenantId_sourceType_externalId: {
+					tenantId: body.tenantId,
+					sourceType: body.sourceType,
+					externalId: body.externalId
+				}
+			},
 			update: { summaryTitle: body.summaryTitle },
 			create: {
 				tenantId: body.tenantId,
@@ -453,11 +463,13 @@ async function handleIngestWebhookPrisma(body) {
 			}
 		});
 		if (body.taskId && isValidUuid(body.taskId)) await tx.evidenceLink.upsert({
-			where: { tenantId_taskId_artifactId: {
-				tenantId: body.tenantId,
-				taskId: body.taskId,
-				artifactId: artifact.id
-			} },
+			where: {
+				tenantId_taskId_artifactId: {
+					tenantId: body.tenantId,
+					taskId: body.taskId,
+					artifactId: artifact.id
+				}
+			},
 			update: {},
 			create: {
 				tenantId: body.tenantId,
@@ -481,16 +493,18 @@ async function handleCreateSessionAnnotationPrisma(body) {
 	if (!isValidUuid(body.tenantId) || !isValidUuid(body.userId) || !isValidUuid(body.sessionId)) return { ok: false };
 	return {
 		ok: true,
-		annotationId: (await prisma.sessionAnnotation.create({ data: {
-			tenantId: body.tenantId,
-			userId: body.userId,
-			sessionId: body.sessionId,
-			annotationType: body.annotationType,
-			title: body.title,
-			contentMarkdown: body.contentMarkdown,
-			startMinuteOfDay: body.startMinuteOfDay ?? null,
-			endMinuteOfDay: body.endMinuteOfDay ?? null
-		} })).id
+		annotationId: (await prisma.sessionAnnotation.create({
+			data: {
+				tenantId: body.tenantId,
+				userId: body.userId,
+				sessionId: body.sessionId,
+				annotationType: body.annotationType,
+				title: body.title,
+				contentMarkdown: body.contentMarkdown,
+				startMinuteOfDay: body.startMinuteOfDay ?? null,
+				endMinuteOfDay: body.endMinuteOfDay ?? null
+			}
+		})).id
 	};
 }
 async function handleBootstrapPhase2Data() {
@@ -709,11 +723,13 @@ async function handleAddPrivacyExclusionPrisma(body) {
 	return {
 		ok: true,
 		id: (await prisma.privacyExclusion.upsert({
-			where: { tenantId_userId_exclusionPattern: {
-				tenantId: body.tenantId,
-				userId: body.userId,
-				exclusionPattern: body.exclusionPattern
-			} },
+			where: {
+				tenantId_userId_exclusionPattern: {
+					tenantId: body.tenantId,
+					userId: body.userId,
+					exclusionPattern: body.exclusionPattern
+				}
+			},
 			update: {
 				isActive: true,
 				reason: body.reason
@@ -903,13 +919,15 @@ async function handleToggleTenantAiPrisma(body) {
 			where: { id: body.tenantId },
 			data: { aiEnabled: body.aiEnabled }
 		});
-		await tx.auditEntry.create({ data: {
-			tenantId: body.tenantId,
-			actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-			actionType: "TENANT_AI_SETTING_CHANGED",
-			targetEntity: `tenants:${body.tenantId}`,
-			reason: `Set ai_enabled = ${String(body.aiEnabled)} (F3-027)`
-		} });
+		await tx.auditEntry.create({
+			data: {
+				tenantId: body.tenantId,
+				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+				actionType: "TENANT_AI_SETTING_CHANGED",
+				targetEntity: `tenants:${body.tenantId}`,
+				reason: `Set ai_enabled = ${String(body.aiEnabled)} (F3-027)`
+			}
+		});
 	});
 	return { ok: true };
 }
@@ -925,23 +943,27 @@ async function handlePublishRuleSetPrisma(body) {
 				},
 				data: { status: "superseded" }
 			});
-			const ruleSet = await tx.verificationRuleSet.create({ data: {
-				tenantId: body.tenantId,
-				versionNumber: body.versionNumber,
-				versionLabel: body.versionLabel,
-				status: "active",
-				rulesConfig: body.rulesConfig,
-				simulationSummary: body.simulationSummary ?? null,
-				createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-			} });
-			await tx.auditEntry.create({ data: {
-				tenantId: body.tenantId,
-				actorUserId: isValidUuid(body.createdBy) ? body.createdBy : null,
-				actionType: "VERIFICATION_RULE_SET_PUBLISHED",
-				targetEntity: `verification_rule_sets:v${body.versionNumber}`,
-				targetId: ruleSet.id,
-				reason: `Published rule set ${body.versionLabel} (no retroactive historical changes).`
-			} });
+			const ruleSet = await tx.verificationRuleSet.create({
+				data: {
+					tenantId: body.tenantId,
+					versionNumber: body.versionNumber,
+					versionLabel: body.versionLabel,
+					status: "active",
+					rulesConfig: body.rulesConfig,
+					simulationSummary: body.simulationSummary ?? null,
+					createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
+				}
+			});
+			await tx.auditEntry.create({
+				data: {
+					tenantId: body.tenantId,
+					actorUserId: isValidUuid(body.createdBy) ? body.createdBy : null,
+					actionType: "VERIFICATION_RULE_SET_PUBLISHED",
+					targetEntity: `verification_rule_sets:v${body.versionNumber}`,
+					targetId: ruleSet.id,
+					reason: `Published rule set ${body.versionLabel} (no retroactive historical changes).`
+				}
+			});
 			return ruleSet;
 		})).id
 	};
@@ -959,21 +981,23 @@ async function handleCreateAiGenerationPrisma(body) {
 	};
 	return {
 		ok: true,
-		id: (await prisma.aiGeneration.create({ data: {
-			tenantId: body.tenantId,
-			userId: isValidUuid(body.userId) ? body.userId : null,
-			targetType: body.targetType,
-			targetId: body.targetId,
-			generationMode: body.generationMode,
-			modelId: body.modelId,
-			promptVersion: body.promptVersion,
-			sanitizedPromptPayload: body.sanitizedPromptPayload,
-			citedEventIds: body.citedEventIds,
-			citedArtifactIds: body.citedArtifactIds,
-			draftMarkdown: body.draftMarkdown,
-			status: "draft",
-			tokensUsed: body.tokensUsed
-		} })).id
+		id: (await prisma.aiGeneration.create({
+			data: {
+				tenantId: body.tenantId,
+				userId: isValidUuid(body.userId) ? body.userId : null,
+				targetType: body.targetType,
+				targetId: body.targetId,
+				generationMode: body.generationMode,
+				modelId: body.modelId,
+				promptVersion: body.promptVersion,
+				sanitizedPromptPayload: body.sanitizedPromptPayload,
+				citedEventIds: body.citedEventIds,
+				citedArtifactIds: body.citedArtifactIds,
+				draftMarkdown: body.draftMarkdown,
+				status: "draft",
+				tokensUsed: body.tokensUsed
+			}
+		})).id
 	};
 }
 async function handleDecideAiGenerationPrisma(body) {
@@ -1007,16 +1031,18 @@ async function handlePartialApproveTimesheetPrisma(body) {
 					reviewerComment: body.reason
 				}
 			});
-			await tx.reviewDecision.create({ data: {
-				tenantId: body.tenantId,
-				timesheetId: line.timesheetId,
-				timesheetLineId: lineId,
-				reviewerUserId: body.reviewerUserId,
-				decisionType: "approve",
-				reason: body.reason,
-				previousApprovedMinutes: line.approvedBillableMinutes,
-				newApprovedMinutes: line.claimedMinutes
-			} });
+			await tx.reviewDecision.create({
+				data: {
+					tenantId: body.tenantId,
+					timesheetId: line.timesheetId,
+					timesheetLineId: lineId,
+					reviewerUserId: body.reviewerUserId,
+					decisionType: "approve",
+					reason: body.reason,
+					previousApprovedMinutes: line.approvedBillableMinutes,
+					newApprovedMinutes: line.claimedMinutes
+				}
+			});
 		}
 		if (isValidUuid(body.timesheetId)) await tx.timesheet.update({
 			where: { id: body.timesheetId },
@@ -1030,26 +1056,30 @@ async function handleOpenDisputePrisma(body) {
 	return {
 		ok: true,
 		id: (await prisma.$transaction(async (tx) => {
-			const dispute = await tx.dispute.create({ data: {
-				tenantId: body.tenantId,
-				timesheetId: body.timesheetId,
-				timesheetLineId: body.timesheetLineId,
-				openedByUserId: body.openedByUserId,
-				assignedReviewerId: isValidUuid(body.assignedReviewerId) ? body.assignedReviewerId : null,
-				dueDate: body.dueDate ? new Date(body.dueDate) : null,
-				requestedEvidenceType: body.requestedEvidenceType ?? null,
-				disputedMinutes: body.disputedMinutes,
-				reason: body.reason,
-				status: body.messageType === "clarification_request" ? "awaiting_developer" : "open"
-			} });
-			await tx.disputeMessage.create({ data: {
-				tenantId: body.tenantId,
-				disputeId: dispute.id,
-				authorUserId: body.openedByUserId,
-				messageType: body.messageType ?? "developer_appeal",
-				messageMarkdown: body.reason,
-				attachedArtifactIds: (body.attachedArtifactIds ?? []).filter(isValidUuid)
-			} });
+			const dispute = await tx.dispute.create({
+				data: {
+					tenantId: body.tenantId,
+					timesheetId: body.timesheetId,
+					timesheetLineId: body.timesheetLineId,
+					openedByUserId: body.openedByUserId,
+					assignedReviewerId: isValidUuid(body.assignedReviewerId) ? body.assignedReviewerId : null,
+					dueDate: body.dueDate ? new Date(body.dueDate) : null,
+					requestedEvidenceType: body.requestedEvidenceType ?? null,
+					disputedMinutes: body.disputedMinutes,
+					reason: body.reason,
+					status: body.messageType === "clarification_request" ? "awaiting_developer" : "open"
+				}
+			});
+			await tx.disputeMessage.create({
+				data: {
+					tenantId: body.tenantId,
+					disputeId: dispute.id,
+					authorUserId: body.openedByUserId,
+					messageType: body.messageType ?? "developer_appeal",
+					messageMarkdown: body.reason,
+					attachedArtifactIds: (body.attachedArtifactIds ?? []).filter(isValidUuid)
+				}
+			});
 			await tx.timesheetLine.update({
 				where: { id: body.timesheetLineId },
 				data: { lineStatus: "disputed" }
@@ -1079,13 +1109,15 @@ async function handleDisputeActionPrisma(body) {
 					escalationReason: body.messageMarkdown ?? "Escalated for independent second review"
 				}
 			});
-			await tx.disputeMessage.create({ data: {
-				tenantId: body.tenantId,
-				disputeId: body.disputeId,
-				authorUserId: body.actorUserId,
-				messageType: "escalation",
-				messageMarkdown: body.messageMarkdown ?? "Escalated for independent second review"
-			} });
+			await tx.disputeMessage.create({
+				data: {
+					tenantId: body.tenantId,
+					disputeId: body.disputeId,
+					authorUserId: body.actorUserId,
+					messageType: "escalation",
+					messageMarkdown: body.messageMarkdown ?? "Escalated for independent second review"
+				}
+			});
 		});
 		return { ok: true };
 	}
@@ -1096,14 +1128,16 @@ async function handleDisputeActionPrisma(body) {
 				where: { id: body.disputeId },
 				data: { status: nextStatus }
 			});
-			await tx.disputeMessage.create({ data: {
-				tenantId: body.tenantId,
-				disputeId: body.disputeId,
-				authorUserId: body.actorUserId,
-				messageType: existing.openedByUserId === body.actorUserId ? "developer_appeal" : "reviewer_note",
-				messageMarkdown: body.messageMarkdown ?? "",
-				attachedArtifactIds: (body.attachedArtifactIds ?? []).filter(isValidUuid)
-			} });
+			await tx.disputeMessage.create({
+				data: {
+					tenantId: body.tenantId,
+					disputeId: body.disputeId,
+					authorUserId: body.actorUserId,
+					messageType: existing.openedByUserId === body.actorUserId ? "developer_appeal" : "reviewer_note",
+					messageMarkdown: body.messageMarkdown ?? "",
+					attachedArtifactIds: (body.attachedArtifactIds ?? []).filter(isValidUuid)
+				}
+			});
 		});
 		return { ok: true };
 	}
@@ -1118,22 +1152,26 @@ async function handleDisputeActionPrisma(body) {
 				resolvedAt: /* @__PURE__ */ new Date()
 			}
 		});
-		await tx.disputeMessage.create({ data: {
-			tenantId: body.tenantId,
-			disputeId: body.disputeId,
-			authorUserId: body.actorUserId,
-			messageType: "resolution",
-			messageMarkdown: body.resolutionSummary ?? "Dispute resolved",
-			afterMinutes: body.adjustedApprovedMinutes ?? null
-		} });
-		await tx.auditEntry.create({ data: {
-			tenantId: body.tenantId,
-			actorUserId: body.actorUserId,
-			actionType: "DISPUTE_RESOLVED",
-			targetEntity: `disputes:${body.disputeId}`,
-			targetId: body.disputeId,
-			reason: body.resolutionSummary ?? "Dispute resolved"
-		} });
+		await tx.disputeMessage.create({
+			data: {
+				tenantId: body.tenantId,
+				disputeId: body.disputeId,
+				authorUserId: body.actorUserId,
+				messageType: "resolution",
+				messageMarkdown: body.resolutionSummary ?? "Dispute resolved",
+				afterMinutes: body.adjustedApprovedMinutes ?? null
+			}
+		});
+		await tx.auditEntry.create({
+			data: {
+				tenantId: body.tenantId,
+				actorUserId: body.actorUserId,
+				actionType: "DISPUTE_RESOLVED",
+				targetEntity: `disputes:${body.disputeId}`,
+				targetId: body.disputeId,
+				reason: body.resolutionSummary ?? "Dispute resolved"
+			}
+		});
 	});
 	return { ok: true };
 }
@@ -1351,28 +1389,32 @@ async function handleCheckoutSubscriptionPrisma(body) {
 				where: { id: body.tenantId },
 				data: { planTier: body.planTier }
 			});
-			const saasInvoice = await tx.saasSubscriptionInvoice.create({ data: {
-				tenantId: body.tenantId,
-				subscriptionAccountId: sub.id,
-				invoiceNumber: body.invoiceNumber,
-				billingPeriodLabel: body.billingPeriodLabel,
-				planTier: body.planTier,
-				seatsBilled: body.seatsBilled,
-				unitPriceCents: body.unitPriceCents,
-				subtotalCents: body.subtotalCents,
-				taxCents: 0,
-				totalCents: body.totalCents,
-				currency: body.currency,
-				status: "paid",
-				paidAt: /* @__PURE__ */ new Date()
-			} });
-			await tx.auditEntry.create({ data: {
-				tenantId: body.tenantId,
-				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-				actionType: "SAAS_SUBSCRIPTION_UPDATED",
-				targetEntity: `subscription_accounts:${sub.id}`,
-				reason: `Upgraded/synced ${body.billingProvider} subscription to ${body.planTier} (${body.billingCycle}).`
-			} });
+			const saasInvoice = await tx.saasSubscriptionInvoice.create({
+				data: {
+					tenantId: body.tenantId,
+					subscriptionAccountId: sub.id,
+					invoiceNumber: body.invoiceNumber,
+					billingPeriodLabel: body.billingPeriodLabel,
+					planTier: body.planTier,
+					seatsBilled: body.seatsBilled,
+					unitPriceCents: body.unitPriceCents,
+					subtotalCents: body.subtotalCents,
+					taxCents: 0,
+					totalCents: body.totalCents,
+					currency: body.currency,
+					status: "paid",
+					paidAt: /* @__PURE__ */ new Date()
+				}
+			});
+			await tx.auditEntry.create({
+				data: {
+					tenantId: body.tenantId,
+					actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+					actionType: "SAAS_SUBSCRIPTION_UPDATED",
+					targetEntity: `subscription_accounts:${sub.id}`,
+					reason: `Upgraded/synced ${body.billingProvider} subscription to ${body.planTier} (${body.billingCycle}).`
+				}
+			});
 			return {
 				subId: sub.id,
 				invoiceId: saasInvoice.id
@@ -1387,13 +1429,15 @@ async function handleUpdateBrandingPrisma(body) {
 			where: { tenantId: body.tenantId },
 			data: { brandingConfig: body.brandingConfig }
 		});
-		await tx.auditEntry.create({ data: {
-			tenantId: body.tenantId,
-			actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-			actionType: "WHITE_LABEL_BRANDING_UPDATED",
-			targetEntity: `tenant_settings:${body.tenantId}`,
-			reason: `Updated agency portal branding for "${body.brandingConfig.agencyBrandName}".`
-		} });
+		await tx.auditEntry.create({
+			data: {
+				tenantId: body.tenantId,
+				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+				actionType: "WHITE_LABEL_BRANDING_UPDATED",
+				targetEntity: `tenant_settings:${body.tenantId}`,
+				reason: `Updated agency portal branding for "${body.brandingConfig.agencyBrandName}".`
+			}
+		});
 	});
 	return { ok: true };
 }
@@ -1401,15 +1445,17 @@ async function handleCreateApiKeyPrisma(body) {
 	if (!isValidUuid(body.tenantId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.apiKey.create({ data: {
-			tenantId: body.tenantId,
-			name: body.name,
-			keyPrefix: body.keyPrefix,
-			keyHashSha256: body.keyHashSha256,
-			scopes: body.scopes,
-			rateLimitPerMin: body.rateLimitPerMin,
-			createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-		} })).id
+		id: (await prisma.apiKey.create({
+			data: {
+				tenantId: body.tenantId,
+				name: body.name,
+				keyPrefix: body.keyPrefix,
+				keyHashSha256: body.keyHashSha256,
+				scopes: body.scopes,
+				rateLimitPerMin: body.rateLimitPerMin,
+				createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
+			}
+		})).id
 	};
 }
 async function handleRevokeApiKeyPrisma(body) {
@@ -1427,34 +1473,38 @@ async function handleCreateWebhookEndpointPrisma(body) {
 	if (!isValidUuid(body.tenantId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.outboundWebhookEndpoint.create({ data: {
-			tenantId: body.tenantId,
-			name: body.name,
-			targetUrl: body.targetUrl,
-			signingSecretPrefix: body.signingSecretPrefix,
-			signingSecretHash: body.signingSecretHash,
-			subscribedEvents: body.subscribedEvents,
-			createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-		} })).id
+		id: (await prisma.outboundWebhookEndpoint.create({
+			data: {
+				tenantId: body.tenantId,
+				name: body.name,
+				targetUrl: body.targetUrl,
+				signingSecretPrefix: body.signingSecretPrefix,
+				signingSecretHash: body.signingSecretHash,
+				subscribedEvents: body.subscribedEvents,
+				createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
+			}
+		})).id
 	};
 }
 async function handleDispatchWebhookDeliveryPrisma(body) {
 	if (!isValidUuid(body.tenantId) || !isValidUuid(body.endpointId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.outboundWebhookDelivery.create({ data: {
-			tenantId: body.tenantId,
-			endpointId: body.endpointId,
-			eventType: body.eventType,
-			eventId: isValidUuid(body.eventId) ? body.eventId : crypto.randomUUID(),
-			payload: body.payload,
-			signatureHeader: body.signatureHeader,
-			deliveryStatus: "delivered",
-			httpStatus: 202,
-			attemptCount: 1,
-			lastAttemptAt: /* @__PURE__ */ new Date(),
-			responseSnippet: body.responseSnippet
-		} })).id
+		id: (await prisma.outboundWebhookDelivery.create({
+			data: {
+				tenantId: body.tenantId,
+				endpointId: body.endpointId,
+				eventType: body.eventType,
+				eventId: isValidUuid(body.eventId) ? body.eventId : crypto.randomUUID(),
+				payload: body.payload,
+				signatureHeader: body.signatureHeader,
+				deliveryStatus: "delivered",
+				httpStatus: 202,
+				attemptCount: 1,
+				lastAttemptAt: /* @__PURE__ */ new Date(),
+				responseSnippet: body.responseSnippet
+			}
+		})).id
 	};
 }
 async function handleUpsertConnectorPrisma(body) {
@@ -1462,10 +1512,12 @@ async function handleUpsertConnectorPrisma(body) {
 	return {
 		ok: true,
 		id: (await prisma.ecosystemConnector.upsert({
-			where: { tenantId_provider: {
-				tenantId: body.tenantId,
-				provider: body.provider
-			} },
+			where: {
+				tenantId_provider: {
+					tenantId: body.tenantId,
+					provider: body.provider
+				}
+			},
 			update: {
 				status: body.status,
 				displayName: body.displayName,
@@ -1491,11 +1543,13 @@ async function handleSyncCalendarMeetingPrisma(body) {
 	return {
 		ok: true,
 		id: (await prisma.calendarMeetingEvent.upsert({
-			where: { tenantId_userId_externalEventId: {
-				tenantId: body.tenantId,
-				userId: body.userId,
-				externalEventId: body.externalEventId
-			} },
+			where: {
+				tenantId_userId_externalEventId: {
+					tenantId: body.tenantId,
+					userId: body.userId,
+					externalEventId: body.externalEventId
+				}
+			},
 			update: {
 				meetingTitleSanitized: body.meetingTitleSanitized,
 				durationMinutes: body.durationMinutes
@@ -1520,19 +1574,21 @@ async function handleCreatePortableReportPrisma(body) {
 	if (!isValidUuid(body.tenantId) || !isValidUuid(body.developerUserId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.portableWorkReport.create({ data: {
-			tenantId: body.tenantId,
-			developerUserId: body.developerUserId,
-			reportTitle: body.reportTitle,
-			periodStart: new Date(body.periodStart),
-			periodEnd: new Date(body.periodEnd),
-			totalApprovedMinutes: body.totalApprovedMinutes,
-			totalSupportedMinutes: body.totalSupportedMinutes,
-			deliverablesCount: body.deliverablesCount,
-			payloadDigestSha256: body.payloadDigestSha256,
-			signatureHmacSha256: body.signatureHmacSha256,
-			reportPayload: body.reportPayload
-		} })).id
+		id: (await prisma.portableWorkReport.create({
+			data: {
+				tenantId: body.tenantId,
+				developerUserId: body.developerUserId,
+				reportTitle: body.reportTitle,
+				periodStart: new Date(body.periodStart),
+				periodEnd: new Date(body.periodEnd),
+				totalApprovedMinutes: body.totalApprovedMinutes,
+				totalSupportedMinutes: body.totalSupportedMinutes,
+				deliverablesCount: body.deliverablesCount,
+				payloadDigestSha256: body.payloadDigestSha256,
+				signatureHmacSha256: body.signatureHmacSha256,
+				reportPayload: body.reportPayload
+			}
+		})).id
 	};
 }
 // src/server/prismaPhase5Handlers.ts
@@ -1851,10 +1907,12 @@ async function handleUpsertSsoProviderPrisma(input) {
 	return {
 		ok: true,
 		id: (await prisma.ssoProvider.upsert({
-			where: { tenantId_domain: {
-				tenantId: input.tenantId,
-				domain: input.domain.toLowerCase()
-			} },
+			where: {
+				tenantId_domain: {
+					tenantId: input.tenantId,
+					domain: input.domain.toLowerCase()
+				}
+			},
 			update: {
 				providerType: input.providerType,
 				displayName: input.displayName,
@@ -1894,28 +1952,32 @@ async function handleRecordScimEventPrisma(input) {
 	return {
 		ok: true,
 		id: (await prisma.$transaction(async (tx) => {
-			const created = await tx.scimProvisioningEvent.create({ data: {
-				tenantId: input.tenantId,
-				providerId: isValidUuid(input.providerId) ? input.providerId : void 0,
-				action: input.action,
-				externalUserId: input.externalUserId,
-				email: input.email.toLowerCase(),
-				targetRole: input.targetRole,
-				status: "applied",
-				correlationId: input.correlationId,
-				detailMessage: input.detailMessage
-			} });
-			await tx.sensitiveAccessLog.create({ data: {
-				tenantId: input.tenantId,
-				actionCategory: "scim_sync",
-				resourceType: "scim_provisioning_events",
-				resourceId: created.id,
-				correlationId: input.correlationId,
-				metadata: {
+			const created = await tx.scimProvisioningEvent.create({
+				data: {
+					tenantId: input.tenantId,
+					providerId: isValidUuid(input.providerId) ? input.providerId : void 0,
 					action: input.action,
-					targetRole: input.targetRole
+					externalUserId: input.externalUserId,
+					email: input.email.toLowerCase(),
+					targetRole: input.targetRole,
+					status: "applied",
+					correlationId: input.correlationId,
+					detailMessage: input.detailMessage
 				}
-			} });
+			});
+			await tx.sensitiveAccessLog.create({
+				data: {
+					tenantId: input.tenantId,
+					actionCategory: "scim_sync",
+					resourceType: "scim_provisioning_events",
+					resourceId: created.id,
+					correlationId: input.correlationId,
+					metadata: {
+						action: input.action,
+						targetRole: input.targetRole
+					}
+				}
+			});
 			return created;
 		})).id
 	};
@@ -1924,17 +1986,19 @@ async function handleProposePolicyChangePrisma(input) {
 	if (!isValidUuid(input.tenantId) || !isValidUuid(input.proposedBy)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.policyChangeRequest.create({ data: {
-			tenantId: input.tenantId,
-			proposedVersionCode: input.proposedVersionCode,
-			changeSummary: input.changeSummary,
-			scopeDiff: input.scopeDiff,
-			expandsCollectionScope: input.expandsCollectionScope,
-			status: "pending_second_approval",
-			proposedBy: input.proposedBy,
-			approvedByFirst: input.proposedBy,
-			effectiveFrom: new Date(input.effectiveFrom)
-		} })).id
+		id: (await prisma.policyChangeRequest.create({
+			data: {
+				tenantId: input.tenantId,
+				proposedVersionCode: input.proposedVersionCode,
+				changeSummary: input.changeSummary,
+				scopeDiff: input.scopeDiff,
+				expandsCollectionScope: input.expandsCollectionScope,
+				status: "pending_second_approval",
+				proposedBy: input.proposedBy,
+				approvedByFirst: input.proposedBy,
+				effectiveFrom: new Date(input.effectiveFrom)
+			}
+		})).id
 	};
 }
 async function handleApprovePolicyChangeSecondPrisma(input) {
@@ -1942,10 +2006,12 @@ async function handleApprovePolicyChangeSecondPrisma(input) {
 		ok: false,
 		error: "Invalid UUID supplied."
 	};
-	const req = await prisma.policyChangeRequest.findFirst({ where: {
-		id: input.requestId,
-		tenantId: input.tenantId
-	} });
+	const req = await prisma.policyChangeRequest.findFirst({
+		where: {
+			id: input.requestId,
+			tenantId: input.tenantId
+		}
+	});
 	if (!req) return {
 		ok: false,
 		error: "Policy change request not found."
@@ -1971,14 +2037,16 @@ async function handleApprovePolicyChangeSecondPrisma(input) {
 	return {
 		ok: true,
 		activatedPolicyVersionId: await prisma.$transaction(async (tx) => {
-			const pv = await tx.policyVersion.create({ data: {
-				tenantId: input.tenantId,
-				versionCode: req.proposedVersionCode,
-				effectiveFrom,
-				captureScope: req.scopeDiff,
-				summaryMarkdown: req.changeSummary,
-				publishedBy: input.secondApproverId
-			} });
+			const pv = await tx.policyVersion.create({
+				data: {
+					tenantId: input.tenantId,
+					versionCode: req.proposedVersionCode,
+					effectiveFrom,
+					captureScope: req.scopeDiff,
+					summaryMarkdown: req.changeSummary,
+					publishedBy: input.secondApproverId
+				}
+			});
 			await tx.policyChangeRequest.update({
 				where: { id: req.id },
 				data: {
@@ -1989,18 +2057,20 @@ async function handleApprovePolicyChangeSecondPrisma(input) {
 					resolvedAt: now
 				}
 			});
-			await tx.sensitiveAccessLog.create({ data: {
-				tenantId: input.tenantId,
-				actorUserId: input.secondApproverId,
-				actionCategory: "policy_approval",
-				resourceType: "policy_change_requests",
-				resourceId: req.id,
-				correlationId: `pol-${req.id.slice(0, 8)}`,
-				metadata: {
-					versionCode: req.proposedVersionCode,
-					effectiveFrom: effectiveFrom.toISOString()
+			await tx.sensitiveAccessLog.create({
+				data: {
+					tenantId: input.tenantId,
+					actorUserId: input.secondApproverId,
+					actionCategory: "policy_approval",
+					resourceType: "policy_change_requests",
+					resourceId: req.id,
+					correlationId: `pol-${req.id.slice(0, 8)}`,
+					metadata: {
+						versionCode: req.proposedVersionCode,
+						effectiveFrom: effectiveFrom.toISOString()
+					}
 				}
-			} });
+			});
 			return pv.id;
 		})
 	};
@@ -2011,26 +2081,30 @@ async function handleCreateLegalHoldPrisma(input) {
 	return {
 		ok: true,
 		id: (await prisma.$transaction(async (tx) => {
-			const created = await tx.legalHold.create({ data: {
-				tenantId: input.tenantId,
-				scopeType: input.scopeType,
-				targetId: input.targetId,
-				reason: input.reason,
-				holdStatus: "active",
-				placedBy
-			} });
-			await tx.sensitiveAccessLog.create({ data: {
-				tenantId: input.tenantId,
-				actorUserId: placedBy,
-				actionCategory: "legal_hold_change",
-				resourceType: "legal_holds",
-				resourceId: created.id,
-				correlationId: `hold-${created.id.slice(0, 8)}`,
-				metadata: {
+			const created = await tx.legalHold.create({
+				data: {
+					tenantId: input.tenantId,
 					scopeType: input.scopeType,
-					action: "placed"
+					targetId: input.targetId,
+					reason: input.reason,
+					holdStatus: "active",
+					placedBy
 				}
-			} });
+			});
+			await tx.sensitiveAccessLog.create({
+				data: {
+					tenantId: input.tenantId,
+					actorUserId: placedBy,
+					actionCategory: "legal_hold_change",
+					resourceType: "legal_holds",
+					resourceId: created.id,
+					correlationId: `hold-${created.id.slice(0, 8)}`,
+					metadata: {
+						scopeType: input.scopeType,
+						action: "placed"
+					}
+				}
+			});
 			return created;
 		})).id
 	};
@@ -2054,10 +2128,12 @@ async function handleUpsertRetentionPolicyPrisma(input) {
 	return {
 		ok: true,
 		id: (await prisma.retentionPolicy.upsert({
-			where: { tenantId_name: {
-				tenantId: input.tenantId,
-				name: input.name
-			} },
+			where: {
+				tenantId_name: {
+					tenantId: input.tenantId,
+					name: input.name
+				}
+			},
 			update: {
 				rawActivityDays: input.rawActivityDays,
 				rollupDays: input.rollupDays,
@@ -2085,33 +2161,37 @@ async function handleRecordRetentionJobPrisma(input) {
 	const executedBy = isValidUuid(input.executedBy) ? input.executedBy : void 0;
 	return {
 		ok: true,
-		id: (await prisma.retentionJob.create({ data: {
-			tenantId: input.tenantId,
-			policyId: isValidUuid(input.policyId) ? input.policyId : void 0,
-			jobType: input.jobType,
-			status: input.status,
-			scannedCount: input.scannedCount,
-			purgedCount: input.purgedCount,
-			skippedLegalHoldCount: input.skippedLegalHoldCount,
-			archivedBundleUri: input.archivedBundleUri,
-			executedBy
-		} })).id
+		id: (await prisma.retentionJob.create({
+			data: {
+				tenantId: input.tenantId,
+				policyId: isValidUuid(input.policyId) ? input.policyId : void 0,
+				jobType: input.jobType,
+				status: input.status,
+				scannedCount: input.scannedCount,
+				purgedCount: input.purgedCount,
+				skippedLegalHoldCount: input.skippedLegalHoldCount,
+				archivedBundleUri: input.archivedBundleUri,
+				executedBy
+			}
+		})).id
 	};
 }
 async function handleCreatePrivacyRequestPrisma(input) {
 	if (!isValidUuid(input.tenantId) || !isValidUuid(input.requesterUserId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.privacyRequest.create({ data: {
-			tenantId: input.tenantId,
-			requesterUserId: input.requesterUserId,
-			requestType: input.requestType,
-			status: input.status,
-			legalHoldBlocked: input.legalHoldBlocked,
-			exportDigestSha256: input.exportDigestSha256,
-			resolutionNote: input.resolutionNote,
-			resolvedAt: input.status === "completed" ? /* @__PURE__ */ new Date() : void 0
-		} })).id
+		id: (await prisma.privacyRequest.create({
+			data: {
+				tenantId: input.tenantId,
+				requesterUserId: input.requesterUserId,
+				requestType: input.requestType,
+				status: input.status,
+				legalHoldBlocked: input.legalHoldBlocked,
+				exportDigestSha256: input.exportDigestSha256,
+				resolutionNote: input.resolutionNote,
+				resolvedAt: input.status === "completed" ? /* @__PURE__ */ new Date() : void 0
+			}
+		})).id
 	};
 }
 async function handleUpsertResidencyConfigPrisma(input) {
@@ -2144,19 +2224,21 @@ async function handleUpsertResidencyConfigPrisma(input) {
 				updatedBy
 			}
 		});
-		await tx.sensitiveAccessLog.create({ data: {
-			tenantId: input.tenantId,
-			actorUserId: updatedBy,
-			actionCategory: "residency_change",
-			resourceType: "tenant_residency_configs",
-			resourceId: input.tenantId,
-			correlationId: `res-${Date.now()}`,
-			metadata: {
-				primaryRegion: input.primaryRegion,
-				isolationTier: input.isolationTier,
-				dataResidencyLocked: input.dataResidencyLocked
+		await tx.sensitiveAccessLog.create({
+			data: {
+				tenantId: input.tenantId,
+				actorUserId: updatedBy,
+				actionCategory: "residency_change",
+				resourceType: "tenant_residency_configs",
+				resourceId: input.tenantId,
+				correlationId: `res-${Date.now()}`,
+				metadata: {
+					primaryRegion: input.primaryRegion,
+					isolationTier: input.isolationTier,
+					dataResidencyLocked: input.dataResidencyLocked
+				}
 			}
-		} });
+		});
 	});
 	return { ok: true };
 }
@@ -2165,17 +2247,19 @@ async function handleCreateSiemDestinationPrisma(input) {
 	const createdBy = isValidUuid(input.createdBy) ? input.createdBy : void 0;
 	return {
 		ok: true,
-		id: (await prisma.siemDestination.create({ data: {
-			tenantId: input.tenantId,
-			name: input.name,
-			provider: input.provider,
-			endpointUrl: input.endpointUrl,
-			authHeaderPrefix: input.authHeaderPrefix,
-			authTokenHashSha256: input.authTokenHashSha256,
-			format: input.format,
-			includeCategories: input.includeCategories,
-			createdBy
-		} })).id
+		id: (await prisma.siemDestination.create({
+			data: {
+				tenantId: input.tenantId,
+				name: input.name,
+				provider: input.provider,
+				endpointUrl: input.endpointUrl,
+				authHeaderPrefix: input.authHeaderPrefix,
+				authTokenHashSha256: input.authTokenHashSha256,
+				format: input.format,
+				includeCategories: input.includeCategories,
+				createdBy
+			}
+		})).id
 	};
 }
 async function handleRecordSiemBatchPrisma(input) {
@@ -2183,16 +2267,18 @@ async function handleRecordSiemBatchPrisma(input) {
 	return {
 		ok: true,
 		id: (await prisma.$transaction(async (tx) => {
-			const created = await tx.siemExportBatch.create({ data: {
-				tenantId: input.tenantId,
-				destinationId: input.destinationId,
-				eventCount: input.eventCount,
-				payloadFormat: input.payloadFormat,
-				payloadDigestSha256: input.payloadDigestSha256,
-				deliveryStatus: "delivered",
-				httpStatus: 200,
-				sanitizedPreview: input.sanitizedPreview
-			} });
+			const created = await tx.siemExportBatch.create({
+				data: {
+					tenantId: input.tenantId,
+					destinationId: input.destinationId,
+					eventCount: input.eventCount,
+					payloadFormat: input.payloadFormat,
+					payloadDigestSha256: input.payloadDigestSha256,
+					deliveryStatus: "delivered",
+					httpStatus: 200,
+					sanitizedPreview: input.sanitizedPreview
+				}
+			});
 			await tx.siemDestination.update({
 				where: { id: input.destinationId },
 				data: { lastExportedAt: /* @__PURE__ */ new Date() }
@@ -2206,19 +2292,21 @@ async function handlePublishFleetReleasePrisma(input) {
 	const publishedBy = isValidUuid(input.publishedBy) ? input.publishedBy : void 0;
 	return {
 		ok: true,
-		id: (await prisma.fleetRelease.create({ data: {
-			tenantId: input.tenantId,
-			version: input.version,
-			platform: input.platform,
-			channel: input.channel,
-			installerSha256: input.installerSha256,
-			codeSigningThumbprint: input.codeSigningThumbprint,
-			notarizationStatus: input.notarizationStatus,
-			minOsVersion: input.minOsVersion,
-			rolloutPercentage: input.rolloutPercentage,
-			releaseNotes: input.releaseNotes,
-			publishedBy
-		} })).id
+		id: (await prisma.fleetRelease.create({
+			data: {
+				tenantId: input.tenantId,
+				version: input.version,
+				platform: input.platform,
+				channel: input.channel,
+				installerSha256: input.installerSha256,
+				codeSigningThumbprint: input.codeSigningThumbprint,
+				notarizationStatus: input.notarizationStatus,
+				minOsVersion: input.minOsVersion,
+				rolloutPercentage: input.rolloutPercentage,
+				releaseNotes: input.releaseNotes,
+				publishedBy
+			}
+		})).id
 	};
 }
 async function handleCreateWarehouseExportPrisma(input) {
@@ -2226,18 +2314,20 @@ async function handleCreateWarehouseExportPrisma(input) {
 	const triggeredBy = isValidUuid(input.triggeredBy) ? input.triggeredBy : void 0;
 	return {
 		ok: true,
-		id: (await prisma.analyticsWarehouseExport.create({ data: {
-			tenantId: input.tenantId,
-			targetSink: input.targetSink,
-			periodStart: new Date(input.periodStart),
-			periodEnd: new Date(input.periodEnd),
-			rowCount: input.rowCount,
-			compressedBytes: BigInt(input.compressedBytes),
-			objectPathUri: input.objectPathUri,
-			checksumSha256: input.checksumSha256,
-			status: "exported",
-			triggeredBy
-		} })).id
+		id: (await prisma.analyticsWarehouseExport.create({
+			data: {
+				tenantId: input.tenantId,
+				targetSink: input.targetSink,
+				periodStart: new Date(input.periodStart),
+				periodEnd: new Date(input.periodEnd),
+				rowCount: input.rowCount,
+				compressedBytes: BigInt(input.compressedBytes),
+				objectPathUri: input.objectPathUri,
+				checksumSha256: input.checksumSha256,
+				status: "exported",
+				triggeredBy
+			}
+		})).id
 	};
 }
 async function handleRecordDrExercisePrisma(input) {
@@ -2245,37 +2335,41 @@ async function handleRecordDrExercisePrisma(input) {
 	const conductedBy = isValidUuid(input.conductedBy) ? input.conductedBy : void 0;
 	return {
 		ok: true,
-		id: (await prisma.drExercise.create({ data: {
-			tenantId: input.tenantId,
-			exerciseType: input.exerciseType,
-			targetRpoMinutes: input.targetRpoMinutes,
-			measuredRpoMinutes: input.measuredRpoMinutes,
-			targetRtoMinutes: input.targetRtoMinutes,
-			measuredRtoMinutes: input.measuredRtoMinutes,
-			p95CrudMs: input.p95CrudMs,
-			simulatedConcurrentDevs: input.simulatedConcurrentDevs,
-			passed: input.passed,
-			findingsSummary: input.findingsSummary,
-			conductedBy
-		} })).id
+		id: (await prisma.drExercise.create({
+			data: {
+				tenantId: input.tenantId,
+				exerciseType: input.exerciseType,
+				targetRpoMinutes: input.targetRpoMinutes,
+				measuredRpoMinutes: input.measuredRpoMinutes,
+				targetRtoMinutes: input.targetRtoMinutes,
+				measuredRtoMinutes: input.measuredRtoMinutes,
+				p95CrudMs: input.p95CrudMs,
+				simulatedConcurrentDevs: input.simulatedConcurrentDevs,
+				passed: input.passed,
+				findingsSummary: input.findingsSummary,
+				conductedBy
+			}
+		})).id
 	};
 }
 async function handleUpsertSecurityAssessmentPrisma(input) {
 	if (!isValidUuid(input.tenantId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.securityAssessment.create({ data: {
-			tenantId: input.tenantId,
-			assessmentName: input.assessmentName,
-			assessorFirm: input.assessorFirm,
-			assessmentType: input.assessmentType,
-			status: input.status,
-			criticalFindings: input.criticalFindings,
-			highFindings: input.highFindings,
-			remediatedFindings: input.remediatedFindings,
-			reportSha256: input.reportSha256,
-			signoffAt: input.status === "signed_off" ? /* @__PURE__ */ new Date() : void 0
-		} })).id
+		id: (await prisma.securityAssessment.create({
+			data: {
+				tenantId: input.tenantId,
+				assessmentName: input.assessmentName,
+				assessorFirm: input.assessorFirm,
+				assessmentType: input.assessmentType,
+				status: input.status,
+				criticalFindings: input.criticalFindings,
+				highFindings: input.highFindings,
+				remediatedFindings: input.remediatedFindings,
+				reportSha256: input.reportSha256,
+				signoffAt: input.status === "signed_off" ? /* @__PURE__ */ new Date() : void 0
+			}
+		})).id
 	};
 }
 async function handleUpdateAccessibilityConfigPrisma(input) {
@@ -3198,14 +3292,16 @@ async function handleCreateCustomRolePrisma(body) {
 		select: { key: true }
 	})).map((p) => p.key);
 	const created = await prisma.$transaction(async (tx) => {
-		const role = await tx.role.create({ data: {
-			tenantId: body.tenantId,
-			code: cleanCode,
-			name: cleanName,
-			description: body.description?.trim() ?? "",
-			isSystemRole: false,
-			createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-		} });
+		const role = await tx.role.create({
+			data: {
+				tenantId: body.tenantId,
+				code: cleanCode,
+				name: cleanName,
+				description: body.description?.trim() ?? "",
+				isSystemRole: false,
+				createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
+			}
+		});
 		if (validKeys.length > 0) await tx.rolePermission.createMany({
 			data: validKeys.map((permissionKey) => ({
 				roleId: role.id,
@@ -3291,31 +3387,41 @@ async function handleUpdateMemberRoleAndPermissionsPrisma(body) {
 		ok: false,
 		error: "Valid tenantId and userId UUIDs are required."
 	};
-	const membership = await prisma.membership.findUnique({ where: { tenantId_userId: {
-		tenantId: body.tenantId,
-		userId: body.userId
-	} } });
+	const membership = await prisma.membership.findUnique({
+		where: {
+			tenantId_userId: {
+				tenantId: body.tenantId,
+				userId: body.userId
+			}
+		}
+	});
 	if (!membership) return {
 		ok: false,
 		error: "Membership not found."
 	};
 	await prisma.$transaction(async (tx) => {
-		await tx.roleGrant.deleteMany({ where: {
-			tenantId: body.tenantId,
-			membershipId: membership.id,
-			projectScopeId: null
-		} });
-		await tx.roleGrant.create({ data: {
-			tenantId: body.tenantId,
-			membershipId: membership.id,
-			role: body.role,
-			grantedBy: isValidUuid(body.grantedBy) ? body.grantedBy : null
-		} });
-		if (body.customPermissions !== void 0) {
-			await tx.memberPermissionGrant.deleteMany({ where: {
+		await tx.roleGrant.deleteMany({
+			where: {
+				tenantId: body.tenantId,
 				membershipId: membership.id,
-				tenantId: body.tenantId
-			} });
+				projectScopeId: null
+			}
+		});
+		await tx.roleGrant.create({
+			data: {
+				tenantId: body.tenantId,
+				membershipId: membership.id,
+				role: body.role,
+				grantedBy: isValidUuid(body.grantedBy) ? body.grantedBy : null
+			}
+		});
+		if (body.customPermissions !== void 0) {
+			await tx.memberPermissionGrant.deleteMany({
+				where: {
+					membershipId: membership.id,
+					tenantId: body.tenantId
+				}
+			});
 			if (body.customPermissions.length > 0) {
 				const validPerms = await tx.permission.findMany({
 					where: {
@@ -3404,10 +3510,12 @@ async function handleRegisterPermissionPrisma(body) {
 	});
 	await grantAllDatabasePermissionsToSuperAdmin();
 	if (!saved.isSuperAdminOnly && SYSTEM_ROLE_UUIDS.tenant_owner) await prisma.rolePermission.upsert({
-		where: { roleId_permissionKey: {
-			roleId: SYSTEM_ROLE_UUIDS.tenant_owner,
-			permissionKey: saved.key
-		} },
+		where: {
+			roleId_permissionKey: {
+				roleId: SYSTEM_ROLE_UUIDS.tenant_owner,
+				permissionKey: saved.key
+			}
+		},
 		update: {},
 		create: {
 			roleId: SYSTEM_ROLE_UUIDS.tenant_owner,
@@ -3461,17 +3569,21 @@ async function handleBootstrap() {
 			},
 			orderBy: { createdAt: "asc" }
 		}),
-		prisma.membership.findMany({ include: {
-			user: { include: {
-				policyConsents: {
-					include: { policyVersion: true },
-					orderBy: { consentedAt: "desc" },
-					take: 1
+		prisma.membership.findMany({
+			include: {
+				user: {
+					include: {
+						policyConsents: {
+							include: { policyVersion: true },
+							orderBy: { consentedAt: "desc" },
+							take: 1
+						},
+						projectMemberships: true
+					}
 				},
-				projectMemberships: true
-			} },
-			roleGrants: true
-		} }),
+				roleGrants: true
+			}
+		}),
 		prisma.project.findMany({ orderBy: { createdAt: "asc" } }),
 		prisma.task.findMany({
 			include: {
@@ -3484,17 +3596,23 @@ async function handleBootstrap() {
 			include: {
 				timesheet: { include: { user: true } },
 				appliedRateVersion: true,
-				disputes: { include: { messages: {
-					include: { author: true },
-					orderBy: { createdAt: "asc" }
-				} } }
+				disputes: {
+					include: {
+						messages: {
+							include: { author: true },
+							orderBy: { createdAt: "asc" }
+						}
+					}
+				}
 			},
 			orderBy: { workDate: "desc" }
 		}),
-		prisma.contract.findMany({ include: {
-			project: true,
-			rateVersions: { orderBy: { createdAt: "asc" } }
-		} }),
+		prisma.contract.findMany({
+			include: {
+				project: true,
+				rateVersions: { orderBy: { createdAt: "asc" } }
+			}
+		}),
 		prisma.invoiceDraft.findMany({
 			include: {
 				project: true,
@@ -3703,66 +3821,86 @@ async function handleCreateTenant(body) {
 			where: { slug: baseSlug },
 			select: { id: true }
 		}) ? `${baseSlug}-${crypto.randomUUID().slice(0, 4)}` : baseSlug;
-		const existingUser = await tx.userProfile.findFirst({ where: { email: {
-			equals: normalizedOwnerEmail,
-			mode: "insensitive"
-		} } });
+		const existingUser = await tx.userProfile.findFirst({
+			where: {
+				email: {
+					equals: normalizedOwnerEmail,
+					mode: "insensitive"
+				}
+			}
+		});
 		const user = existingUser ? await tx.userProfile.update({
 			where: { id: existingUser.id },
 			data: {
 				fullName: body.ownerName.trim(),
 				defaultTimezone: body.timezone
 			}
-		}) : await tx.userProfile.create({ data: {
-			id: crypto.randomUUID(),
-			email: normalizedOwnerEmail,
-			fullName: body.ownerName.trim(),
-			defaultTimezone: body.timezone
-		} });
-		const tenant = await tx.tenant.create({ data: {
-			name: body.name,
-			slug,
-			defaultTimezone: body.timezone,
-			defaultCurrency: body.currency,
-			planTier: "starter",
-			status: "active"
-		} });
-		await tx.tenantSettings.create({ data: {
-			tenantId: tenant.id,
-			roundingRule: "none",
-			paidBreakAllowanceMinutes: 15,
-			weeklyCapMinutes: 2400
-		} });
-		const policy = await tx.policyVersion.create({ data: {
-			tenantId: tenant.id,
-			versionCode: "v1.0-2026-11",
-			summaryMarkdown: "Privacy-first baseline policy.",
-			publishedBy: user.id
-		} });
-		await tx.policyConsent.create({ data: {
-			tenantId: tenant.id,
-			userId: user.id,
-			policyVersionId: policy.id
-		} });
-		const membership = await tx.membership.create({ data: {
-			tenantId: tenant.id,
-			userId: user.id,
-			status: "active",
-			joinedAt: /* @__PURE__ */ new Date()
-		} });
-		await tx.roleGrant.create({ data: {
-			tenantId: tenant.id,
-			membershipId: membership.id,
-			role: "tenant_owner"
-		} });
-		await tx.auditEntry.create({ data: {
-			tenantId: tenant.id,
-			actorUserId: user.id,
-			actionType: "TENANT_PROVISIONED",
-			targetEntity: `tenants:${tenant.slug}`,
-			targetId: tenant.id,
-			reason: `Provisioned new workspace ${tenant.name}`
-		} });
+		}) : await tx.userProfile.create({
+			data: {
+				id: crypto.randomUUID(),
+				email: normalizedOwnerEmail,
+				fullName: body.ownerName.trim(),
+				defaultTimezone: body.timezone
+			}
+		});
+		const tenant = await tx.tenant.create({
+			data: {
+				name: body.name,
+				slug,
+				defaultTimezone: body.timezone,
+				defaultCurrency: body.currency,
+				planTier: "starter",
+				status: "active"
+			}
+		});
+		await tx.tenantSettings.create({
+			data: {
+				tenantId: tenant.id,
+				roundingRule: "none",
+				paidBreakAllowanceMinutes: 15,
+				weeklyCapMinutes: 2400
+			}
+		});
+		const policy = await tx.policyVersion.create({
+			data: {
+				tenantId: tenant.id,
+				versionCode: "v1.0-2026-11",
+				summaryMarkdown: "Privacy-first baseline policy.",
+				publishedBy: user.id
+			}
+		});
+		await tx.policyConsent.create({
+			data: {
+				tenantId: tenant.id,
+				userId: user.id,
+				policyVersionId: policy.id
+			}
+		});
+		const membership = await tx.membership.create({
+			data: {
+				tenantId: tenant.id,
+				userId: user.id,
+				status: "active",
+				joinedAt: /* @__PURE__ */ new Date()
+			}
+		});
+		await tx.roleGrant.create({
+			data: {
+				tenantId: tenant.id,
+				membershipId: membership.id,
+				role: "tenant_owner"
+			}
+		});
+		await tx.auditEntry.create({
+			data: {
+				tenantId: tenant.id,
+				actorUserId: user.id,
+				actionType: "TENANT_PROVISIONED",
+				targetEntity: `tenants:${tenant.slug}`,
+				targetId: tenant.id,
+				reason: `Provisioned new workspace ${tenant.name}`
+			}
+		});
 		return {
 			tenant,
 			user
@@ -3797,38 +3935,44 @@ async function handleRecordSession(body) {
 				orderBy: { effectiveFrom: "desc" }
 			});
 			if (!policy) throw new Error("No active policy_version found for tenant.");
-			const session = await tx.workSession.create({ data: {
-				tenantId: body.tenantId,
-				userId: body.userId,
-				projectId: body.projectId,
-				taskId: body.taskId,
-				provenance: body.provenance,
-				lifecycleState: "completed",
-				currentWorkMode: body.workMode,
-				startedAtUtc: new Date(startIso),
-				endedAtUtc: new Date(endIso),
-				monotonicDurationMs: netMinutes * 6e4,
-				sessionNotes: body.developerNote,
-				manualReason: body.manualReason ?? null,
-				policyVersionId: policy.id
-			} });
-			if (body.breakMinutes > 0) await tx.break.create({ data: {
-				tenantId: body.tenantId,
-				userId: body.userId,
-				sessionId: session.id,
-				breakType: "unpaid",
-				startedAtUtc: new Date(startIso),
-				endedAtUtc: new Date(new Date(startIso).getTime() + body.breakMinutes * 6e4)
-			} });
+			const session = await tx.workSession.create({
+				data: {
+					tenantId: body.tenantId,
+					userId: body.userId,
+					projectId: body.projectId,
+					taskId: body.taskId,
+					provenance: body.provenance,
+					lifecycleState: "completed",
+					currentWorkMode: body.workMode,
+					startedAtUtc: new Date(startIso),
+					endedAtUtc: new Date(endIso),
+					monotonicDurationMs: netMinutes * 6e4,
+					sessionNotes: body.developerNote,
+					manualReason: body.manualReason ?? null,
+					policyVersionId: policy.id
+				}
+			});
+			if (body.breakMinutes > 0) await tx.break.create({
+				data: {
+					tenantId: body.tenantId,
+					userId: body.userId,
+					sessionId: session.id,
+					breakType: "unpaid",
+					startedAtUtc: new Date(startIso),
+					endedAtUtc: new Date(new Date(startIso).getTime() + body.breakMinutes * 6e4)
+				}
+			});
 			let contract = await tx.contract.findFirst({
 				where: {
 					tenantId: body.tenantId,
 					projectId: body.projectId
 				},
-				include: { rateVersions: {
-					orderBy: { createdAt: "desc" },
-					take: 1
-				} }
+				include: {
+					rateVersions: {
+						orderBy: { createdAt: "desc" },
+						take: 1
+					}
+				}
 			});
 			if (!contract) contract = await tx.contract.create({
 				data: {
@@ -3877,13 +4021,15 @@ async function handleRecordSession(body) {
 			const sunday = new Date(monday);
 			sunday.setUTCDate(monday.getUTCDate() + 6);
 			const timesheet = await tx.timesheet.upsert({
-				where: { tenantId_userId_projectId_periodStart_periodEnd: {
-					tenantId: body.tenantId,
-					userId: body.userId,
-					projectId: body.projectId,
-					periodStart: monday,
-					periodEnd: sunday
-				} },
+				where: {
+					tenantId_userId_projectId_periodStart_periodEnd: {
+						tenantId: body.tenantId,
+						userId: body.userId,
+						projectId: body.projectId,
+						periodStart: monday,
+						periodEnd: sunday
+					}
+				},
 				update: {},
 				create: {
 					tenantId: body.tenantId,
@@ -3895,32 +4041,36 @@ async function handleRecordSession(body) {
 					status: "draft"
 				}
 			});
-			const line = await tx.timesheetLine.create({ data: {
-				tenantId: body.tenantId,
-				timesheetId: timesheet.id,
-				segmentId,
-				taskId: body.taskId,
-				workDate: workDateObj,
-				workMode: body.workMode,
-				provenance: body.provenance,
-				elapsedMinutes: body.durationMinutes,
-				claimedMinutes: netMinutes,
-				observedMinutes: isDeepWork || body.provenance === "manual_entry" ? 0 : netMinutes,
-				supportedMinutes: netMinutes,
-				approvedBillableMinutes: 0,
-				appliedRateVersionId: rateVersionId,
-				snapshotHourlyRate: body.hourlyRate,
-				lineStatus: body.provenance === "manual_entry" ? "needs_clarification" : "pending_review",
-				developerNote: body.developerNote
-			} });
-			await tx.auditEntry.create({ data: {
-				tenantId: body.tenantId,
-				actorUserId: body.userId,
-				actionType: body.provenance === "manual_entry" ? "MANUAL_TIME_ENTRY_ADDED" : "WORK_SESSION_RECORDED",
-				targetEntity: `timesheet_lines:${line.id}`,
-				targetId: line.id,
-				reason: body.manualReason ?? `Recorded ${netMinutes}m in ${body.workMode} mode`
-			} });
+			const line = await tx.timesheetLine.create({
+				data: {
+					tenantId: body.tenantId,
+					timesheetId: timesheet.id,
+					segmentId,
+					taskId: body.taskId,
+					workDate: workDateObj,
+					workMode: body.workMode,
+					provenance: body.provenance,
+					elapsedMinutes: body.durationMinutes,
+					claimedMinutes: netMinutes,
+					observedMinutes: isDeepWork || body.provenance === "manual_entry" ? 0 : netMinutes,
+					supportedMinutes: netMinutes,
+					approvedBillableMinutes: 0,
+					appliedRateVersionId: rateVersionId,
+					snapshotHourlyRate: body.hourlyRate,
+					lineStatus: body.provenance === "manual_entry" ? "needs_clarification" : "pending_review",
+					developerNote: body.developerNote
+				}
+			});
+			await tx.auditEntry.create({
+				data: {
+					tenantId: body.tenantId,
+					actorUserId: body.userId,
+					actionType: body.provenance === "manual_entry" ? "MANUAL_TIME_ENTRY_ADDED" : "WORK_SESSION_RECORDED",
+					targetEntity: `timesheet_lines:${line.id}`,
+					targetId: line.id,
+					reason: body.manualReason ?? `Recorded ${netMinutes}m in ${body.workMode} mode`
+				}
+			});
 			return {
 				lineId: line.id,
 				timesheetId: timesheet.id
@@ -3936,19 +4086,23 @@ function getSupabaseAnonClient() {
 	const url = process.env.VITE_SUPABASE_URL || "";
 	const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 	if (!url || !key) return null;
-	return createClient(url, key, { auth: {
-		autoRefreshToken: false,
-		persistSession: false
-	} });
+	return createClient(url, key, {
+		auth: {
+			autoRefreshToken: false,
+			persistSession: false
+		}
+	});
 }
 function getSupabaseAdminClient() {
 	const url = process.env.VITE_SUPABASE_URL || "";
 	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 	if (!url || !serviceKey) return null;
-	return createClient(url, serviceKey, { auth: {
-		autoRefreshToken: false,
-		persistSession: false
-	} });
+	return createClient(url, serviceKey, {
+		auth: {
+			autoRefreshToken: false,
+			persistSession: false
+		}
+	});
 }
 async function resolveMembershipAndDevice(params) {
 	const memberships = await prisma.membership.findMany({
@@ -3994,16 +4148,18 @@ async function resolveMembershipAndDevice(params) {
 			lastSeenAt: /* @__PURE__ */ new Date()
 		}
 	})).id;
-	else deviceId = (await prisma.device.create({ data: {
-		tenantId: membership.tenantId,
-		userId: membership.userId,
-		deviceName,
-		osPlatform,
-		agentVersion,
-		deviceFingerprintHash: pairingToken,
-		updateChannel: "stable",
-		multiDisplayPolicy: "coarse_metadata_only"
-	} })).id;
+	else deviceId = (await prisma.device.create({
+		data: {
+			tenantId: membership.tenantId,
+			userId: membership.userId,
+			deviceName,
+			osPlatform,
+			agentVersion,
+			deviceFingerprintHash: pairingToken,
+			updateChannel: "stable",
+			multiDisplayPolicy: "coarse_metadata_only"
+		}
+	})).id;
 	return {
 		ok: true,
 		statusCode: 200,
@@ -4048,10 +4204,14 @@ async function handleDesktopAuth(body) {
 			statusCode: 401,
 			error: error?.message || "Invalid email or password."
 		};
-		const profile = await prisma.userProfile.findUnique({ where: { id: data.user.id } }) ?? await prisma.userProfile.findFirst({ where: { email: {
-			equals: email,
-			mode: "insensitive"
-		} } });
+		const profile = await prisma.userProfile.findUnique({ where: { id: data.user.id } }) ?? await prisma.userProfile.findFirst({
+			where: {
+				email: {
+					equals: email,
+					mode: "insensitive"
+				}
+			}
+		});
 		if (!profile) return {
 			ok: false,
 			statusCode: 403,
@@ -4175,23 +4335,27 @@ async function handleDesktopActivatePassword(body) {
 	}
 	await prisma.$transaction(async (tx) => {
 		await tx.membership.update({
-			where: { tenantId_userId: {
-				tenantId: body.tenantId,
-				userId: body.userId
-			} },
+			where: {
+				tenantId_userId: {
+					tenantId: body.tenantId,
+					userId: body.userId
+				}
+			},
 			data: {
 				status: "active",
 				joinedAt: /* @__PURE__ */ new Date()
 			}
 		});
-		await tx.auditEntry.create({ data: {
-			tenantId: body.tenantId,
-			actorUserId: body.userId,
-			actionType: "FIRST_LOGIN_PASSWORD_CHANGED",
-			targetEntity: `memberships:${body.userId}`,
-			targetId: body.userId,
-			reason: "Activated invited profile via Desktop Agent first-login password change."
-		} });
+		await tx.auditEntry.create({
+			data: {
+				tenantId: body.tenantId,
+				actorUserId: body.userId,
+				actionType: "FIRST_LOGIN_PASSWORD_CHANGED",
+				targetEntity: `memberships:${body.userId}`,
+				targetId: body.userId,
+				reason: "Activated invited profile via Desktop Agent first-login password change."
+			}
+		});
 	});
 	return {
 		ok: true,
@@ -4208,10 +4372,12 @@ async function handleDesktopFetchTasks(params) {
 		error: "Valid tenantId and userId are required."
 	};
 	const membership = await prisma.membership.findUnique({
-		where: { tenantId_userId: {
-			tenantId: params.tenantId,
-			userId: params.userId
-		} },
+		where: {
+			tenantId_userId: {
+				tenantId: params.tenantId,
+				userId: params.userId
+			}
+		},
 		include: { roleGrants: true }
 	});
 	if (!membership) return {
@@ -4233,12 +4399,16 @@ async function handleDesktopFetchTasks(params) {
 				tenantId: params.tenantId,
 				assignments: { some: { userId: params.userId } }
 			},
-			include: { project: { select: {
-				id: true,
-				code: true,
-				name: true,
-				status: true
-			} } },
+			include: {
+				project: {
+					select: {
+						id: true,
+						code: true,
+						name: true,
+						status: true
+					}
+				}
+			},
 			orderBy: [{ status: "asc" }, { updatedAt: "desc" }]
 		})).filter((t) => t.project.status !== "archived").map((t) => ({
 			id: t.id,
@@ -4262,10 +4432,12 @@ async function handleDesktopSubmitSession(body) {
 		error: "Valid tenantId, userId, projectId, and taskId are required."
 	};
 	const membership = await prisma.membership.findUnique({
-		where: { tenantId_userId: {
-			tenantId: body.tenantId,
-			userId: body.userId
-		} },
+		where: {
+			tenantId_userId: {
+				tenantId: body.tenantId,
+				userId: body.userId
+			}
+		},
 		include: { roleGrants: true }
 	});
 	if (!membership || membership.status !== "active") return {
@@ -4273,11 +4445,13 @@ async function handleDesktopSubmitSession(body) {
 		statusCode: 403,
 		error: "Only active workspace members can submit work sessions."
 	};
-	const assignment = await prisma.taskAssignment.findFirst({ where: {
-		tenantId: body.tenantId,
-		taskId: body.taskId,
-		userId: body.userId
-	} });
+	const assignment = await prisma.taskAssignment.findFirst({
+		where: {
+			tenantId: body.tenantId,
+			taskId: body.taskId,
+			userId: body.userId
+		}
+	});
 	const isOwner = membership.roleGrants.some((rg) => rg.role === "tenant_owner");
 	if (!assignment && !isOwner) return {
 		ok: false,
@@ -4325,7 +4499,7 @@ async function handleDesktopSubmitSession(body) {
 	if (body.deviceId && isValidUuid(body.deviceId)) await prisma.device.update({
 		where: { id: body.deviceId },
 		data: { lastSeenAt: /* @__PURE__ */ new Date() }
-	}).catch(() => {});
+	}).catch(() => { });
 	return {
 		ok: true,
 		statusCode: 201,
@@ -4468,10 +4642,12 @@ async function handlePrismaApiRequest(req, res) {
 				message: "Invalid tenant or user ID"
 			});
 			const member = await prisma.membership.findUnique({
-				where: { tenantId_userId: {
-					tenantId: body.tenantId,
-					userId: body.userId
-				} },
+				where: {
+					tenantId_userId: {
+						tenantId: body.tenantId,
+						userId: body.userId
+					}
+				},
 				include: {
 					user: true,
 					tenant: true,
@@ -4492,12 +4668,14 @@ async function handlePrismaApiRequest(req, res) {
 				tenantName: member.tenant?.name,
 				temporaryPassword: freshTempPassword
 			});
-			await prisma.auditEntry.create({ data: {
-				tenantId: body.tenantId,
-				actionType: "INVITE_RESENT",
-				targetEntity: `memberships:${member.user.email}`,
-				reason: `Resent invitation email to ${member.user.email} via Resend`
-			} });
+			await prisma.auditEntry.create({
+				data: {
+					tenantId: body.tenantId,
+					actionType: "INVITE_RESENT",
+					targetEntity: `memberships:${member.user.email}`,
+					reason: `Resent invitation email to ${member.user.email} via Resend`
+				}
+			});
 			return sendJson(res, 200, {
 				ok: emailResult.ok,
 				message: emailResult.message
@@ -4513,10 +4691,14 @@ async function handlePrismaApiRequest(req, res) {
 			try {
 				let resolvedUserId = "";
 				await prisma.$transaction(async (tx) => {
-					const existingUser = await tx.userProfile.findFirst({ where: { email: {
-						equals: normalizedEmail,
-						mode: "insensitive"
-					} } });
+					const existingUser = await tx.userProfile.findFirst({
+						where: {
+							email: {
+								equals: normalizedEmail,
+								mode: "insensitive"
+							}
+						}
+					});
 					if (existingUser) {
 						resolvedUserId = existingUser.id;
 						if (body.name.trim() && existingUser.fullName !== body.name.trim()) await tx.userProfile.update({
@@ -4525,11 +4707,13 @@ async function handlePrismaApiRequest(req, res) {
 						});
 					} else {
 						resolvedUserId = crypto$1.randomUUID();
-						await tx.userProfile.create({ data: {
-							id: resolvedUserId,
-							email: normalizedEmail,
-							fullName: body.name.trim()
-						} });
+						await tx.userProfile.create({
+							data: {
+								id: resolvedUserId,
+								email: normalizedEmail,
+								fullName: body.name.trim()
+							}
+						});
 					}
 					const existingMem = await tx.membership.findFirst({
 						where: {
@@ -4548,30 +4732,38 @@ async function handlePrismaApiRequest(req, res) {
 								invitedEmail: normalizedEmail
 							}
 						});
-						await tx.roleGrant.deleteMany({ where: {
-							tenantId: body.tenantId,
-							membershipId: existingMem.id,
-							projectScopeId: null
-						} });
-						await tx.roleGrant.create({ data: {
-							tenantId: body.tenantId,
-							membershipId: existingMem.id,
-							role: body.role
-						} });
+						await tx.roleGrant.deleteMany({
+							where: {
+								tenantId: body.tenantId,
+								membershipId: existingMem.id,
+								projectScopeId: null
+							}
+						});
+						await tx.roleGrant.create({
+							data: {
+								tenantId: body.tenantId,
+								membershipId: existingMem.id,
+								role: body.role
+							}
+						});
 					} else {
-						const mem = await tx.membership.create({ data: {
-							tenantId: body.tenantId,
-							userId: resolvedUserId,
-							status: "invited",
-							invitedEmail: normalizedEmail,
-							joinedAt: /* @__PURE__ */ new Date()
-						} });
+						const mem = await tx.membership.create({
+							data: {
+								tenantId: body.tenantId,
+								userId: resolvedUserId,
+								status: "invited",
+								invitedEmail: normalizedEmail,
+								joinedAt: /* @__PURE__ */ new Date()
+							}
+						});
 						targetMembershipId = mem.id;
-						await tx.roleGrant.create({ data: {
-							tenantId: body.tenantId,
-							membershipId: mem.id,
-							role: body.role
-						} });
+						await tx.roleGrant.create({
+							data: {
+								tenantId: body.tenantId,
+								membershipId: mem.id,
+								role: body.role
+							}
+						});
 					}
 					if (Array.isArray(body.customPermissions) && body.customPermissions.length > 0 && targetMembershipId) {
 						const validPerms = await tx.permission.findMany({
@@ -4581,10 +4773,12 @@ async function handlePrismaApiRequest(req, res) {
 							},
 							select: { key: true }
 						});
-						await tx.memberPermissionGrant.deleteMany({ where: {
-							membershipId: targetMembershipId,
-							tenantId: body.tenantId
-						} });
+						await tx.memberPermissionGrant.deleteMany({
+							where: {
+								membershipId: targetMembershipId,
+								tenantId: body.tenantId
+							}
+						});
 						if (validPerms.length > 0) await tx.memberPermissionGrant.createMany({
 							data: validPerms.map((p) => ({
 								membershipId: targetMembershipId,
@@ -4594,12 +4788,14 @@ async function handlePrismaApiRequest(req, res) {
 							skipDuplicates: true
 						});
 					}
-					await tx.auditEntry.create({ data: {
-						tenantId: body.tenantId,
-						actionType: "MEMBER_INVITED",
-						targetEntity: `memberships:${normalizedEmail}`,
-						reason: `Invited ${body.name} with role ${body.role}${body.temporaryPassword ? " (temporary password issued)" : ""}`
-					} });
+					await tx.auditEntry.create({
+						data: {
+							tenantId: body.tenantId,
+							actionType: "MEMBER_INVITED",
+							targetEntity: `memberships:${normalizedEmail}`,
+							reason: `Invited ${body.name} with role ${body.role}${body.temporaryPassword ? " (temporary password issued)" : ""}`
+						}
+					});
 				});
 				const tenantRecord = await prisma.tenant.findUnique({
 					where: { id: body.tenantId },
@@ -4632,10 +4828,12 @@ async function handlePrismaApiRequest(req, res) {
 			const body = await readJsonBody(req);
 			if (!isValidUuid(body.tenantId) || !isValidUuid(body.userId)) return sendJson(res, 200, { ok: false });
 			await prisma.membership.update({
-				where: { tenantId_userId: {
-					tenantId: body.tenantId,
-					userId: body.userId
-				} },
+				where: {
+					tenantId_userId: {
+						tenantId: body.tenantId,
+						userId: body.userId
+					}
+				},
 				data: {
 					status: body.status,
 					...body.status === "active" ? { joinedAt: /* @__PURE__ */ new Date() } : {}
@@ -4651,75 +4849,107 @@ async function handlePrismaApiRequest(req, res) {
 			});
 			try {
 				await prisma.$transaction(async (tx) => {
-					await tx.taskAssignment.deleteMany({ where: {
-						userId: body.userId,
-						task: { tenantId: body.tenantId }
-					} });
-					await tx.taskNote.deleteMany({ where: {
-						authorId: body.userId,
-						task: { tenantId: body.tenantId }
-					} });
-					await tx.timeSegment.deleteMany({ where: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} });
-					await tx.workSession.deleteMany({ where: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} });
+					await tx.taskAssignment.deleteMany({
+						where: {
+							userId: body.userId,
+							task: { tenantId: body.tenantId }
+						}
+					});
+					await tx.taskNote.deleteMany({
+						where: {
+							authorId: body.userId,
+							task: { tenantId: body.tenantId }
+						}
+					});
+					await tx.timeSegment.deleteMany({
+						where: {
+							userId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
+					await tx.workSession.deleteMany({
+						where: {
+							userId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
 					await tx.disputeMessage.deleteMany({ where: { authorUserId: body.userId } });
-					await tx.dispute.deleteMany({ where: {
-						openedByUserId: body.userId,
-						timesheetLine: { tenantId: body.tenantId }
-					} });
-					await tx.timesheetLine.deleteMany({ where: { timesheet: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} } });
-					await tx.timesheet.deleteMany({ where: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} });
-					await tx.activityEvent.deleteMany({ where: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} });
-					await tx.activityEventBatch.deleteMany({ where: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} });
-					await tx.notification.deleteMany({ where: {
-						recipientUserId: body.userId,
-						tenantId: body.tenantId
-					} });
-					await tx.policyConsent.deleteMany({ where: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} });
-					await tx.ideWorkspaceMapping.deleteMany({ where: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} });
-					await tx.device.deleteMany({ where: {
-						userId: body.userId,
-						tenantId: body.tenantId
-					} });
-					const mem = await tx.membership.findFirst({ where: {
-						tenantId: body.tenantId,
-						userId: body.userId
-					} });
+					await tx.dispute.deleteMany({
+						where: {
+							openedByUserId: body.userId,
+							timesheetLine: { tenantId: body.tenantId }
+						}
+					});
+					await tx.timesheetLine.deleteMany({
+						where: {
+							timesheet: {
+								userId: body.userId,
+								tenantId: body.tenantId
+							}
+						}
+					});
+					await tx.timesheet.deleteMany({
+						where: {
+							userId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
+					await tx.activityEvent.deleteMany({
+						where: {
+							userId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
+					await tx.activityEventBatch.deleteMany({
+						where: {
+							userId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
+					await tx.notification.deleteMany({
+						where: {
+							recipientUserId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
+					await tx.policyConsent.deleteMany({
+						where: {
+							userId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
+					await tx.ideWorkspaceMapping.deleteMany({
+						where: {
+							userId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
+					await tx.device.deleteMany({
+						where: {
+							userId: body.userId,
+							tenantId: body.tenantId
+						}
+					});
+					const mem = await tx.membership.findFirst({
+						where: {
+							tenantId: body.tenantId,
+							userId: body.userId
+						}
+					});
 					if (mem) {
 						await tx.memberPermissionGrant.deleteMany({ where: { membershipId: mem.id } });
 						await tx.roleGrant.deleteMany({ where: { membershipId: mem.id } });
 						await tx.membership.delete({ where: { id: mem.id } });
 					}
 					if (await tx.membership.count({ where: { userId: body.userId } }) === 0) await tx.userProfile.deleteMany({ where: { id: body.userId } });
-					await tx.auditEntry.create({ data: {
-						tenantId: body.tenantId,
-						actionType: "MEMBER_CASCADE_DELETED",
-						targetEntity: `users:${body.userId}`,
-						reason: `Permanently removed member and cascade-deleted all associated timesheets, sessions, and activity events.`
-					} });
+					await tx.auditEntry.create({
+						data: {
+							tenantId: body.tenantId,
+							actionType: "MEMBER_CASCADE_DELETED",
+							targetEntity: `users:${body.userId}`,
+							reason: `Permanently removed member and cascade-deleted all associated timesheets, sessions, and activity events.`
+						}
+					});
 				});
 				return sendJson(res, 200, {
 					ok: true,
@@ -4741,23 +4971,27 @@ async function handlePrismaApiRequest(req, res) {
 				error: "Non-UUID tenant ID"
 			});
 			const created = await prisma.$transaction(async (tx) => {
-				const proj = await tx.project.create({ data: {
-					tenantId: body.tenantId,
-					code: body.code.toUpperCase(),
-					name: body.name,
-					clientName: body.clientName,
-					description: body.description,
-					status: "active",
-					createdBy: isValidUuid(body.actorUserId) ? body.actorUserId : null
-				} });
-				await tx.auditEntry.create({ data: {
-					tenantId: body.tenantId,
-					actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-					actionType: "PROJECT_CREATED",
-					targetEntity: `projects:${proj.code}`,
-					targetId: proj.id,
-					reason: `Created project ${proj.name} via Prisma ORM`
-				} });
+				const proj = await tx.project.create({
+					data: {
+						tenantId: body.tenantId,
+						code: body.code.toUpperCase(),
+						name: body.name,
+						clientName: body.clientName,
+						description: body.description,
+						status: "active",
+						createdBy: isValidUuid(body.actorUserId) ? body.actorUserId : null
+					}
+				});
+				await tx.auditEntry.create({
+					data: {
+						tenantId: body.tenantId,
+						actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+						actionType: "PROJECT_CREATED",
+						targetEntity: `projects:${proj.code}`,
+						targetId: proj.id,
+						reason: `Created project ${proj.name} via Prisma ORM`
+					}
+				});
 				return proj;
 			});
 			return sendJson(res, 201, {
@@ -4796,26 +5030,30 @@ async function handlePrismaApiRequest(req, res) {
 				});
 			}
 			const created = await prisma.$transaction(async (tx) => {
-				const tsk = await tx.task.create({ data: {
-					tenantId: body.tenantId,
-					projectId: body.projectId,
-					parentTaskId: isValidUuid(body.parentTaskId) ? body.parentTaskId : null,
-					code: body.code.toUpperCase(),
-					title: body.title,
-					acceptanceCriteria: body.acceptanceCriteria,
-					status: body.status,
-					priority: body.priority,
-					estimateMinutes: body.estimateMinutes,
-					isBillable: body.isBillable,
-					defaultWorkMode: body.defaultWorkMode,
-					dueDate: body.dueDate ? new Date(body.dueDate) : null
-				} });
-				for (const userId of requestedAssignees) await tx.taskAssignment.create({ data: {
-					tenantId: body.tenantId,
-					projectId: body.projectId,
-					taskId: tsk.id,
-					userId
-				} });
+				const tsk = await tx.task.create({
+					data: {
+						tenantId: body.tenantId,
+						projectId: body.projectId,
+						parentTaskId: isValidUuid(body.parentTaskId) ? body.parentTaskId : null,
+						code: body.code.toUpperCase(),
+						title: body.title,
+						acceptanceCriteria: body.acceptanceCriteria,
+						status: body.status,
+						priority: body.priority,
+						estimateMinutes: body.estimateMinutes,
+						isBillable: body.isBillable,
+						defaultWorkMode: body.defaultWorkMode,
+						dueDate: body.dueDate ? new Date(body.dueDate) : null
+					}
+				});
+				for (const userId of requestedAssignees) await tx.taskAssignment.create({
+					data: {
+						tenantId: body.tenantId,
+						projectId: body.projectId,
+						taskId: tsk.id,
+						userId
+					}
+				});
 				return tsk;
 			});
 			return sendJson(res, 201, {
@@ -4868,16 +5106,20 @@ async function handlePrismaApiRequest(req, res) {
 				});
 			}
 			await prisma.$transaction(async (tx) => {
-				await tx.taskAssignment.deleteMany({ where: {
-					tenantId: body.tenantId,
-					taskId: body.taskId
-				} });
-				for (const userId of candidateAssignees) await tx.taskAssignment.create({ data: {
-					tenantId: body.tenantId,
-					projectId: body.projectId,
-					taskId: body.taskId,
-					userId
-				} });
+				await tx.taskAssignment.deleteMany({
+					where: {
+						tenantId: body.tenantId,
+						taskId: body.taskId
+					}
+				});
+				for (const userId of candidateAssignees) await tx.taskAssignment.create({
+					data: {
+						tenantId: body.tenantId,
+						projectId: body.projectId,
+						taskId: body.taskId,
+						userId
+					}
+				});
 			});
 			return sendJson(res, 200, { ok: true });
 		}
@@ -4913,25 +5155,29 @@ async function handlePrismaApiRequest(req, res) {
 						isLocked: body.lockLine && (nextStatus === "approved" || nextStatus === "adjusted_approved")
 					}
 				});
-				await tx.reviewDecision.create({ data: {
-					tenantId: body.tenantId,
-					timesheetId: body.timesheetId,
-					timesheetLineId: body.lineId,
-					reviewerUserId: body.reviewerUserId,
-					decisionType: body.decision,
-					reason: body.reason,
-					previousApprovedMinutes: prevLine.approvedBillableMinutes,
-					newApprovedMinutes: body.approvedMinutes
-				} });
-				await tx.notification.create({ data: {
-					tenantId: body.tenantId,
-					recipientUserId: prevLine.timesheet.userId,
-					notificationType: body.decision === "ask_clarification" ? "clarification_requested" : body.decision === "adjust_with_reason" ? "timesheet_adjusted" : "timesheet_approved",
-					title: `Timesheet review: ${body.decision.replace("_", " ")}`,
-					body: body.reason,
-					targetEntity: "timesheet_lines",
-					targetId: body.lineId
-				} });
+				await tx.reviewDecision.create({
+					data: {
+						tenantId: body.tenantId,
+						timesheetId: body.timesheetId,
+						timesheetLineId: body.lineId,
+						reviewerUserId: body.reviewerUserId,
+						decisionType: body.decision,
+						reason: body.reason,
+						previousApprovedMinutes: prevLine.approvedBillableMinutes,
+						newApprovedMinutes: body.approvedMinutes
+					}
+				});
+				await tx.notification.create({
+					data: {
+						tenantId: body.tenantId,
+						recipientUserId: prevLine.timesheet.userId,
+						notificationType: body.decision === "ask_clarification" ? "clarification_requested" : body.decision === "adjust_with_reason" ? "timesheet_adjusted" : "timesheet_approved",
+						title: `Timesheet review: ${body.decision.replace("_", " ")}`,
+						body: body.reason,
+						targetEntity: "timesheet_lines",
+						targetId: body.lineId
+					}
+				});
 			});
 			return sendJson(res, 200, { ok: true });
 		}
@@ -4965,13 +5211,15 @@ async function handlePrismaApiRequest(req, res) {
 		if (req.method === "POST" && url.startsWith("/api/prisma/audit")) {
 			const body = await readJsonBody(req);
 			if (!isValidUuid(body.tenantId)) return sendJson(res, 200, { ok: false });
-			await prisma.auditEntry.create({ data: {
-				tenantId: body.tenantId,
-				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-				actionType: body.actionType,
-				targetEntity: body.targetEntity,
-				reason: body.reason
-			} });
+			await prisma.auditEntry.create({
+				data: {
+					tenantId: body.tenantId,
+					actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+					actionType: body.actionType,
+					targetEntity: body.targetEntity,
+					reason: body.reason
+				}
+			});
 			return sendJson(res, 201, { ok: true });
 		}
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase2/webhook")) return sendJson(res, 202, await handleIngestWebhookPrisma(await readJsonBody(req)));

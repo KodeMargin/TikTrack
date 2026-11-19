@@ -74,14 +74,14 @@ git push origin main
 ### Step 3: Trigger the Release Workflow
 Choose either method:
 
-- **Option A — GitHub Actions UI (Recommended):**
+- **Option A - GitHub Actions UI (Recommended):**
   1. Open `KodeMargin/TikTrack` → **Actions** → **Release Desktop App**.
   2. Click **Run workflow**.
   3. Set **Use workflow from** to `main`.
   4. Enter **Release version tag** (e.g., `v0.2.1`).
   5. Click **Run workflow**.
 
-- **Option B — Push a Git Tag:**
+- **Option B - Push a Git Tag:**
   ```bash
   git tag v0.2.1
   git push origin v0.2.1
@@ -91,24 +91,24 @@ Choose either method:
 Once all 4 build jobs finish (macOS Apple Silicon, macOS Intel, Windows, Linux):
 1. Open `https://github.com/KodeMargin/TikTrack-Release/releases`.
 2. Confirm the release contains installers for all platforms **and** `latest.json`.
-3. Open an already-installed TikTrack Desktop Agent (or click the download icon in the header) — an **Update v0.2.1 available** banner with **Update & Restart** will appear automatically.
+3. Open an already-installed TikTrack Desktop Agent (or click the download icon in the header) - an **Update v0.2.1 available** banner with **Update & Restart** will appear automatically.
 
 ---
 
 ## 3. Releasing a New VS Code Extension Version
 
-### Option A — Automatic Publish on Push
+### Option A - Automatic Publish on Push
 Whenever changes inside `vscode-extension/**` are pushed to `main`, `.github/workflows/vscode-publish.yml` runs automatically:
 1. Bump `"version"` in `vscode-extension/package.json` (e.g., `0.2.1` → `0.2.2`).
 2. Commit and push to `main`.
 3. The workflow typechecks, builds, packages `.vsix`, and publishes to Visual Studio Marketplace (if `VSCE_PAT` is configured).
 
-### Option B — Manual Publish via GitHub Actions
+### Option B - Manual Publish via GitHub Actions
 1. Open `KodeMargin/TikTrack` → **Actions** → **Publish VS Code Extension**.
 2. Click **Run workflow**.
 3. Choose **bump**:
-   - `none` — publish the version currently in `vscode-extension/package.json`.
-   - `patch` / `minor` / `major` — automatically increment the version before publishing.
+   - `none` - publish the version currently in `vscode-extension/package.json`.
+   - `patch` / `minor` / `major` - automatically increment the version before publishing.
 4. Click **Run workflow**.
 
 > If `VSCE_PAT` is not set, the workflow still builds and uploads `tiktrack-vscode-extension-vsix` as a downloadable workflow artifact (`.vsix`) for manual installation via `code --install-extension <file>.vsix`.
