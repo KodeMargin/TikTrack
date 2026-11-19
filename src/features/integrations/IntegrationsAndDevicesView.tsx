@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store, type EnrolledDeviceRecord } from '@/context/Phase2Store'
 
-const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/KodeMargin/TikTrack/releases/latest'
+const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/KodeMargin/TikTrack-Release/releases/latest'
 
 const DEFAULT_DESKTOP_RELEASE = {
   version: 'v0.2.0',
   links: {
-    macArm: 'https://github.com/KodeMargin/TikTrack/releases/download/v0.2.0/TikTrack_0.2.0_aarch64.dmg',
-    macIntel: 'https://github.com/KodeMargin/TikTrack/releases/download/v0.2.0/TikTrack_0.2.0_x64.dmg',
-    winExe: 'https://github.com/KodeMargin/TikTrack/releases/download/v0.2.0/TikTrack_0.2.0_x64-setup.exe',
-    linuxDeb: 'https://github.com/KodeMargin/TikTrack/releases/download/v0.2.0/TikTrack_0.2.0_amd64.deb',
+    macArm: 'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_aarch64.dmg',
+    macIntel: 'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_x64.dmg',
+    winExe: 'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_x64-setup.exe',
+    linuxDeb: 'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_amd64.deb',
   },
 }
 
