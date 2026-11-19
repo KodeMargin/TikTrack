@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { Update } from '@tauri-apps/plugin-updater'
 
 interface AgentAuthPublicDto {
   server_url: string
@@ -147,6 +148,13 @@ export default function App() {
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
   const [syncBusy, setSyncBusy] = useState(false)
 
+  // In-app auto-updater state
+  const [appVersion, setAppVersion] = useState('0.2.0')
+  const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null)
+  const [updateChecking, setUpdateChecking] = useState(false)
+  const [updateInstalling, setUpdateInstalling] = useState(false)
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null)
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     document.documentElement.style.background = theme === 'dark' ? '#09090b' : '#ffffff'
@@ -157,6 +165,74 @@ export default function App() {
       // Ignore storage errors
     }
   }, [theme])
+
+  // Load actual app version & silently check for updates on startup
+  useEffect(() => {
+    void import('@tauri-apps/api/app')
+      .then((appApi) => appApi.getVersion())
+      .then((v) => {
+        if (v) setAppVersion(v)
+      })
+      .catch(() => {
+        // Ignore outside Tauri runtime
+      })
+
+    void checkForUpdates(false)
+  }, [])
+
+  async function checkForUpdates(manual: boolean) {
+    if (updateChecking || updateInstalling) return
+    setUpdateChecking(true)
+    if (manual) setNotice(null)
+    try {
+      const { check } = await import('@tauri-apps/plugin-updater')
+      const update = await check()
+      if (update) {
+        setAvailableUpdate(update)
+      } else {
+        setAvailableUpdate(null)
+        if (manual) {
+          setNotice({ ok: true, text: `You are on the latest version (v${appVersion}).` })
+        }
+      }
+    } catch (err) {
+      if (manual) {
+        setNotice({ ok: false, text: `Update check failed: ${String(err)}` })
+      }
+    } finally {
+      setUpdateChecking(false)
+    }
+  }
+
+  async function handleInstallUpdate() {
+    if (!availableUpdate || updateInstalling) return
+    setUpdateInstalling(true)
+    setUpdateProgress(0)
+    setNotice(null)
+    try {
+      let downloaded = 0
+      let totalLength = 0
+      await availableUpdate.downloadAndInstall((event) => {
+        if (event.event === 'Started') {
+          totalLength = event.data.contentLength ?? 0
+          setUpdateProgress(0)
+        } else if (event.event === 'Progress') {
+          downloaded += event.data.chunkLength
+          if (totalLength > 0) {
+            setUpdateProgress(Math.min(100, Math.round((downloaded / totalLength) * 100)))
+          }
+        } else if (event.event === 'Finished') {
+          setUpdateProgress(100)
+        }
+      })
+      const { relaunch } = await import('@tauri-apps/plugin-process')
+      await relaunch()
+    } catch (err) {
+      setNotice({ ok: false, text: `Failed to install update: ${String(err)}` })
+      setUpdateInstalling(false)
+      setUpdateProgress(null)
+    }
+  }
 
   // Initial load + 1s timer poll
   useEffect(() => {
@@ -431,7 +507,7 @@ export default function App() {
           </div>
           <div className="tt-brand-text">
             <span className="tt-brand-title">TikTrack Agent</span>
-            <span className="tt-brand-sub">v0.3.0 • Privacy-First</span>
+            <span className="tt-brand-sub">v{appVersion} • Privacy-First</span>
           </div>
         </div>
 
@@ -444,6 +520,20 @@ export default function App() {
               {status.is_online ? 'ONLINE' : 'OFFLINE'}
             </span>
           )}
+          <button
+            type="button"
+            className="tt-icon-btn"
+            aria-label="Check for Updates"
+            title={updateChecking ? 'Checking for updates...' : 'Check for Updates'}
+            disabled={updateChecking || updateInstalling}
+            onClick={() => void checkForUpdates(true)}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </button>
           <button
             type="button"
             className="tt-icon-btn"
@@ -464,6 +554,33 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {availableUpdate && (
+        <div className="tt-update-banner">
+          <div className="tt-update-meta">
+            <span className="tt-update-title">Update v{availableUpdate.version} available</span>
+            <span className="tt-update-sub">
+              {updateInstalling
+                ? updateProgress !== null && updateProgress < 100
+                  ? `Downloading update (${updateProgress}%)...`
+                  : 'Installing & restarting...'
+                : 'Install without uninstalling your current agent.'}
+            </span>
+          </div>
+          <button
+            type="button"
+            disabled={updateInstalling}
+            className="tt-btn tt-btn--primary tt-btn--sm"
+            onClick={() => void handleInstallUpdate()}
+          >
+            {updateInstalling
+              ? updateProgress !== null
+                ? `${updateProgress}%`
+                : 'Updating...'
+              : 'Update & Restart'}
+          </button>
+        </div>
+      )}
 
       {notice && (
         <div className={`tt-notice ${notice.ok ? 'tt-notice--ok' : 'tt-notice--err'}`}>
