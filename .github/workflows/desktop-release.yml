@@ -16,17 +16,28 @@ permissions:
 
 jobs:
   build-and-release:
+    name: Build (${{ matrix.name }})
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target universal-apple-darwin'
-          - platform: 'windows-latest'
+          - name: 'macOS Apple Silicon (ARM64)'
+            platform: 'macos-latest'
+            target: 'aarch64-apple-darwin'
+            args: '--target aarch64-apple-darwin'
+          - name: 'macOS Intel (x86_64)'
+            platform: 'macos-13'
+            target: 'x86_64-apple-darwin'
+            args: '--target x86_64-apple-darwin'
+          - name: 'Windows (x86_64)'
+            platform: 'windows-latest'
+            target: 'x86_64-pc-windows-msvc'
             args: ''
-          - platform: 'ubuntu-22.04'
+          - name: 'Linux (Ubuntu)'
+            platform: 'ubuntu-22.04'
+            target: 'x86_64-unknown-linux-gnu'
             args: ''
 
     runs-on: ${{ matrix.platform }}
@@ -38,17 +49,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-          cache-dependency-path: 'desktop-agent/package.json'
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Install Linux dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libayatana-appindicator3-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
       - name: Install desktop-agent dependencies
         run: |
@@ -62,8 +73,8 @@ jobs:
         with:
           projectPath: './desktop-agent'
           tagName: ${{ github.ref_name || inputs.version || 'v0.1.0' }}
-          releaseName: "DevProof Desktop Tray ${{ github.ref_name || inputs.version || 'v0.1.0' }}"
-          releaseBody: 'Production release for macOS (.dmg), Windows (.msi/.exe), and Linux (.deb).'
+          releaseName: "TikTrack Desktop Agent ${{ github.ref_name || inputs.version || 'v0.1.0' }}"
+          releaseBody: "Production release of TikTrack Desktop Agent for macOS (Apple Silicon & Intel), Windows, and Linux."
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
