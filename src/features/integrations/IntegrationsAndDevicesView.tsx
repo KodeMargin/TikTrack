@@ -184,20 +184,36 @@ export function IntegrationsAndDevicesView() {
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <a
-                href="https://github.com/PathumLD/Dev-Tracker/releases/latest"
+                href="https://github.com/KodeMargin/TikTrack/releases/latest/download/DevProof.Tray_0.1.0_aarch64.dmg"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold transition shadow-sm"
               >
-                🍏 Download for Mac (.dmg)
+                🍏 Mac (Apple Silicon)
               </a>
               <a
-                href="https://github.com/PathumLD/Dev-Tracker/releases/latest"
+                href="https://github.com/KodeMargin/TikTrack/releases/latest/download/DevProof.Tray_0.1.0_x64.dmg"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
               >
+                🍏 Mac (Intel)
+              </a>
+              <a
+                href="https://github.com/KodeMargin/TikTrack/releases/latest/download/DevProof.Tray_0.1.0_x64-setup.exe"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold transition shadow-sm"
+              >
                 🪟 Windows (.exe)
+              </a>
+              <a
+                href="https://github.com/KodeMargin/TikTrack/releases/latest/download/DevProof.Tray_0.1.0_amd64.deb"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
+              >
+                🐧 Linux (.deb)
               </a>
             </div>
           </div>
