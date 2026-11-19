@@ -12,7 +12,11 @@ import path from 'node:path'
 import dotenv from 'dotenv'
 import type { Plugin } from 'vite'
 import { checkPrismaConnection, prisma } from '../lib/prisma.ts'
-import { sendWorkspaceInviteEmail } from './emailService.ts'
+import {
+  sendOwnerSignupVerificationEmail,
+  sendPasswordRecoveryEmail,
+  sendWorkspaceInviteEmail,
+} from './emailService.ts'
 import {
   handleBootstrap,
   handleCreateTenant,
@@ -226,10 +230,53 @@ export async function handlePrismaApiRequest(
               return sendJson(res, 200, { ok: true })
             }
 
+            if (req.method === 'POST' && url.startsWith('/api/prisma/auth/owner-signup')) {
+              const body = await readJsonBody<{
+                email: string
+                password: string
+                fullName: string
+                timezone?: string
+                countryCode?: string
+                countryName?: string
+                redirectTo?: string
+              }>(req)
+              const email = (body.email ?? '').trim().toLowerCase()
+              if (!email || !body.password || body.password.length < 6) {
+                return sendJson(res, 400, {
+                  ok: false,
+                  message: 'Valid email and password (minimum 6 characters) are required.',
+                })
+              }
+              const emailResult = await sendOwnerSignupVerificationEmail({
+                email,
+                password: body.password,
+                fullName: body.fullName || email.split('@')[0],
+                timezone: body.timezone,
+                countryCode: body.countryCode,
+                countryName: body.countryName,
+                redirectTo: body.redirectTo,
+              })
+              return sendJson(res, emailResult.ok ? 200 : 400, emailResult)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/auth/reset-password')) {
+              const body = await readJsonBody<{ email: string; redirectTo?: string }>(req)
+              const email = (body.email ?? '').trim().toLowerCase()
+              if (!email) {
+                return sendJson(res, 400, { ok: false, message: 'Email address is required.' })
+              }
+              const emailResult = await sendPasswordRecoveryEmail({
+                email,
+                redirectTo: body.redirectTo,
+              })
+              return sendJson(res, emailResult.ok ? 200 : 500, emailResult)
+            }
+
             if (req.method === 'POST' && url.startsWith('/api/prisma/members/resend-invite')) {
               const body = await readJsonBody<{
                 tenantId: string
                 userId: string
+                temporaryPassword?: string
               }>(req)
               if (!isValidUuid(body.tenantId) || !isValidUuid(body.userId)) {
                 return sendJson(res, 200, { ok: false, message: 'Invalid tenant or user ID' })
@@ -238,24 +285,31 @@ export async function handlePrismaApiRequest(
                 where: {
                   tenantId_userId: { tenantId: body.tenantId, userId: body.userId },
                 },
-                include: { user: true, roleGrants: true },
+                include: { user: true, tenant: true, roleGrants: true },
               })
               if (!member || !member.user) {
                 return sendJson(res, 404, { ok: false, message: 'Member not found' })
               }
               const role = member.roleGrants[0]?.role || 'developer'
+              const freshTempPassword =
+                body.temporaryPassword?.trim() ||
+                (member.status === 'invited'
+                  ? `TT-${crypto.randomBytes(4).toString('hex')}!`
+                  : undefined)
               const emailResult = await sendWorkspaceInviteEmail({
                 email: member.user.email,
                 name: member.user.fullName,
                 role,
                 tenantId: body.tenantId,
+                tenantName: member.tenant?.name,
+                temporaryPassword: freshTempPassword,
               })
               await prisma.auditEntry.create({
                 data: {
                   tenantId: body.tenantId,
                   actionType: 'INVITE_RESENT',
                   targetEntity: `memberships:${member.user.email}`,
-                  reason: `Resent invitation email to ${member.user.email}`,
+                  reason: `Resent invitation email to ${member.user.email} via Resend`,
                 },
               })
               return sendJson(res, 200, { ok: emailResult.ok, message: emailResult.message })
@@ -378,12 +432,18 @@ export async function handlePrismaApiRequest(
                   })
                 })
 
-                // Dispatch real invitation email via Supabase Auth + Resend SMTP
+                const tenantRecord = await prisma.tenant.findUnique({
+                  where: { id: body.tenantId },
+                  select: { name: true },
+                })
+
+                // Dispatch real invitation email directly via Resend API
                 const emailResult = await sendWorkspaceInviteEmail({
                   email: normalizedEmail,
                   name: body.name.trim(),
                   role: body.role,
                   tenantId: body.tenantId,
+                  tenantName: tenantRecord?.name,
                   temporaryPassword: body.temporaryPassword,
                 })
 

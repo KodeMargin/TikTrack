@@ -19,6 +19,9 @@ export function AuthLoginScreen() {
   const [isRecoverySession, setIsRecoverySession] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+  const [pendingOtpType, setPendingOtpType] = useState<'signup' | 'recovery' | null>(null)
+  const [otpCode, setOtpCode] = useState('')
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -64,37 +67,59 @@ export function AuthLoginScreen() {
           setAuthNotice({ text: `Signed in as ${data.user?.email}`, error: false })
         }
       } else if (authMode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({
-          email: authEmail.trim(),
-          password: authPassword,
-          options: {
-            emailRedirectTo: appRedirect,
-            data: {
-              full_name: authFullName.trim() || authEmail.trim().split('@')[0],
-              timezone: authTimezone,
-              country_code: authCountryCode,
-              country_name: authCountryName,
-              account_type: 'tenant_owner',
-            },
-          },
+        const resp = await fetch('/api/prisma/auth/owner-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: authEmail.trim(),
+            password: authPassword,
+            fullName: authFullName.trim() || authEmail.trim().split('@')[0],
+            timezone: authTimezone,
+            countryCode: authCountryCode,
+            countryName: authCountryName,
+            redirectTo: appRedirect,
+          }),
         })
-        if (error) {
-          setAuthNotice({ text: error.message, error: true })
-        } else {
+        const result = (await resp.json().catch(() => ({}))) as {
+          ok?: boolean
+          message?: string
+          hasOtp?: boolean
+        }
+        if (!resp.ok || !result.ok) {
           setAuthNotice({
-            text: `Verification email sent to ${data.user?.email ?? authEmail} via Resend. Check your inbox!`,
+            text: result.message || 'Owner signup verification failed.',
+            error: true,
+          })
+        } else {
+          setPendingOtpType('signup')
+          setOtpCode('')
+          setAuthNotice({
+            text:
+              result.message ||
+              `Verification link & 6-digit OTP sent to ${authEmail} via Resend. Check your inbox!`,
             error: false,
           })
         }
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), {
-          redirectTo: appRedirect,
+        const resp = await fetch('/api/prisma/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: authEmail.trim(),
+            redirectTo: appRedirect,
+          }),
         })
-        if (error) {
-          setAuthNotice({ text: error.message, error: true })
-        } else {
+        const result = (await resp.json().catch(() => ({}))) as { ok?: boolean; message?: string }
+        if (!resp.ok || !result.ok) {
           setAuthNotice({
-            text: `Password recovery link dispatched to ${authEmail} via Resend. Check your inbox!`,
+            text: result.message || 'Failed to send password reset email via Resend.',
+            error: true,
+          })
+        } else {
+          setPendingOtpType('recovery')
+          setOtpCode('')
+          setAuthNotice({
+            text: result.message || `Password recovery link & 6-digit OTP dispatched to ${authEmail} via Resend. Check your inbox!`,
             error: false,
           })
         }
@@ -104,6 +129,45 @@ export function AuthLoginScreen() {
       setAuthNotice({ text: message, error: true })
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleVerifyOtpFallback(e: React.FormEvent) {
+    e.preventDefault()
+    if (!supabase || !pendingOtpType || !authEmail.trim() || !otpCode.trim()) return
+    setVerifyingOtp(true)
+    setAuthNotice(null)
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: authEmail.trim(),
+        token: otpCode.trim(),
+        type: pendingOtpType,
+      })
+      if (error) {
+        setAuthNotice({ text: `OTP verification failed: ${error.message}`, error: true })
+      } else if (pendingOtpType === 'recovery') {
+        setPendingOtpType(null)
+        setOtpCode('')
+        setIsRecoverySession(true)
+        setAuthNotice({
+          text: '6-digit reset code verified! Enter your new password below.',
+          error: false,
+        })
+      } else {
+        setPendingOtpType(null)
+        setOtpCode('')
+        setAuthNotice({
+          text: 'Email verified via 6-digit OTP! Signing you into your workspace...',
+          error: false,
+        })
+      }
+    } catch (err: unknown) {
+      setAuthNotice({
+        text: err instanceof Error ? err.message : String(err),
+        error: true,
+      })
+    } finally {
+      setVerifyingOtp(false)
     }
   }
 
@@ -362,6 +426,36 @@ export function AuthLoginScreen() {
                         : 'Send Password Reset Email'}
                 </button>
               </form>
+
+              {pendingOtpType && (
+                <form
+                  onSubmit={(e) => void handleVerifyOtpFallback(e)}
+                  className="mt-4 pt-4 border-t border-zinc-200 dark:border-white/10 space-y-2.5 text-xs"
+                >
+                  <div className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">
+                    Link didn&apos;t work? Enter the 6-digit OTP from your email:
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={8}
+                      placeholder="123456"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\s+/g, ''))}
+                      className="flex-1 rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs font-mono tracking-widest text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={verifyingOtp || otpCode.trim().length < 6}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </>
           )}
         </div>
