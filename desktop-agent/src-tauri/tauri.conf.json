@@ -42,7 +42,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY3Q0E4NkVFQTZERDg1MTcKUldRWGhkMm03b2JLOThWRk1LNERnM2lZOVlOWmJTVE0vcTNUM3lNNWFjMGFsRHEySVczOEIwcXMK%",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY3Q0E4NkVFQTZERDg1MTcKUldRWGhkMm03b2JLOThWRk1LNERnM2lZOVlOWmJTVE0vcTNUM3lNNWFjMGFsRHEySVczOEIwcXMK",
       "endpoints": [
         "https://github.com/KodeMargin/TikTrack-Release/releases/latest/download/latest.json"
       ]
