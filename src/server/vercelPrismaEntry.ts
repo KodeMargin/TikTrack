@@ -19,6 +19,15 @@ function normalizeVercelRequestUrl(req: IncomingMessage): void {
   if (parsed.pathname === '/api/prisma') {
     const remainingQuery = parsed.searchParams.toString()
     req.url = `/api/prisma/${remainingQuery ? `?${remainingQuery}` : ''}`
+    return
+  }
+
+  // If routed through Vercel Services with the /api/prisma prefix stripped (or via a service binding),
+  // normalize back to /api/prisma/<subpath> so handlePrismaApiRequest matches consistently.
+  if (!parsed.pathname.startsWith('/api/prisma/')) {
+    const cleanSubpath = parsed.pathname.replace(/^\/+/, '')
+    const remainingQuery = parsed.searchParams.toString()
+    req.url = `/api/prisma/${cleanSubpath}${remainingQuery ? `?${remainingQuery}` : ''}`
   }
 }
 

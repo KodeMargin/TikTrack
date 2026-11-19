@@ -5129,6 +5129,12 @@ function normalizeVercelRequestUrl(req) {
 	if (parsed.pathname === "/api/prisma") {
 		const remainingQuery = parsed.searchParams.toString();
 		req.url = `/api/prisma/${remainingQuery ? `?${remainingQuery}` : ""}`;
+		return;
+	}
+	if (!parsed.pathname.startsWith("/api/prisma/")) {
+		const cleanSubpath = parsed.pathname.replace(/^\/+/, "");
+		const remainingQuery = parsed.searchParams.toString();
+		req.url = `/api/prisma/${cleanSubpath}${remainingQuery ? `?${remainingQuery}` : ""}`;
 	}
 }
 async function handler(req, res) {
