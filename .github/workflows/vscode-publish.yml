@@ -1,0 +1,83 @@
+name: Publish VS Code Extension
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'vscode-extension/**'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Optional semver bump before publishing (none, patch, minor, major)'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: read
+
+jobs:
+  publish-extension:
+    name: Build & Publish TikTrack VS Code Extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode-extension
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck & Build extension
+        run: |
+          npm run typecheck
+          npm run build
+
+      - name: Package .vsix
+        run: npx @vscode/vsce package
+
+      - name: Upload .vsix build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktrack-vscode-extension-vsix
+          path: vscode-extension/*.vsix
+          retention-days: 30
+
+      - name: Publish to Visual Studio Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "VSCE_PAT secret is not set; skipping Visual Studio Marketplace publish."
+            exit 0
+          fi
+          BUMP="${{ inputs.bump || 'none' }}"
+          if [ "$BUMP" != "none" ]; then
+            npx @vscode/vsce publish "$BUMP" --pat "$VSCE_PAT"
+          else
+            npx @vscode/vsce publish --pat "$VSCE_PAT"
+          fi
+
+      - name: Publish to Open VSX Registry (optional)
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "$OVSX_PAT" ]; then
+            echo "OVSX_PAT secret is not set; skipping Open VSX publish."
+            exit 0
+          fi
+          npx ovsx publish *.vsix -p "$OVSX_PAT"
