@@ -7,6 +7,7 @@
  */
 
 import { prisma, checkPrismaConnection } from '../lib/prisma.ts'
+import { ensureSupabaseAuthUser } from './emailService.ts'
 import { handleBootstrapPhase2Data } from './prismaPhase2Handlers.ts'
 import { handleBootstrapPhase3Data } from './prismaPhase3Handlers.ts'
 import { handleBootstrapPhase4Data } from './prismaPhase4Handlers.ts'
@@ -360,6 +361,22 @@ export async function handleCreateTenant(body: {
       .replace(/[^a-z0-9-]+/g, '-')
       .replace(/^-|-$/g, '') || `workspace-${crypto.randomUUID().slice(0, 6)}`
   const normalizedOwnerEmail = body.ownerEmail.toLowerCase().trim()
+
+  // Ensure the owner exists in Supabase Auth before inserting into `public.user_profiles`
+  // (which references `auth.users(id)`).
+  const preExistingProfile = await prisma.userProfile.findFirst({
+    where: { email: { equals: normalizedOwnerEmail, mode: 'insensitive' } },
+    select: { id: true },
+  })
+  const authOwner = !preExistingProfile
+    ? await ensureSupabaseAuthUser({
+      email: normalizedOwnerEmail,
+      name: body.ownerName.trim() || normalizedOwnerEmail.split('@')[0],
+      role: 'tenant_owner',
+      tenantName: body.name,
+    })
+    : null
+
   const created = await prisma.$transaction(async (tx) => {
     const existingSlug = await tx.tenant.findUnique({
       where: { slug: baseSlug },
@@ -367,9 +384,13 @@ export async function handleCreateTenant(body: {
     })
     const slug = existingSlug ? `${baseSlug}-${crypto.randomUUID().slice(0, 4)}` : baseSlug
 
-    const existingUser = await tx.userProfile.findFirst({
-      where: { email: { equals: normalizedOwnerEmail, mode: 'insensitive' } },
-    })
+    const existingUser =
+      (authOwner?.userId
+        ? await tx.userProfile.findUnique({ where: { id: authOwner.userId } })
+        : null) ||
+      (await tx.userProfile.findFirst({
+        where: { email: { equals: normalizedOwnerEmail, mode: 'insensitive' } },
+      }))
 
     const user = existingUser
       ? await tx.userProfile.update({
@@ -381,7 +402,7 @@ export async function handleCreateTenant(body: {
       })
       : await tx.userProfile.create({
         data: {
-          id: crypto.randomUUID(),
+          id: authOwner?.userId || crypto.randomUUID(),
           email: normalizedOwnerEmail,
           fullName: body.ownerName.trim(),
           defaultTimezone: body.timezone,

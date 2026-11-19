@@ -8,6 +8,16 @@ interface SendInviteParams {
   tenantName?: string
   redirectTo?: string
   temporaryPassword?: string
+  skipAuthProvision?: boolean
+}
+
+export interface EnsureSupabaseAuthUserParams {
+  email: string
+  name: string
+  role?: string
+  tenantId?: string
+  tenantName?: string
+  temporaryPassword?: string
 }
 
 interface SendOwnerSignupParams {
@@ -95,9 +105,11 @@ export async function sendViaResend(
     }
 
     if (!response.ok) {
+      const errMsg = data.message || `Resend API rejected request (${response.status}).`
+      console.error('[EmailService] Resend rejected email:', { to: params.to, status: response.status, errMsg })
       return {
         ok: false,
-        message: data.message || `Resend API rejected request (${response.status}).`,
+        message: errMsg,
       }
     }
 
@@ -108,6 +120,7 @@ export async function sendViaResend(
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
+    console.error('[EmailService] Resend network error:', message)
     return { ok: false, message: `Resend network error: ${message}` }
   }
 }
@@ -122,6 +135,87 @@ export function getSupabaseAdminClient(): SupabaseClient | null {
       persistSession: false,
     },
   })
+}
+
+/**
+ * Ensures the user exists in Supabase Auth (`auth.users`) BEFORE Prisma inserts into
+ * `public.user_profiles` (which references `auth.users(id)`), returning the canonical
+ * `auth.users.id` UUID. If `temporaryPassword` is provided, sets/updates the password
+ * and `mustChangePassword: true` silently without triggering Supabase emails.
+ */
+export async function ensureSupabaseAuthUser(
+  params: EnsureSupabaseAuthUserParams
+): Promise<{ ok: boolean; userId?: string; message?: string }> {
+  const admin = getSupabaseAdminClient()
+  if (!admin) {
+    return {
+      ok: false,
+      message: 'SUPABASE_SERVICE_ROLE_KEY is not configured.',
+    }
+  }
+
+  const normalizedEmail = params.email.trim().toLowerCase()
+  const tempPassword = params.temporaryPassword?.trim() || ''
+  const workspaceName = params.tenantName?.trim() || 'TikTrack Workspace'
+
+  try {
+    // First check if a Supabase Auth user already exists with this email
+    const { data: listData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+    const existing = listData?.users?.find(
+      (u) => u.email?.toLowerCase() === normalizedEmail
+    )
+
+    if (existing) {
+      if (tempPassword) {
+        const { error: updateErr } = await admin.auth.admin.updateUserById(existing.id, {
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            ...existing.user_metadata,
+            fullName: params.name,
+            ...(params.tenantId ? { tenantId: params.tenantId } : {}),
+            ...(params.tenantName ? { tenantName: workspaceName } : {}),
+            ...(params.role ? { role: params.role } : {}),
+            mustChangePassword: true,
+          },
+        })
+        if (updateErr) {
+          console.warn('[EmailService] Supabase admin updateUserById warning:', updateErr.message)
+        }
+      }
+      return { ok: true, userId: existing.id }
+    }
+
+    // Create new Supabase Auth user silently (no Supabase email triggered)
+    const effectivePassword =
+      tempPassword || `TT-${Math.random().toString(36).slice(2, 10)}A1!`
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: normalizedEmail,
+      password: effectivePassword,
+      email_confirm: true,
+      user_metadata: {
+        fullName: params.name,
+        ...(params.tenantId ? { tenantId: params.tenantId } : {}),
+        ...(params.tenantName ? { tenantName: workspaceName } : {}),
+        ...(params.role ? { role: params.role } : {}),
+        mustChangePassword: Boolean(tempPassword),
+      },
+    })
+
+    if (createErr || !created?.user?.id) {
+      console.warn('[EmailService] Supabase admin createUser warning:', createErr?.message)
+      return {
+        ok: false,
+        message: createErr?.message || 'Failed to provision Supabase Auth user.',
+      }
+    }
+
+    return { ok: true, userId: created.user.id }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[EmailService] Supabase ensureAuthUser error:', message)
+    return { ok: false, message }
+  }
 }
 
 function escapeHtml(value: string): string {
@@ -255,52 +349,19 @@ export async function sendWorkspaceInviteEmail(
   params: SendInviteParams
 ): Promise<{ ok: boolean; method: string; message: string }> {
   const workspaceName = params.tenantName?.trim() || 'TikTrack Workspace'
-  const loginUrl = params.redirectTo || `${getAppBaseUrl()}/auth-privacy`
+  const loginUrl = params.redirectTo || `${getAppBaseUrl()}/`
   const tempPassword = params.temporaryPassword?.trim() || ''
 
   // 1. Silently provision or update the Supabase Auth credentials (NO Supabase email triggered)
-  const admin = getSupabaseAdminClient()
-  if (admin && tempPassword) {
-    try {
-      const { error: createErr } = await admin.auth.admin.createUser({
-        email: params.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          fullName: params.name,
-          tenantId: params.tenantId,
-          tenantName: workspaceName,
-          role: params.role,
-          mustChangePassword: true,
-        },
-      })
-
-      if (createErr) {
-        const { data: listData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-        const existing = listData?.users?.find(
-          (u) => u.email?.toLowerCase() === params.email.toLowerCase()
-        )
-        if (existing) {
-          await admin.auth.admin.updateUserById(existing.id, {
-            password: tempPassword,
-            email_confirm: true,
-            user_metadata: {
-              ...existing.user_metadata,
-              fullName: params.name,
-              tenantId: params.tenantId,
-              tenantName: workspaceName,
-              role: params.role,
-              mustChangePassword: true,
-            },
-          })
-        } else {
-          console.warn('[EmailService] Supabase admin createUser warning:', createErr.message)
-        }
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error('[EmailService] Supabase silent provision error:', message)
-    }
+  if (!params.skipAuthProvision && tempPassword) {
+    await ensureSupabaseAuthUser({
+      email: params.email,
+      name: params.name,
+      role: params.role,
+      tenantId: params.tenantId,
+      tenantName: workspaceName,
+      temporaryPassword: tempPassword,
+    })
   }
 
   // 2. Dispatch the invitation email directly through Resend API

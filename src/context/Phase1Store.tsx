@@ -263,7 +263,8 @@ interface Phase1StoreContextValue {
     currency: string
     ownerName: string
     ownerEmail: string
-  }) => { ok: boolean; message: string }
+    skipOwnerInvite?: boolean
+  }) => Promise<{ ok: boolean; message: string }>
   provisionWorkspaceSelfService: (input: {
     name: string
     slug: string
@@ -288,11 +289,11 @@ interface Phase1StoreContextValue {
     role: UserRole,
     temporaryPassword?: string,
     customPermissions?: string[]
-  ) => { ok: boolean; message: string }
+  ) => Promise<{ ok: boolean; message: string; emailSent?: boolean; temporaryPassword?: string }>
   completeFirstTimePasswordChange: (
     newPassword: string
   ) => Promise<{ ok: boolean; message: string }>
-  resendMemberInvite: (memberId: string) => { ok: boolean; message: string }
+  resendMemberInvite: (memberId: string) => Promise<{ ok: boolean; message: string }>
   toggleMemberStatus: (memberId: string, nextStatus: WorkspaceMember['status']) => void
   deleteMember: (memberId: string) => { ok: boolean; message: string }
   acknowledgeCurrentPolicy: () => void
@@ -1031,14 +1032,15 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     setActiveUserId(realOwnerId)
   }
 
-  function createTenantWorkspace(input: {
+  async function createTenantWorkspace(input: {
     name: string
     slug: string
     timezone: string
     currency: string
     ownerName: string
     ownerEmail: string
-  }): { ok: boolean; message: string } {
+    skipOwnerInvite?: boolean
+  }): Promise<{ ok: boolean; message: string }> {
     const cleanSlugCheck = input.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
     if (tenants.some((t) => t.slug === cleanSlugCheck)) {
       return { ok: false, message: `Workspace slug "${cleanSlugCheck}" already exists.` }
@@ -1052,15 +1054,24 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     setActiveUserId(newOwnerId)
 
     if (prismaStatus.connected) {
-      void createTenantViaPrisma(input).then((res) => {
+      try {
+        const res = await createTenantViaPrisma(input)
         if (res?.ok && res.tenantId && res.ownerId) {
           syncProvisionedIds(newTenantId, newOwnerId, res.tenantId, res.ownerId, res.slug)
           void refreshPrismaConnection()
+        } else {
+          return {
+            ok: false,
+            message: 'Workspace could not be persisted to database. Please try again.',
+          }
         }
-      })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to create workspace'
+        return { ok: false, message: msg }
+      }
     }
 
-    return { ok: true, message: `Workspace "${input.name}" provisioned cleanly.` }
+    return { ok: true, message: `Workspace "${input.name}" provisioned and activated.` }
   }
 
   async function provisionWorkspaceSelfService(input: {
@@ -1165,13 +1176,13 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  function inviteMember(
+  async function inviteMember(
     name: string,
     email: string,
     role: UserRole,
     temporaryPassword?: string,
     customPermissions?: string[]
-  ): { ok: boolean; message: string } {
+  ): Promise<{ ok: boolean; message: string; emailSent?: boolean; temporaryPassword?: string }> {
     const activeSeatCount = tenantMembers.filter((m) => m.status === 'active').length
     if (activeSeatCount >= activeEntitlement.maxSeats) {
       return {
@@ -1226,34 +1237,63 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       `memberships:${normalizedEmail}`,
       `Invited ${name} (${normalizedEmail}) with role ${role}`
     )
+
     if (prismaStatus.connected) {
-      void inviteMemberViaPrisma({
+      const res = await inviteMemberViaPrisma({
         tenantId: activeTenant.id,
         name: name.trim(),
         email: normalizedEmail,
         role,
         temporaryPassword,
         customPermissions,
-      }).then((res) => {
-        if (res?.ok && res.userId) {
-          setMembers((prev) =>
-            prev.map((m) =>
-              m.email.toLowerCase().trim() === normalizedEmail
-                ? {
-                  ...m,
-                  id: res.userId!,
-                  mustChangePassword: true,
-                  temporaryPassword,
-                }
-                : m
-            )
-          )
-        }
       })
+
+      if (!res || !res.ok) {
+        return {
+          ok: false,
+          emailSent: false,
+          message: res?.error || 'Failed to save invitation or dispatch email. Check server logs.',
+        }
+      }
+
+      const issuedTempPass = res.temporaryPassword || temporaryPassword
+      if (res.userId) {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.tenantId === activeTenant.id && m.email.toLowerCase().trim() === normalizedEmail
+              ? {
+                ...m,
+                id: res.userId!,
+                mustChangePassword: true,
+                temporaryPassword: issuedTempPass,
+              }
+              : m
+          )
+        )
+      }
+
+      if (res.emailSent === false) {
+        return {
+          ok: true,
+          emailSent: false,
+          temporaryPassword: issuedTempPass,
+          message: `Member ${name} was added, but invitation email failed: ${res.emailMessage || 'Email service error'}`,
+        }
+      }
+
+      return {
+        ok: true,
+        emailSent: true,
+        temporaryPassword: issuedTempPass,
+        message: `Invited ${name} (${role}) to ${activeTenant.name}. Invitation email sent to ${normalizedEmail} via Resend!`,
+      }
     }
+
     return {
       ok: true,
-      message: `Invited ${name} (${role}) to ${activeTenant.name}. Credentials dispatched via email!`,
+      emailSent: false,
+      temporaryPassword,
+      message: `Invited ${name} (${role}) locally (database offline — email not dispatched).`,
     }
   }
 
@@ -1300,7 +1340,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: 'Password successfully updated! Your workspace is ready.' }
   }
 
-  function resendMemberInvite(memberId: string): { ok: boolean; message: string } {
+  async function resendMemberInvite(memberId: string): Promise<{ ok: boolean; message: string }> {
     const member = members.find((m) => m.id === memberId)
     if (!member) return { ok: false, message: 'Member not found' }
     appendAudit(
@@ -1309,9 +1349,35 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       `Resent invitation email to ${member.name} (${member.email})`
     )
     if (prismaStatus.connected) {
-      void resendMemberInviteViaPrisma({ tenantId: activeTenant.id, userId: member.id })
+      const res = await resendMemberInviteViaPrisma({
+        tenantId: activeTenant.id,
+        userId: member.id,
+        temporaryPassword: member.temporaryPassword,
+      })
+      if (!res || !res.ok) {
+        return {
+          ok: false,
+          message: res?.message || res?.error || `Failed to resend invitation email to ${member.email}.`,
+        }
+      }
+      if (res.temporaryPassword) {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.id === member.id && m.tenantId === activeTenant.id
+              ? { ...m, temporaryPassword: res.temporaryPassword }
+              : m
+          )
+        )
+      }
+      return {
+        ok: true,
+        message: res.message || `Invitation email resent to ${member.email} via Resend.`,
+      }
     }
-    return { ok: true, message: `Invitation email resent to ${member.email} via Resend.` }
+    return {
+      ok: false,
+      message: `Cannot send email to ${member.email} while database/API is offline.`,
+    }
   }
 
   function toggleMemberStatus(memberId: string, nextStatus: WorkspaceMember['status']) {

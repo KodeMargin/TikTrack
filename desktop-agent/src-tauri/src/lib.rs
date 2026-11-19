@@ -4,11 +4,12 @@ use aes_gcm::{
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use chrono::Utc;
+#[cfg(not(target_os = "macos"))]
 use keyring::{Entry as KeyringEntry, Error as KeyringError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Instant;
 use tauri::{AppHandle, Manager, State};
@@ -388,10 +389,53 @@ pub fn sanitize_metadata(
     Ok(raw)
 }
 
+#[cfg(not(target_os = "macos"))]
 const KEYRING_SERVICE: &str = "com.tiktrack.desktopagent";
+#[cfg(not(target_os = "macos"))]
 const KEYRING_USER: &str = "offline_queue_encryption_key";
 
-fn load_or_create_encryption_key() -> Result<[u8; 32], String> {
+#[cfg(target_os = "macos")]
+const LOCAL_KEY_FILE: &str = ".tiktrack_queue.key";
+
+#[cfg(target_os = "macos")]
+fn load_or_create_encryption_key(data_dir: &Path) -> Result<[u8; 32], String> {
+    use std::io::Write;
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    let key_path = data_dir.join(LOCAL_KEY_FILE);
+    if key_path.exists() {
+        let encoded = fs::read_to_string(&key_path)
+            .map_err(|e| format!("failed to read local encryption key: {e}"))?;
+        let decoded = BASE64
+            .decode(encoded.trim())
+            .map_err(|e| format!("invalid base64 local encryption key: {e}"))?;
+        let key: [u8; 32] = decoded.try_into().map_err(|v: Vec<u8>| {
+            format!(
+                "unexpected local encryption key length: expected 32 bytes, got {}",
+                v.len()
+            )
+        })?;
+        return Ok(key);
+    }
+
+    let mut key = [0u8; 32];
+    aes_gcm::aead::rand_core::RngCore::fill_bytes(&mut OsRng, &mut key);
+    let encoded = BASE64.encode(key);
+
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&key_path)
+        .map_err(|e| format!("failed to create local encryption key file: {e}"))?;
+    file.write_all(encoded.as_bytes())
+        .map_err(|e| format!("failed to write local encryption key file: {e}"))?;
+    let _ = fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600));
+    Ok(key)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn load_or_create_encryption_key(_data_dir: &Path) -> Result<[u8; 32], String> {
     let entry = KeyringEntry::new(KEYRING_SERVICE, KEYRING_USER)
         .map_err(|e| format!("keyring entry init failed: {e}"))?;
 
@@ -570,10 +614,15 @@ async fn login_with_password(
         .await
         .map_err(|e| format!("Could not reach TikTrack server ({base}): {e}"))?;
 
-    let body: serde_json::Value = resp
-        .json()
+    let http_status = resp.status();
+    let raw_text = resp
+        .text()
         .await
-        .map_err(|e| format!("Invalid server response: {e}"))?;
+        .map_err(|e| format!("Failed reading server response (HTTP {http_status}): {e}"))?;
+    let body: serde_json::Value = serde_json::from_str(&raw_text).map_err(|_| {
+        let snippet: String = raw_text.trim().chars().take(120).collect();
+        format!("Server returned HTTP {http_status} (non-JSON): {snippet}")
+    })?;
 
     if !body.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
         let err = body
@@ -662,10 +711,15 @@ async fn login_with_pairing_token(
         .await
         .map_err(|e| format!("Could not reach TikTrack server ({base}): {e}"))?;
 
-    let body: serde_json::Value = resp
-        .json()
+    let http_status = resp.status();
+    let raw_text = resp
+        .text()
         .await
-        .map_err(|e| format!("Invalid server response: {e}"))?;
+        .map_err(|e| format!("Failed reading server response (HTTP {http_status}): {e}"))?;
+    let body: serde_json::Value = serde_json::from_str(&raw_text).map_err(|_| {
+        let snippet: String = raw_text.trim().chars().take(120).collect();
+        format!("Server returned HTTP {http_status} (non-JSON): {snippet}")
+    })?;
 
     if !body.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
         let err = body
@@ -1332,7 +1386,7 @@ pub fn run() {
                 .unwrap_or_else(|_| std::env::temp_dir().join("tiktrack-agent"));
             let _ = fs::create_dir_all(&data_dir);
 
-            let encryption_key = load_or_create_encryption_key()
+            let encryption_key = load_or_create_encryption_key(&data_dir)
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
             let recovered: Option<RecoverySnapshot> =

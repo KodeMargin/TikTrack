@@ -7,53 +7,97 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v0.2.0)'
+        description: 'Release version tag (e.g. v0.2.1)'
         required: false
-        default: 'v0.2.0'
+        default: 'v0.2.1'
+      platforms:
+        description: 'Platforms to build (default skips 10x-cost macOS runners; build macOS locally for $0)'
+        required: false
+        default: 'windows-linux'
+        type: choice
+        options:
+          - windows-linux
+          - all
+          - macos-arm64
+          - macos-all
+          - windows
+          - linux
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    name: Select Build Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Build platform matrix
+        id: set-matrix
+        shell: bash
+        run: |
+          PLATFORMS="${{ inputs.platforms || 'windows-linux' }}"
+          case "$PLATFORMS" in
+            all)
+              MATRIX='[{"name":"macOS Apple Silicon (ARM64)","platform":"macos-latest","target":"aarch64-apple-darwin","args":"--target aarch64-apple-darwin"},{"name":"macOS Intel (x86_64)","platform":"macos-latest","target":"x86_64-apple-darwin","args":"--target x86_64-apple-darwin"},{"name":"Windows (x86_64)","platform":"windows-latest","target":"x86_64-pc-windows-msvc","args":""},{"name":"Linux (Ubuntu)","platform":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","args":""}]'
+              ;;
+            macos-arm64)
+              MATRIX='[{"name":"macOS Apple Silicon (ARM64)","platform":"macos-latest","target":"aarch64-apple-darwin","args":"--target aarch64-apple-darwin"}]'
+              ;;
+            macos-all)
+              MATRIX='[{"name":"macOS Apple Silicon (ARM64)","platform":"macos-latest","target":"aarch64-apple-darwin","args":"--target aarch64-apple-darwin"},{"name":"macOS Intel (x86_64)","platform":"macos-latest","target":"x86_64-apple-darwin","args":"--target x86_64-apple-darwin"}]'
+              ;;
+            windows)
+              MATRIX='[{"name":"Windows (x86_64)","platform":"windows-latest","target":"x86_64-pc-windows-msvc","args":""}]'
+              ;;
+            linux)
+              MATRIX='[{"name":"Linux (Ubuntu)","platform":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","args":""}]'
+              ;;
+            *)
+              MATRIX='[{"name":"Windows (x86_64)","platform":"windows-latest","target":"x86_64-pc-windows-msvc","args":""},{"name":"Linux (Ubuntu)","platform":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","args":""}]'
+              ;;
+          esac
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   build-and-release:
     name: Build (${{ matrix.name }})
+    needs: prepare
+    timeout-minutes: 25
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: 'macOS Apple Silicon (ARM64)'
-            platform: 'macos-latest'
-            target: 'aarch64-apple-darwin'
-            args: '--target aarch64-apple-darwin'
-          - name: 'macOS Intel (x86_64)'
-            platform: 'macos-latest'
-            target: 'x86_64-apple-darwin'
-            args: '--target x86_64-apple-darwin'
-          - name: 'Windows (x86_64)'
-            platform: 'windows-latest'
-            target: 'x86_64-pc-windows-msvc'
-            args: ''
-          - name: 'Linux (Ubuntu)'
-            platform: 'ubuntu-22.04'
-            target: 'x86_64-unknown-linux-gnu'
-            args: ''
+        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Setup Node.js
+      - name: Setup Node.js (with npm cache)
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: 'npm'
+          cache-dependency-path: desktop-agent/package-lock.json
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Cache Rust cargo & build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop-agent/src-tauri
+          key: ${{ matrix.target }}
 
       - name: Install Linux dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
@@ -62,9 +106,8 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config libssl-dev libxdo-dev
 
       - name: Install desktop-agent dependencies
-        run: |
-          cd desktop-agent
-          npm install
+        working-directory: desktop-agent
+        run: npm ci
 
       - name: Build Tauri Desktop App
         uses: tauri-apps/tauri-action@v0
@@ -77,9 +120,9 @@ jobs:
           owner: 'KodeMargin'
           repo: 'TikTrack-Release'
           releaseCommitish: 'main'
-          tagName: ${{ inputs.version || github.ref_name || 'v0.2.0' }}
-          releaseName: "TikTrack Desktop Agent ${{ inputs.version || github.ref_name || 'v0.2.0' }}"
-          releaseBody: "Production release of TikTrack Desktop Agent for macOS (Apple Silicon & Intel), Windows, and Linux."
+          tagName: ${{ inputs.version || github.ref_name || 'v0.2.1' }}
+          releaseName: "TikTrack Desktop Agent ${{ inputs.version || github.ref_name || 'v0.2.1' }}"
+          releaseBody: "Production release of TikTrack Desktop Agent."
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

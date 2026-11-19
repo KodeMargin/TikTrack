@@ -103,19 +103,19 @@ export function WorkspaceOnboardingScreen({
     }
   }
 
-  function handleSendInvite(e: React.FormEvent) {
+  async function handleSendInvite(e: React.FormEvent) {
     e.preventDefault()
     const cleanName = devName.trim()
     const cleanEmail = devEmail.trim().toLowerCase()
     if (!cleanName || !cleanEmail) return
 
-    const res = inviteMember(
+    const res = await inviteMember(
       cleanName,
       cleanEmail,
       devRole,
       devTempPassword.trim() || undefined
     )
-    setInviteNotice({ ok: res.ok, text: res.message })
+    setInviteNotice({ ok: res.ok && res.emailSent !== false, text: res.message })
     if (res.ok) {
       setInvitedList((prev) => [
         ...prev.filter((item) => item.email !== cleanEmail),
@@ -365,7 +365,7 @@ export function WorkspaceOnboardingScreen({
                 </p>
               </div>
 
-              <form onSubmit={handleSendInvite} className="space-y-3 rounded-xl border border-zinc-200/80 dark:border-white/10 bg-zinc-50/70 dark:bg-white/[0.02] p-4">
+              <form onSubmit={(e) => void handleSendInvite(e)} className="space-y-3 rounded-xl border border-zinc-200/80 dark:border-white/10 bg-zinc-50/70 dark:bg-white/[0.02] p-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300 mb-1">

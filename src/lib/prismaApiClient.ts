@@ -222,6 +222,7 @@ export const inviteMemberViaPrisma = (input: {
   postJson<{
     ok: boolean
     userId?: string
+    temporaryPassword?: string
     emailSent?: boolean
     emailMessage?: string
     error?: string
@@ -230,9 +231,12 @@ export const inviteMemberViaPrisma = (input: {
 export const resendMemberInviteViaPrisma = (input: {
   tenantId: string
   userId: string
+  temporaryPassword?: string
 }) =>
   postJson<{
     ok: boolean
+    emailSent?: boolean
+    temporaryPassword?: string
     message?: string
     error?: string
   }>('/api/prisma/members/resend-invite', input)

@@ -7,7 +7,11 @@ import {
   type CustomRole,
 } from '@/types/permissions.types'
 
-export function RolesAndPermissionsManager() {
+export function RolesAndPermissionsManager({
+  hideInviteForm = false,
+}: {
+  hideInviteForm?: boolean
+} = {}) {
   const {
     activeTenant,
     activeUser,
@@ -40,6 +44,8 @@ export function RolesAndPermissionsManager() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<string>('developer')
   const [inviteTempPassword, setInviteTempPassword] = useState('')
+  const [isInviting, setIsInviting] = useState(false)
+  const [resendingMemberId, setResendingMemberId] = useState<string | null>(null)
 
   // Create role state
   const [showCreateRoleModal, setShowCreateRoleModal] = useState(false)
@@ -89,17 +95,26 @@ export function RolesAndPermissionsManager() {
     setInviteTempPassword(pass)
   }
 
-  function handleInvite(e: React.FormEvent) {
+  async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
-    if (!inviteName.trim() || !inviteEmail.trim()) return
+    if (!inviteName.trim() || !inviteEmail.trim() || isInviting) return
     const tempPass = inviteTempPassword.trim() || `Dev@${Math.floor(1000 + Math.random() * 9000)}!`
-    const res = inviteMember(inviteName.trim(), inviteEmail.trim(), inviteRole, tempPass)
-    if (res.ok) {
-      setInviteName('')
-      setInviteEmail('')
-      setInviteTempPassword('')
+    setIsInviting(true)
+    try {
+      const res = await inviteMember(inviteName.trim(), inviteEmail.trim(), inviteRole, tempPass)
+      if (res.ok) {
+        setInviteName('')
+        setInviteEmail('')
+        setInviteTempPassword('')
+      }
+      const issuedPass = res.temporaryPassword || tempPass
+      setBanner({
+        ok: res.ok && res.emailSent !== false,
+        text: res.ok ? `${res.message} Temporary Password: ${issuedPass}` : res.message,
+      })
+    } finally {
+      setIsInviting(false)
     }
-    setBanner({ ok: res.ok, text: `${res.message} Temporary Password: ${tempPass}` })
   }
 
   function handleCreateRoleSubmit(e: React.FormEvent) {
@@ -368,8 +383,8 @@ export function RolesAndPermissionsManager() {
       {activeTab === 'roster' && (
         <div className="space-y-5">
           {/* Quick Invite Form */}
-          {canManageMembers && (
-            <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-3.5">
+          {!hideInviteForm && canManageMembers && (
+            <form onSubmit={(e) => void handleInvite(e)} className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-3.5">
               <input
                 type="text"
                 placeholder="Full Name"
@@ -429,9 +444,10 @@ export function RolesAndPermissionsManager() {
               </div>
               <button
                 type="submit"
-                className="sm:col-span-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] font-semibold text-white px-3 py-2 cursor-pointer text-center shadow-xs transition"
+                disabled={isInviting}
+                className="sm:col-span-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] font-semibold text-white px-3 py-2 cursor-pointer text-center shadow-xs transition disabled:opacity-50"
               >
-                + Invite Member
+                {isInviting ? 'Sending Invite...' : '+ Invite Member'}
               </button>
             </form>
           )}
@@ -520,13 +536,20 @@ export function RolesAndPermissionsManager() {
                       {m.status === 'invited' && (
                         <button
                           type="button"
+                          disabled={resendingMemberId === m.id}
                           onClick={() => {
-                            const res = resendMemberInvite(m.id)
-                            setBanner({ ok: res.ok, text: res.message })
+                            setResendingMemberId(m.id)
+                            void resendMemberInvite(m.id)
+                              .then((res) => {
+                                setBanner({ ok: res.ok, text: res.message })
+                              })
+                              .finally(() => {
+                                setResendingMemberId(null)
+                              })
                           }}
-                          className="text-[11px] font-medium text-[#6d25da] dark:text-[#a87ce9] hover:text-[#581eae] dark:hover:text-[#c5a8f0] underline cursor-pointer"
+                          className="text-[11px] font-medium text-[#6d25da] dark:text-[#a87ce9] hover:text-[#581eae] dark:hover:text-[#c5a8f0] underline cursor-pointer disabled:opacity-50"
                         >
-                          Resend Invite
+                          {resendingMemberId === m.id ? 'Sending...' : 'Resend Invite'}
                         </button>
                       )}
 

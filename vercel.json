@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/prisma/(.*)",
+      "destination": "/api/prisma?__path=$1"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

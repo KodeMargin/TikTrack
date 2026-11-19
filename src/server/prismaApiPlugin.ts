@@ -13,6 +13,7 @@ import dotenv from 'dotenv'
 import type { Plugin } from 'vite'
 import { checkPrismaConnection, prisma } from '../lib/prisma.ts'
 import {
+  ensureSupabaseAuthUser,
   sendOwnerSignupVerificationEmail,
   sendPasswordRecoveryEmail,
   sendWorkspaceInviteEmail,
@@ -312,7 +313,12 @@ export async function handlePrismaApiRequest(
                   reason: `Resent invitation email to ${member.user.email} via Resend`,
                 },
               })
-              return sendJson(res, 200, { ok: emailResult.ok, message: emailResult.message })
+              return sendJson(res, 200, {
+                ok: emailResult.ok,
+                emailSent: emailResult.ok,
+                message: emailResult.message,
+                temporaryPassword: freshTempPassword,
+              })
             }
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/members') && !url.includes('/status') && !url.includes('/resend-invite')) {
@@ -325,15 +331,38 @@ export async function handlePrismaApiRequest(
                 customPermissions?: string[]
               }>(req)
               if (!isValidUuid(body.tenantId) || !body.email?.trim() || !body.name?.trim()) {
-                return sendJson(res, 200, { ok: false, error: 'Valid tenantId, name, and email are required.' })
+                return sendJson(res, 400, { ok: false, error: 'Valid tenantId, name, and email are required.' })
               }
               const normalizedEmail = body.email.toLowerCase().trim()
+              const effectiveTempPassword =
+                body.temporaryPassword?.trim() || `TT-${crypto.randomBytes(4).toString('hex')}!`
               try {
+                const tenantRecord = await prisma.tenant.findUnique({
+                  where: { id: body.tenantId },
+                  select: { name: true },
+                })
+
+                // 1. Provision or locate the user in Supabase Auth FIRST so `auth.users(id)` exists
+                //    before Prisma inserts into `public.user_profiles` (which has FK -> auth.users.id).
+                const authProvision = await ensureSupabaseAuthUser({
+                  email: normalizedEmail,
+                  name: body.name.trim(),
+                  role: body.role,
+                  tenantId: body.tenantId,
+                  tenantName: tenantRecord?.name,
+                  temporaryPassword: effectiveTempPassword,
+                })
+
                 let resolvedUserId = ''
                 await prisma.$transaction(async (tx) => {
-                  const existingUser = await tx.userProfile.findFirst({
-                    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
-                  })
+                  const existingUserById = authProvision.userId
+                    ? await tx.userProfile.findUnique({ where: { id: authProvision.userId } })
+                    : null
+                  const existingUser =
+                    existingUserById ||
+                    (await tx.userProfile.findFirst({
+                      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+                    }))
 
                   if (existingUser) {
                     resolvedUserId = existingUser.id
@@ -344,7 +373,7 @@ export async function handlePrismaApiRequest(
                       })
                     }
                   } else {
-                    resolvedUserId = crypto.randomUUID()
+                    resolvedUserId = authProvision.userId || crypto.randomUUID()
                     await tx.userProfile.create({
                       data: { id: resolvedUserId, email: normalizedEmail, fullName: body.name.trim() },
                     })
@@ -427,29 +456,26 @@ export async function handlePrismaApiRequest(
                       tenantId: body.tenantId,
                       actionType: 'MEMBER_INVITED',
                       targetEntity: `memberships:${normalizedEmail}`,
-                      reason: `Invited ${body.name} with role ${body.role}${body.temporaryPassword ? ' (temporary password issued)' : ''}`,
+                      reason: `Invited ${body.name} with role ${body.role} (temporary password issued)`,
                     },
                   })
                 })
 
-                const tenantRecord = await prisma.tenant.findUnique({
-                  where: { id: body.tenantId },
-                  select: { name: true },
-                })
-
-                // Dispatch real invitation email directly via Resend API
+                // 2. Dispatch real invitation email directly via Resend API
                 const emailResult = await sendWorkspaceInviteEmail({
                   email: normalizedEmail,
                   name: body.name.trim(),
                   role: body.role,
                   tenantId: body.tenantId,
                   tenantName: tenantRecord?.name,
-                  temporaryPassword: body.temporaryPassword,
+                  temporaryPassword: effectiveTempPassword,
+                  skipAuthProvision: true,
                 })
 
                 return sendJson(res, 201, {
                   ok: true,
                   userId: resolvedUserId,
+                  temporaryPassword: effectiveTempPassword,
                   emailSent: emailResult.ok,
                   emailMessage: emailResult.message,
                 })
