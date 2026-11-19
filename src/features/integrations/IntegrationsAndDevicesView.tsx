@@ -43,6 +43,7 @@ export function IntegrationsAndDevicesView() {
   const [whTamperSig, setWhTamperSig] = useState(false)
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null)
   const [copiedToken, setCopiedToken] = useState(false)
+  const [copiedMacFix, setCopiedMacFix] = useState(false)
   const [desktopRelease, setDesktopRelease] = useState(DEFAULT_DESKTOP_RELEASE)
 
   useEffect(() => {
@@ -254,6 +255,27 @@ export function IntegrationsAndDevicesView() {
               >
                 🐧 Linux (.deb)
               </a>
+            </div>
+
+            {/* macOS Gatekeeper notice */}
+            <div className="rounded-lg border border-amber-300/70 dark:border-amber-500/30 bg-amber-50/80 dark:bg-amber-950/25 p-2.5 space-y-1.5 text-[11px] text-amber-900 dark:text-amber-200">
+              <p className="leading-snug">
+                <strong>macOS note:</strong> If macOS says &ldquo;TikTrack is damaged and can&apos;t be opened&rdquo;, move it to <code className="font-mono">Applications</code> and run once in Terminal:
+              </p>
+              <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 dark:border-amber-500/25 bg-white dark:bg-zinc-950/90 px-2.5 py-1.5 font-mono text-[10.5px] text-zinc-800 dark:text-amber-100">
+                <code className="truncate">xattr -cr /Applications/TikTrack.app</code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText('xattr -cr /Applications/TikTrack.app')
+                    setCopiedMacFix(true)
+                    setTimeout(() => setCopiedMacFix(false), 2000)
+                  }}
+                  className="px-2 py-0.5 rounded bg-amber-100 dark:bg-zinc-800 hover:bg-amber-200 dark:hover:bg-zinc-700 font-sans font-semibold text-[10px] text-amber-900 dark:text-zinc-200 shrink-0 transition"
+                >
+                  {copiedMacFix ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
