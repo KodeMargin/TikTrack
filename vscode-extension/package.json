@@ -4,7 +4,7 @@
   "description": "Opt-in IDE workspace/branch task mapper, debug session lifecycle, and test runner summary collector for DevProof (zero source code or keystroke exfiltration).",
   "version": "0.2.0",
   "type": "module",
-  "publisher": "devproof",
+  "publisher": "kodemargin",
   "icon": "icon.png",
   "repository": {
     "type": "git",
