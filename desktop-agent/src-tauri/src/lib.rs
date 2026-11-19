@@ -410,7 +410,7 @@ fn start_or_transition_session(
         &guard.excluded_apps,
     )?;
 
-    guard.offline_queue.push(OfflineQueueEnvelope {
+    let envelope = OfflineQueueEnvelope {
         id: Uuid::new_v4().to_string(),
         endpoint: "/functions/v1/sessions-transition".to_string(),
         payload: serde_json::json!({
@@ -421,7 +421,8 @@ fn start_or_transition_session(
             "metadata": safe_meta,
         }),
         created_at_utc: Utc::now().to_rfc3339(),
-    });
+    };
+    guard.offline_queue.push(envelope);
 
     guard.persist_recovery_and_queue();
     sync_tray_label(&app, &guard);
@@ -453,7 +454,7 @@ fn record_activity_bucket(
     if category != "excluded_private" {
         let event_id = Uuid::new_v4().to_string();
         let batch_id = Uuid::new_v4().to_string();
-        guard.offline_queue.push(OfflineQueueEnvelope {
+        let envelope = OfflineQueueEnvelope {
             id: batch_id.clone(),
             endpoint: "/functions/v1/tracking-events-batch".to_string(),
             payload: serde_json::json!({
@@ -477,7 +478,8 @@ fn record_activity_bucket(
                 }]
             }),
             created_at_utc: Utc::now().to_rfc3339(),
-        });
+        };
+        guard.offline_queue.push(envelope);
         guard.persist_recovery_and_queue();
     }
 
@@ -497,7 +499,7 @@ fn reconcile_idle_gap(
 
     let event_id = Uuid::new_v4().to_string();
     let batch_id = Uuid::new_v4().to_string();
-    guard.offline_queue.push(OfflineQueueEnvelope {
+    let envelope = OfflineQueueEnvelope {
         id: batch_id.clone(),
         endpoint: "/functions/v1/tracking-events-batch".to_string(),
         payload: serde_json::json!({
@@ -520,7 +522,8 @@ fn reconcile_idle_gap(
             }]
         }),
         created_at_utc: Utc::now().to_rfc3339(),
-    });
+    };
+    guard.offline_queue.push(envelope);
     guard.persist_recovery_and_queue();
     Ok(guard.build_status_dto())
 }
