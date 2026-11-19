@@ -1,5 +1,5 @@
 /**
- * DevProof VS Code Extension - Privacy-Preserving Telemetry Buffer (F2-010..F2-016)
+ * TikTrack VS Code Extension - Privacy-Preserving Telemetry Buffer (F2-010..F2-016)
  *
  * Collects ONLY coarse summaries:
  * - 1-minute edit/save buckets (files_touched_count, language_ids, save_count)

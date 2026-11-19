@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "DevProof Tray",
-  "version": "0.1.0",
-  "identifier": "com.devproof.desktopagent",
+  "productName": "TikTrack",
+  "version": "0.2.0",
+  "identifier": "com.tiktrack.desktopagent",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,17 +12,17 @@
   "app": {
     "windows": [
       {
-        "title": "DevProof Desktop Timer",
-        "width": 380,
-        "height": 520,
+        "title": "TikTrack Desktop Timer",
+        "width": 400,
+        "height": 600,
         "resizable": false
       }
     ],
     "trayIcon": {
-      "id": "devproof-tray",
+      "id": "tiktrack-tray",
       "iconPath": "icons/32x32.png",
-      "tooltip": "DevProof Desktop Timer - Transparent Session Status",
-      "title": "DP Idle"
+      "tooltip": "TikTrack Desktop Timer - Transparent Session Status",
+      "title": "TikTrack Idle"
     },
     "security": {
       "csp": "default-src 'self'; connect-src 'self' https://*.supabase.co"

@@ -231,11 +231,11 @@ impl AgentRuntimeState {
             saved_at_utc: Utc::now().to_rfc3339(),
         };
         if let Ok(json) = serde_json::to_vec(&snapshot) {
-            let _ = fs::write(self.data_dir.join("devproof_recovery.json"), json);
+            let _ = fs::write(self.data_dir.join("tiktrack_recovery.json"), json);
         }
         if let Ok(queue_json) = serde_json::to_vec(&self.offline_queue) {
             if let Ok(encrypted) = encrypt_blob(&self.encryption_key, &queue_json) {
-                let _ = fs::write(self.data_dir.join("devproof_queue.enc"), encrypted);
+                let _ = fs::write(self.data_dir.join("tiktrack_queue.enc"), encrypted);
             }
         }
     }
@@ -263,7 +263,7 @@ pub fn sanitize_metadata(
     Ok(raw)
 }
 
-const KEYRING_SERVICE: &str = "com.devproof.desktopagent";
+const KEYRING_SERVICE: &str = "com.tiktrack.desktopagent";
 const KEYRING_USER: &str = "offline_queue_encryption_key";
 
 /// Loads the per-device 256-bit AES-GCM key from the OS credential store,
@@ -314,16 +314,16 @@ fn encrypt_blob(key: &[u8; 32], plaintext: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 fn sync_tray_label(app: &AppHandle, state: &AgentRuntimeState) {
-    if let Some(tray) = app.tray_by_id("devproof-tray") {
+    if let Some(tray) = app.tray_by_id("tiktrack-tray") {
         let title = if state.privacy_pause_active {
-            "DP PRIVACY PAUSE".to_string()
+            "TikTrack PRIVACY PAUSE".to_string()
         } else {
             match state.lifecycle {
-                TimerLifecycle::Running => format!("DP REC ({})", state.work_mode),
-                TimerLifecycle::Paused => "DP PAUSED".to_string(),
-                TimerLifecycle::OnBreak => "DP BREAK".to_string(),
-                TimerLifecycle::Completed => "DP SAVED".to_string(),
-                TimerLifecycle::Idle => "DP Idle".to_string(),
+                TimerLifecycle::Running => format!("TikTrack REC ({})", state.work_mode),
+                TimerLifecycle::Paused => "TikTrack PAUSED".to_string(),
+                TimerLifecycle::OnBreak => "TikTrack BREAK".to_string(),
+                TimerLifecycle::Completed => "TikTrack SAVED".to_string(),
+                TimerLifecycle::Idle => "TikTrack Idle".to_string(),
             }
         };
         let _ = tray.set_title(Some(&title));
@@ -594,13 +594,13 @@ pub fn run() {
             let data_dir = app
                 .path()
                 .app_local_data_dir()
-                .unwrap_or_else(|_| std::env::temp_dir().join("devproof-agent"));
+                .unwrap_or_else(|_| std::env::temp_dir().join("tiktrack-agent"));
             let _ = fs::create_dir_all(&data_dir);
 
             let encryption_key = load_or_create_encryption_key()
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
-            let recovered: Option<RecoverySnapshot> = fs::read(data_dir.join("devproof_recovery.json"))
+            let recovered: Option<RecoverySnapshot> = fs::read(data_dir.join("tiktrack_recovery.json"))
                 .ok()
                 .and_then(|bytes| serde_json::from_slice(&bytes).ok());
 
@@ -660,5 +660,5 @@ pub fn run() {
             flush_offline_queue
         ])
         .run(tauri::generate_context!())
-        .expect("error while running DevProof Desktop Agent");
+        .expect("error while running TikTrack Desktop Agent");
 }

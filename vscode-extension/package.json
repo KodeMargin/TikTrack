@@ -1,7 +1,7 @@
 {
-  "name": "devproof-vscode-telemetry",
-  "displayName": "DevProof (TikTrack) - Privacy-First Work Verification",
-  "description": "Opt-in IDE workspace/branch task mapper, debug session lifecycle, and test runner summary collector for DevProof (zero source code or keystroke exfiltration).",
+  "name": "tiktrack-vscode-telemetry",
+  "displayName": "TikTrack - Privacy-First Work Verification",
+  "description": "Opt-in IDE workspace/branch task mapper, debug session lifecycle, and test runner summary collector for TikTrack (zero source code or keystroke exfiltration).",
   "version": "0.2.0",
   "type": "module",
   "publisher": "KodeMargin",
@@ -23,39 +23,43 @@
   "contributes": {
     "commands": [
       {
-        "command": "devproof.confirmTaskMapping",
-        "title": "DevProof: Confirm or Override Branch-to-Task Mapping (F2-011)"
+        "command": "tiktrack.openDashboard",
+        "title": "TikTrack: Open Privacy & Telemetry Panel"
       },
       {
-        "command": "devproof.inspectLocalBuffer",
-        "title": "DevProof: Open Local Privacy Audit View (F2-035)"
+        "command": "tiktrack.confirmTaskMapping",
+        "title": "TikTrack: Confirm or Override Branch-to-Task Mapping (F2-011)"
       },
       {
-        "command": "devproof.flushTelemetryBatch",
-        "title": "DevProof: Flush Queued Telemetry Batch Now"
+        "command": "tiktrack.inspectLocalBuffer",
+        "title": "TikTrack: Open Local Privacy Audit View (F2-035)"
       },
       {
-        "command": "devproof.disconnectExtension",
-        "title": "DevProof: Disconnect IDE Integration & Pause Capture (Section 5.5)"
+        "command": "tiktrack.flushTelemetryBatch",
+        "title": "TikTrack: Flush Queued Telemetry Batch Now"
+      },
+      {
+        "command": "tiktrack.disconnectExtension",
+        "title": "TikTrack: Disconnect IDE Integration & Pause Capture (Section 5.5)"
       }
     ],
     "configuration": {
-      "title": "DevProof (TikTrack)",
+      "title": "TikTrack",
       "properties": {
-        "devproof.enabled": {
+        "tiktrack.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable opt-in coarse IDE telemetry for active DevProof sessions."
+          "description": "Enable opt-in coarse IDE telemetry for active TikTrack sessions."
         },
-        "devproof.enableTerminalCategories": {
+        "tiktrack.enableTerminalCategories": {
           "type": "boolean",
           "default": false,
           "description": "Explicit opt-in (F2-016): capture coarse terminal command categories (build/test/git) without arguments, env vars, or output."
         },
-        "devproof.supabaseEdgeUrl": {
+        "tiktrack.supabaseEdgeUrl": {
           "type": "string",
           "default": "http://127.0.0.1:54321/functions/v1/tracking-events-batch",
-          "description": "DevProof Supabase Edge Function batch ingestion endpoint."
+          "description": "TikTrack Supabase Edge Function batch ingestion endpoint."
         }
       }
     }

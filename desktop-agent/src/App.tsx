@@ -33,6 +33,15 @@ async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Prom
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = window.localStorage.getItem('tiktrack-agent-theme')
+      return saved === 'light' ? 'light' : 'dark'
+    } catch {
+      return 'dark'
+    }
+  })
+
   const [status, setStatus] = useState<TrayStatusDto>({
     session_id: null,
     lifecycle: 'idle',
@@ -52,6 +61,17 @@ export default function App() {
   const [newExcludedApp, setNewExcludedApp] = useState('')
   const [idleChoice, setIdleChoice] = useState('thinking')
   const [idleNote, setIdleNote] = useState('')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.style.background = theme === 'dark' ? '#09090b' : '#ffffff'
+    document.body.style.background = theme === 'dark' ? '#09090b' : '#ffffff'
+    try {
+      window.localStorage.setItem('tiktrack-agent-theme', theme)
+    } catch {
+      // Ignore storage errors in restricted webviews
+    }
+  }, [theme])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -112,7 +132,7 @@ export default function App() {
     const res = await invokeTauri<TrayStatusDto>('record_activity_bucket', {
       foregroundApp: 'com.microsoft.VSCode',
       hasInputSignal: false,
-      idleSeconds: 1320, // 22 minutes unobserved gap
+      idleSeconds: 1320,
     })
     if (res) {
       setStatus(res)
@@ -146,11 +166,7 @@ export default function App() {
     setIdleNote('')
   }
 
-  async function addDenylistApp() {
-    const trimmed = newExcludedApp.trim()
-    if (!trimmed) return
-    const updated = Array.from(new Set([...status.excluded_apps, trimmed]))
-    setNewExcludedApp('')
+  async function updateDenylist(updated: string[]) {
     const res = await invokeTauri<TrayStatusDto>('set_privacy_pause_and_denylist', {
       privacyPauseActive: status.privacy_pause_active,
       excludedApps: updated,
@@ -162,123 +178,166 @@ export default function App() {
     setStatus((prev) => ({ ...prev, excluded_apps: updated }))
   }
 
+  async function addDenylistApp() {
+    const trimmed = newExcludedApp.trim()
+    if (!trimmed) return
+    const updated = Array.from(new Set([...status.excluded_apps, trimmed]))
+    setNewExcludedApp('')
+    await updateDenylist(updated)
+  }
+
+  async function removeDenylistApp(appName: string) {
+    const updated = status.excluded_apps.filter((a) => a !== appName)
+    await updateDenylist(updated)
+  }
+
   return (
-    <div style={{ padding: 18, maxWidth: 400, margin: '0 auto', color: '#f8fafc', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, textTransform: 'uppercase', color: '#818cf8', fontWeight: 700 }}>
-          DevProof Desktop Agent v0.2 (Phase 2)
-        </span>
-        <span
-          style={{
-            fontSize: 10,
-            padding: '2px 8px',
-            borderRadius: 99,
-            background: status.privacy_pause_active ? '#7c2d12' : '#064e3b',
-            color: status.privacy_pause_active ? '#fdba74' : '#6ee7b7',
-            fontWeight: 700,
-          }}
-        >
-          {status.privacy_pause_active ? 'PRIVACY PAUSE ON' : `CAT: ${status.foreground_category.toUpperCase()}`}
-        </span>
-      </div>
+    <div className="tt-shell">
+      {/* Header */}
+      <header className="tt-header">
+        <div className="tt-brand">
+          <div className="tt-logo-mark" aria-hidden="true">
+            T
+          </div>
+          <div className="tt-brand-text">
+            <span className="tt-brand-title">TikTrack Agent</span>
+            <span className="tt-brand-sub">v0.2.0 • Privacy-First</span>
+          </div>
+        </div>
 
-      <div style={{ fontSize: 32, fontFamily: 'monospace', fontWeight: 800, margin: '10px 0 4px' }}>
-        {formatHms(status.elapsed_seconds)}
-      </div>
-      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>
-        State: <strong style={{ color: '#e2e8f0' }}>{status.lifecycle.toUpperCase()}</strong> • Break:{' '}
-        {formatHms(status.break_seconds)} • Queued: {status.queued_envelopes} • Drift: {status.clock_drift_seconds}s
-      </div>
+        <div className="tt-header-actions">
+          <span
+            className={`tt-badge ${status.privacy_pause_active ? 'tt-badge--warn' : 'tt-badge--ok'}`}
+          >
+            {status.privacy_pause_active
+              ? 'PRIVACY PAUSE'
+              : `CAT: ${status.foreground_category.toUpperCase()}`}
+          </span>
+          <button
+            type="button"
+            className="tt-icon-btn"
+            aria-label="Toggle Light/Dark Theme"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+          >
+            {theme === 'dark' ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </header>
 
-      <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
-        Declared Work Mode (F1-023 / F2-001)
-      </label>
-      <select
-        value={workMode}
-        onChange={(e) => setWorkMode(e.target.value)}
-        style={{
-          width: '100%',
-          padding: 8,
-          borderRadius: 8,
-          background: '#0f172a',
-          color: '#f8fafc',
-          border: '1px solid #334155',
-          marginBottom: 10,
-        }}
-      >
-        <option value="coding">coding</option>
-        <option value="debugging">debugging</option>
-        <option value="thinking">thinking / architecture (90m focus window)</option>
-        <option value="research">research / documentation</option>
-        <option value="testing">testing</option>
-        <option value="review">code_review</option>
-        <option value="meeting">meeting / pair programming</option>
-      </select>
+      {/* Timer & Controls Card */}
+      <section className="tt-card">
+        <div className="tt-timer-row">
+          <div className="tt-timer-value">{formatHms(status.elapsed_seconds)}</div>
+          <span className="tt-state-pill">
+            <span className={`tt-dot tt-dot--${status.lifecycle}`} />
+            {status.lifecycle.replace('_', ' ')}
+          </span>
+        </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-        <button
-          type="button"
-          onClick={() => void transition('running')}
-          style={{ padding: 9, borderRadius: 8, border: 0, background: '#059669', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
-        >
-          Start / Resume
-        </button>
-        <button
-          type="button"
-          onClick={() => void transition('on_break')}
-          style={{ padding: 9, borderRadius: 8, border: 0, background: '#0284c7', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
-        >
-          Start Break
-        </button>
-        <button
-          type="button"
-          onClick={() => void transition('paused')}
-          style={{ padding: 9, borderRadius: 8, border: 0, background: '#d97706', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
-        >
-          Pause
-        </button>
-        <button
-          type="button"
-          onClick={() => void transition('completed')}
-          style={{ padding: 9, borderRadius: 8, border: 0, background: '#4f46e5', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
-        >
-          Complete & Queue
-        </button>
-      </div>
+        <div className="tt-metrics">
+          <div className="tt-metric">
+            <span className="tt-metric-label">Break</span>
+            <span className="tt-metric-value">{formatHms(status.break_seconds)}</span>
+          </div>
+          <div className="tt-metric">
+            <span className="tt-metric-label">Queued</span>
+            <span className="tt-metric-value">{status.queued_envelopes}</span>
+          </div>
+          <div className="tt-metric">
+            <span className="tt-metric-label">Clock Drift</span>
+            <span className="tt-metric-value">{status.clock_drift_seconds}s</span>
+          </div>
+        </div>
 
-      {/* F2-003 & F2-004: Return-from-Idle Reconciliation Card */}
-      <div
-        style={{
-          padding: 10,
-          borderRadius: 10,
-          background: status.needs_idle_reconciliation ? '#451a03' : '#0f172a',
-          border: status.needs_idle_reconciliation ? '1px solid #f59e0b' : '1px solid #1e293b',
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#fcd34d' }}>
-            Return-from-Idle Reconciliation (F2-003 / F2-004)
+        <label className="tt-label" htmlFor="tt-work-mode">
+          Declared Work Mode
+        </label>
+        <select
+          id="tt-work-mode"
+          className="tt-select"
+          value={workMode}
+          onChange={(e) => setWorkMode(e.target.value)}
+        >
+          <option value="coding">Coding</option>
+          <option value="debugging">Debugging</option>
+          <option value="thinking">Thinking / Architecture (90m focus)</option>
+          <option value="research">Research / Documentation</option>
+          <option value="testing">Testing</option>
+          <option value="review">Code Review</option>
+          <option value="meeting">Meeting / Pair Programming</option>
+        </select>
+
+        <div className="tt-btn-grid">
+          <button
+            type="button"
+            className="tt-btn tt-btn--emerald"
+            onClick={() => void transition('running')}
+          >
+            Start / Resume
+          </button>
+          <button
+            type="button"
+            className="tt-btn tt-btn--secondary"
+            onClick={() => void transition('on_break')}
+          >
+            Start Break
+          </button>
+          <button
+            type="button"
+            className="tt-btn tt-btn--secondary"
+            onClick={() => void transition('paused')}
+          >
+            Pause
+          </button>
+          <button
+            type="button"
+            className="tt-btn tt-btn--primary"
+            onClick={() => void transition('completed')}
+          >
+            Complete & Queue
+          </button>
+        </div>
+      </section>
+
+      {/* Return-from-Idle Reconciliation Card */}
+      <section className={`tt-card ${status.needs_idle_reconciliation ? 'tt-card--warn' : ''}`}>
+        <div className="tt-section-head">
+          <span
+            className={`tt-section-title ${status.needs_idle_reconciliation ? 'tt-section-title--warn' : ''}`}
+          >
+            Idle Reconciliation
           </span>
           {!status.needs_idle_reconciliation && (
             <button
               type="button"
+              className="tt-btn tt-btn--secondary tt-btn--sm"
               onClick={() => void simulateUnobservedIdleGap()}
-              style={{ fontSize: 10, padding: '3px 7px', borderRadius: 6, border: '1px solid #475569', background: '#1e293b', color: '#cbd5e1', cursor: 'pointer' }}
             >
               Simulate 22m Gap
             </button>
           )}
         </div>
+
         {status.needs_idle_reconciliation ? (
-          <div>
-            <p style={{ fontSize: 11, color: '#fde68a', margin: '0 0 8px' }}>
-              You had a {Math.round(status.unobserved_idle_seconds / 60)}m unobserved gap (never labeled fraud). How should this interval be categorized?
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <p className="tt-warn-note">
+              You had a {Math.round(status.unobserved_idle_seconds / 60)}m unobserved gap (never
+              labeled fraud). How should this interval be categorized?
             </p>
             <select
+              className="tt-select"
               value={idleChoice}
               onChange={(e) => setIdleChoice(e.target.value)}
-              style={{ width: '100%', padding: 6, borderRadius: 6, background: '#090d16', color: '#fff', border: '1px solid #b45309', marginBottom: 6, fontSize: 11 }}
             >
               <option value="thinking">Thinking / Whiteboard Architecture</option>
               <option value="reading">Reading Documentation / Specs</option>
@@ -289,69 +348,76 @@ export default function App() {
             </select>
             <input
               type="text"
+              className="tt-input"
               placeholder="Optional context note..."
               value={idleNote}
               onChange={(e) => setIdleNote(e.target.value)}
-              style={{ width: '100%', padding: 6, borderRadius: 6, background: '#090d16', color: '#fff', border: '1px solid #b45309', marginBottom: 6, fontSize: 11, boxSizing: 'border-box' }}
             />
             <button
               type="button"
+              className="tt-btn tt-btn--amber tt-btn--full"
               onClick={() => void submitIdleReconciliation()}
-              style={{ width: '100%', padding: 7, borderRadius: 6, border: 0, background: '#d97706', color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
             >
               Confirm Reconciliation
             </button>
           </div>
         ) : (
-          <div style={{ fontSize: 10, color: '#64748b' }}>
-            No unconfirmed input gaps. Multi-display policy: {status.multi_display_policy} (0 screenshots).
+          <div className="tt-muted-note">
+            No unconfirmed input gaps. Policy: <strong>{status.multi_display_policy}</strong> (0
+            screenshots).
           </div>
         )}
-      </div>
+      </section>
 
-      {/* F2-005: Local Privacy Exclusions & Personal Mode */}
-      <div style={{ padding: 10, borderRadius: 10, background: '#0f172a', border: '1px solid #1e293b' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#cbd5e1' }}>
-            Local Privacy Exclusions (F2-005)
-          </span>
+      {/* Local Privacy Exclusions Card */}
+      <section className="tt-card">
+        <div className="tt-section-head">
+          <span className="tt-section-title">Local Privacy Exclusions</span>
           <button
             type="button"
+            className={`tt-btn tt-btn--sm ${status.privacy_pause_active ? 'tt-btn--amber' : 'tt-btn--primary'}`}
             onClick={() => void togglePrivacyPause()}
-            style={{
-              fontSize: 10,
-              padding: '3px 8px',
-              borderRadius: 6,
-              border: 0,
-              background: status.privacy_pause_active ? '#ea580c' : '#334155',
-              color: '#fff',
-              cursor: 'pointer',
-              fontWeight: 600,
-            }}
           >
-            {status.privacy_pause_active ? 'Resume Work Capture' : '1-Click Privacy Pause'}
+            {status.privacy_pause_active ? 'Resume Capture' : '1-Click Privacy Pause'}
           </button>
         </div>
-        <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 6 }}>
-          Suppressed locally before queuing: {status.excluded_apps.join(', ')}
+
+        <div className="tt-chips">
+          {status.excluded_apps.map((appName) => (
+            <span key={appName} className="tt-chip">
+              {appName}
+              <button
+                type="button"
+                className="tt-chip-remove"
+                aria-label={`Remove ${appName}`}
+                onClick={() => void removeDenylistApp(appName)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+
+        <div className="tt-input-row">
           <input
             type="text"
+            className="tt-input"
             placeholder="Add app to local denylist..."
             value={newExcludedApp}
             onChange={(e) => setNewExcludedApp(e.target.value)}
-            style={{ flex: 1, padding: 6, borderRadius: 6, background: '#090d16', color: '#fff', border: '1px solid #334155', fontSize: 11 }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void addDenylistApp()
+            }}
           />
           <button
             type="button"
+            className="tt-btn tt-btn--primary tt-btn--sm"
             onClick={() => void addDenylistApp()}
-            style={{ padding: '6px 10px', borderRadius: 6, border: 0, background: '#4f46e5', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
           >
             Add
           </button>
         </div>
-      </div>
+      </section>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-# DevProof (TikTrack) - VS Code Extension (Phase 2 Milestone 2.2)
+# TikTrack - VS Code Extension (Phase 2 Milestone 2.2)
 
 Covers **`F2-010` through `F2-016`** and **Section 5.5 Acceptance Scenarios**:
 

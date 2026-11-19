@@ -1,6 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store, type EnrolledDeviceRecord } from '@/context/Phase2Store'
+
+const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/KodeMargin/TikTrack/releases/latest'
+
+const DEFAULT_DESKTOP_RELEASE = {
+  version: 'v0.2.0',
+  links: {
+    macArm: 'https://github.com/KodeMargin/TikTrack/releases/download/v0.2.0/TikTrack_0.2.0_aarch64.dmg',
+    macIntel: 'https://github.com/KodeMargin/TikTrack/releases/download/v0.2.0/TikTrack_0.2.0_x64.dmg',
+    winExe: 'https://github.com/KodeMargin/TikTrack/releases/download/v0.2.0/TikTrack_0.2.0_x64-setup.exe',
+    linuxDeb: 'https://github.com/KodeMargin/TikTrack/releases/download/v0.2.0/TikTrack_0.2.0_amd64.deb',
+  },
+}
 
 export function IntegrationsAndDevicesView() {
   const { tasks, activeUser } = usePhase1Store()
@@ -31,6 +43,33 @@ export function IntegrationsAndDevicesView() {
   const [whTamperSig, setWhTamperSig] = useState(false)
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null)
   const [copiedToken, setCopiedToken] = useState(false)
+  const [desktopRelease, setDesktopRelease] = useState(DEFAULT_DESKTOP_RELEASE)
+
+  useEffect(() => {
+    let active = true
+    fetch(GITHUB_LATEST_RELEASE_API, { headers: { Accept: 'application/vnd.github+json' } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { tag_name?: string; assets?: Array<{ name: string; browser_download_url: string }> } | null) => {
+        if (!active || !data?.assets?.length) return
+        const findAsset = (suffix: string) =>
+          data.assets!.find((a) => a.name.toLowerCase().endsWith(suffix))?.browser_download_url
+        setDesktopRelease((prev) => ({
+          version: data.tag_name || prev.version,
+          links: {
+            macArm: findAsset('aarch64.dmg') ?? prev.links.macArm,
+            macIntel: findAsset('x64.dmg') ?? prev.links.macIntel,
+            winExe: findAsset('-setup.exe') ?? prev.links.winExe,
+            linuxDeb: findAsset('.deb') ?? prev.links.linuxDeb,
+          },
+        }))
+      })
+      .catch(() => {
+        // Keep fallback URLs if GitHub API is unreachable or rate-limited
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const isFinanceOrClient =
     activeUser.role === 'finance' || activeUser.role === 'client_reviewer'
@@ -152,13 +191,13 @@ export function IntegrationsAndDevicesView() {
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <a
-                href="vscode:extension/kodemargin.devproof-vscode-telemetry"
+                href="vscode:extension/kodemargin.tiktrack-vscode-telemetry"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white transition shadow-sm"
               >
                 ⚡ Install in VS Code (1-Click)
               </a>
               <a
-                href="https://marketplace.visualstudio.com/items?itemName=kodemargin.devproof-vscode-telemetry"
+                href="https://marketplace.visualstudio.com/items?itemName=kodemargin.tiktrack-vscode-telemetry"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
@@ -175,7 +214,7 @@ export function IntegrationsAndDevicesView() {
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-semibold">
                   🖥️ Desktop Tray App
                 </span>
-                <span className="text-[10px] text-zinc-400 font-mono">v0.1.0</span>
+                <span className="text-[10px] text-zinc-400 font-mono">{desktopRelease.version}</span>
               </div>
               <p className="text-xs text-zinc-600 dark:text-zinc-300">
                 Lightweight system tray timer for macOS, Windows, and Linux. Transparently displays your active focus mode and idle reconciliation.
@@ -184,7 +223,7 @@ export function IntegrationsAndDevicesView() {
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <a
-                href="https://github.com/KodeMargin/TikTrack/releases/download/v0.1.0/DevProof.Tray_0.1.0_aarch64.dmg"
+                href={desktopRelease.links.macArm}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold transition shadow-sm"
@@ -192,7 +231,7 @@ export function IntegrationsAndDevicesView() {
                 🍏 Mac (Apple Silicon)
               </a>
               <a
-                href="https://github.com/KodeMargin/TikTrack/releases/download/v0.1.0/DevProof.Tray_0.1.0_x64.dmg"
+                href={desktopRelease.links.macIntel}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
@@ -200,7 +239,7 @@ export function IntegrationsAndDevicesView() {
                 🍏 Mac (Intel)
               </a>
               <a
-                href="https://github.com/KodeMargin/TikTrack/releases/download/v0.1.0/DevProof.Tray_0.1.0_x64-setup.exe"
+                href={desktopRelease.links.winExe}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold transition shadow-sm"
@@ -208,7 +247,7 @@ export function IntegrationsAndDevicesView() {
                 🪟 Windows (.exe)
               </a>
               <a
-                href="https://github.com/KodeMargin/TikTrack/releases/download/v0.1.0/DevProof.Tray_0.1.0_amd64.deb"
+                href={desktopRelease.links.linuxDeb}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"

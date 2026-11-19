@@ -1,5 +1,5 @@
 /**
- * DevProof VS Code Extension - IDE Project-Task Mapper (F2-010, F2-011)
+ * TikTrack VS Code Extension - IDE Project-Task Mapper (F2-010, F2-011)
  *
  * Extracts task codes (e.g. DEV-104) from Git branch names and workspace folders
  * as non-binding suggestions. The developer can explicitly confirm or override

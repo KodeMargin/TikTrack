@@ -1,12 +1,12 @@
 [package]
-name = "devproof-desktop-agent"
-version = "0.1.0"
-description = "DevProof transparent desktop tray timer and privacy-preserving session agent"
-authors = ["DevProof Engineering"]
+name = "tiktrack-desktop-agent"
+version = "0.2.0"
+description = "TikTrack transparent desktop tray timer and privacy-preserving session agent"
+authors = ["TikTrack Engineering"]
 edition = "2021"
 
 [lib]
-name = "devproof_desktop_agent_lib"
+name = "tiktrack_desktop_agent_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
