@@ -976,10 +976,10 @@ export function ProjectsTasksView({
                   </div>
 
                   <div className="pt-2 border-t border-zinc-200/70 dark:border-white/[0.06] space-y-2">
-                    <div className="text-zinc-500 dark:text-zinc-400">Assignees</div>
+                    <div className="text-zinc-500 dark:text-zinc-400">Assignees (Active Profiles Only)</div>
                     <div className="flex flex-wrap gap-1.5">
                       {members
-                        .filter((m) => m.status === 'active')
+                        .filter((m) => m.status === 'active' && !m.mustChangePassword)
                         .map((m) => {
                           const assigned = selectedTask.assignedMemberIds.includes(m.id)
                           if (!canAssignTask) {
@@ -1010,6 +1010,11 @@ export function ProjectsTasksView({
                           )
                         })}
                     </div>
+                    {canAssignTask && members.some((m) => m.status === 'invited' || m.mustChangePassword) && (
+                      <p className="text-[10.5px] text-amber-600 dark:text-amber-400">
+                        Invited members cannot be assigned tasks until they change their temporary password and activate their profile.
+                      </p>
+                    )}
                   </div>
                 </div>
 

@@ -1776,8 +1776,15 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   }
 
   function createTask(input: Omit<TaskRecord, 'id' | 'tenantId' | 'attachments'>) {
+    const activeMemberIds = new Set(
+      members
+        .filter((m) => m.tenantId === activeTenant.id && m.status === 'active' && !m.mustChangePassword)
+        .map((m) => m.id)
+    )
+    const eligibleAssignees = (input.assignedMemberIds ?? []).filter((id) => activeMemberIds.has(id))
     const newTask: TaskRecord = {
       ...input,
+      assignedMemberIds: eligibleAssignees,
       id: `tsk-${Date.now()}`,
       tenantId: activeTenant.id,
       attachments: [],
@@ -1788,6 +1795,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     if (prismaStatus.connected) {
       void createTaskViaPrisma({
         ...input,
+        assignedMemberIds: eligibleAssignees,
         tenantId: activeTenant.id,
       }).then((res) => {
         if (res?.ok && res.task) {
@@ -1824,22 +1832,28 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
 
   function assignTaskMembers(taskId: string, memberIds: string[]) {
     const target = tasks.find((t) => t.id === taskId)
+    const activeMemberIds = new Set(
+      members
+        .filter((m) => m.tenantId === activeTenant.id && m.status === 'active' && !m.mustChangePassword)
+        .map((m) => m.id)
+    )
+    const eligibleMemberIds = memberIds.filter((id) => activeMemberIds.has(id))
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === taskId ? { ...t, assignedMemberIds: memberIds } : t
+        t.id === taskId ? { ...t, assignedMemberIds: eligibleMemberIds } : t
       )
     )
     appendAudit(
       'TASK_ASSIGNMENTS_UPDATED',
       `tasks:${target?.code ?? taskId}`,
-      `Assigned ${memberIds.length} contributor(s) to task`
+      `Assigned ${eligibleMemberIds.length} active contributor(s) to task`
     )
     if (prismaStatus.connected && target) {
       void assignTaskMembersViaPrisma({
         tenantId: activeTenant.id,
         projectId: target.projectId,
         taskId,
-        assignedMemberIds: memberIds,
+        assignedMemberIds: eligibleMemberIds,
       })
     }
   }

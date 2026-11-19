@@ -74,6 +74,7 @@ export function AuthLoginScreen() {
               timezone: authTimezone,
               country_code: authCountryCode,
               country_name: authCountryName,
+              account_type: 'tenant_owner',
             },
           },
         })
@@ -244,13 +245,20 @@ export function AuthLoginScreen() {
                       }`}
                   >
                     {m === 'signup'
-                      ? 'Sign Up'
+                      ? 'Owner Sign Up'
                       : m === 'login'
                         ? 'Log In'
                         : 'Reset Password'}
                   </button>
                 ))}
               </div>
+
+              {authMode === 'signup' && (
+                <div className="p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/70 dark:bg-indigo-950/30 text-[11px] text-indigo-800 dark:text-indigo-200 leading-relaxed">
+                  <strong>Tenant Owners Only:</strong> Self-registration creates a new company workspace.
+                  Team members (developers, PMs, reviewers) must be invited by their Tenant Owner and sign in with their temporary password.
+                </div>
+              )}
 
               <form onSubmit={(e) => void handleAuthSubmit(e)} className="space-y-3.5 text-xs">
                 {authMode === 'signup' && (

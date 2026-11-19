@@ -20,6 +20,12 @@ import {
   isValidUuid,
 } from './prismaPhase1Handlers.ts'
 import {
+  handleDesktopActivatePassword,
+  handleDesktopAuth,
+  handleDesktopFetchTasks,
+  handleDesktopSubmitSession,
+} from './prismaDesktopHandlers.ts'
+import {
   handleAddPrivacyExclusionPrisma,
   handleCreateSessionAnnotationPrisma,
   handleIngestWebhookPrisma,
@@ -109,6 +115,9 @@ async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
 function sendJson(res: ServerResponse, statusCode: number, payload: unknown): true {
   res.statusCode = statusCode
   res.setHeader('Content-Type', 'application/json')
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   res.end(JSON.stringify(payload))
   return true
 }
@@ -122,7 +131,42 @@ export async function handlePrismaApiRequest(
     return false
   }
 
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    res.end()
+    return true
+  }
+
   try {
+            if (req.method === 'POST' && url.startsWith('/api/prisma/desktop/auth')) {
+              const body = await readJsonBody<Parameters<typeof handleDesktopAuth>[0]>(req)
+              const result = await handleDesktopAuth(body)
+              return sendJson(res, result.statusCode ?? 200, result)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/desktop/activate-password')) {
+              const body = await readJsonBody<Parameters<typeof handleDesktopActivatePassword>[0]>(req)
+              const result = await handleDesktopActivatePassword(body)
+              return sendJson(res, result.statusCode ?? 200, result)
+            }
+
+            if (req.method === 'GET' && url.startsWith('/api/prisma/desktop/tasks')) {
+              const parsed = new URL(url, 'http://localhost')
+              const tenantId = parsed.searchParams.get('tenantId') ?? ''
+              const userId = parsed.searchParams.get('userId') ?? ''
+              const result = await handleDesktopFetchTasks({ tenantId, userId })
+              return sendJson(res, result.statusCode ?? 200, result)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/desktop/sessions/submit')) {
+              const body = await readJsonBody<Parameters<typeof handleDesktopSubmitSession>[0]>(req)
+              const result = await handleDesktopSubmitSession(body)
+              return sendJson(res, result.statusCode ?? 200, result)
+            }
+
             if (req.method === 'GET' && url.startsWith('/api/prisma/status')) {
               return sendJson(res, 200, await checkPrismaConnection())
             }
@@ -369,7 +413,10 @@ export async function handlePrismaApiRequest(
                 where: {
                   tenantId_userId: { tenantId: body.tenantId, userId: body.userId },
                 },
-                data: { status: body.status },
+                data: {
+                  status: body.status,
+                  ...(body.status === 'active' ? { joinedAt: new Date() } : {}),
+                },
               })
               return sendJson(res, 200, { ok: true })
             }
@@ -556,6 +603,26 @@ export async function handlePrismaApiRequest(
               if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId)) {
                 return sendJson(res, 200, { ok: false, error: 'Non-UUID IDs' })
               }
+              const requestedAssignees = (body.assignedMemberIds ?? []).filter(isValidUuid)
+              if (requestedAssignees.length > 0) {
+                const activeMemberships = await prisma.membership.findMany({
+                  where: {
+                    tenantId: body.tenantId,
+                    userId: { in: requestedAssignees },
+                    status: 'active',
+                  },
+                  select: { userId: true },
+                })
+                const activeIds = new Set(activeMemberships.map((m) => m.userId))
+                const blockedIds = requestedAssignees.filter((id) => !activeIds.has(id))
+                if (blockedIds.length > 0) {
+                  return sendJson(res, 400, {
+                    ok: false,
+                    error:
+                      'Cannot assign tasks to pending or inactive members. They must change their temporary password and activate their profile first.',
+                  })
+                }
+              }
               const created = await prisma.$transaction(async (tx) => {
                 const tsk = await tx.task.create({
                   data: {
@@ -573,7 +640,7 @@ export async function handlePrismaApiRequest(
                     dueDate: body.dueDate ? new Date(body.dueDate) : null,
                   },
                 })
-                for (const userId of (body.assignedMemberIds ?? []).filter(isValidUuid)) {
+                for (const userId of requestedAssignees) {
                   await tx.taskAssignment.create({
                     data: {
                       tenantId: body.tenantId,
@@ -627,11 +694,31 @@ export async function handlePrismaApiRequest(
               if (!isValidUuid(body.taskId) || !isValidUuid(body.tenantId) || !isValidUuid(body.projectId)) {
                 return sendJson(res, 200, { ok: false })
               }
+              const candidateAssignees = (body.assignedMemberIds ?? []).filter(isValidUuid)
+              if (candidateAssignees.length > 0) {
+                const activeMemberships = await prisma.membership.findMany({
+                  where: {
+                    tenantId: body.tenantId,
+                    userId: { in: candidateAssignees },
+                    status: 'active',
+                  },
+                  select: { userId: true },
+                })
+                const activeIds = new Set(activeMemberships.map((m) => m.userId))
+                const blockedIds = candidateAssignees.filter((id) => !activeIds.has(id))
+                if (blockedIds.length > 0) {
+                  return sendJson(res, 400, {
+                    ok: false,
+                    error:
+                      'Cannot assign tasks to pending or inactive members. They must change their temporary password and activate their profile first.',
+                  })
+                }
+              }
               await prisma.$transaction(async (tx) => {
                 await tx.taskAssignment.deleteMany({
                   where: { tenantId: body.tenantId, taskId: body.taskId },
                 })
-                for (const userId of body.assignedMemberIds.filter(isValidUuid)) {
+                for (const userId of candidateAssignees) {
                   await tx.taskAssignment.create({
                     data: {
                       tenantId: body.tenantId,
