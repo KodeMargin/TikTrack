@@ -33,21 +33,31 @@
 
 :root {
   color-scheme: light;
-  --dp-canvas: #ffffff;
+  --dp-canvas: #f4f5f9;
   --dp-surface: #ffffff;
-  --dp-surface-subtle: #f7f7fa;
-  --dp-surface-recessed: rgba(15, 5, 31, 0.028);
-  --dp-border: rgba(15, 5, 31, 0.07);
-  --dp-hairline: rgba(15, 5, 31, 0.065);
+  --dp-surface-subtle: #f7f8fc;
+  --dp-surface-recessed: #eef0f6;
+  --dp-border: rgba(15, 5, 31, 0.11);
+  --dp-border-strong: rgba(15, 5, 31, 0.17);
+  --dp-hairline: rgba(15, 5, 31, 0.085);
   --dp-text: #09090b;
-  --dp-text-muted: #71717a;
+  --dp-text-muted: #52525b;
+  --dp-shadow-card:
+    0 1px 2px rgba(15, 5, 31, 0.045),
+    0 8px 24px -12px rgba(15, 5, 31, 0.085);
+  --dp-shadow-card-hover:
+    0 2px 6px rgba(15, 5, 31, 0.06),
+    0 14px 32px -12px rgba(109, 37, 218, 0.14);
+  --dp-shadow-input:
+    0 1px 2px rgba(15, 5, 31, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --dp-shadow-popover:
-    0 18px 48px -12px rgba(15, 5, 31, 0.16),
-    0 4px 14px -4px rgba(15, 5, 31, 0.07),
-    0 0 0 1px rgba(15, 5, 31, 0.06);
+    0 20px 50px -12px rgba(15, 5, 31, 0.18),
+    0 4px 16px -4px rgba(15, 5, 31, 0.08),
+    0 0 0 1px rgba(15, 5, 31, 0.09);
   --dp-shadow-pill:
-    0 1px 2px rgba(15, 5, 31, 0.04),
-    0 0 0 1px rgba(15, 5, 31, 0.065);
+    0 1px 2px rgba(15, 5, 31, 0.05),
+    0 0 0 1px rgba(15, 5, 31, 0.09);
 }
 
 html.dark {
@@ -274,85 +284,78 @@ html.light ::-webkit-scrollbar-thumb:hover {
 }
 
 /* =========================================================================
-   BESPOKE EDITORIAL SAAS LAYOUT (NO AI CARD-BOX CLUTTER)
-   Removes repetitive boxed cards & plain borders across all portal views.
-   Uses a unified clean canvas, subtle tonal strips, hairline dividers,
-   and crisp typography-like Linear, Stripe, and GitHub Settings.
-   Contrast-safe: only targets neutral surface containers, never colored/dark-only blocks.
+   PREMIUM ELEVATED SAAS SURFACES (LIGHT & DARK MODE)
+   - Light Mode: Crisp white elevated cards & form sections floating over a
+     subtle cool-alabaster canvas (#f4f5f9), with tactile recessed sub-panels
+     and clear hairline contrast (Stripe / Linear Light aesthetic).
+   - Dark Mode: Clean low-glare editorial surfaces on #09090c.
    ========================================================================= */
 
-/* 1. Un-box neutral section containers inside <main> (keep fixed modals & colored blocks intact) */
-html:not(.high-contrast) main div.rounded-xl.border:not(.fixed):not([class*="text-white"]),
-html:not(.high-contrast) main div.rounded-2xl.border:not(.fixed):not([class*="text-white"]),
-html:not(.high-contrast) main form.rounded-xl.border:not([class*="text-white"]),
-html:not(.high-contrast) main form.rounded-2xl.border:not([class*="text-white"]),
-html:not(.high-contrast) main section.rounded-xl.border:not([class*="text-white"]),
-html:not(.high-contrast) main section.rounded-2xl.border:not([class*="text-white"]) {
-  border-color: transparent !important;
-  box-shadow: none !important;
+/* --- LIGHT MODE: Premium Elevated Cards & Form Sections --- */
+html:not(.dark):not(.high-contrast) main div.rounded-xl.border:not(.fixed):not([class*="text-white"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]),
+html:not(.dark):not(.high-contrast) main div.rounded-2xl.border:not(.fixed):not([class*="text-white"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]),
+html:not(.dark):not(.high-contrast) main form.rounded-xl.border:not([class*="text-white"]),
+html:not(.dark):not(.high-contrast) main form.rounded-2xl.border:not([class*="text-white"]),
+html:not(.dark):not(.high-contrast) main section.rounded-xl.border:not([class*="text-white"]),
+html:not(.dark):not(.high-contrast) main section.rounded-2xl.border:not([class*="text-white"]) {
+  background-color: #ffffff !important;
+  border-color: rgba(15, 5, 31, 0.1) !important;
+  border-radius: 1rem !important;
+  box-shadow: var(--dp-shadow-card) !important;
+  transition: box-shadow 180ms ease, border-color 180ms ease;
 }
 
-/* Strip neutral card backgrounds so sections sit directly on the clean canvas */
-html:not(.dark):not(.high-contrast) main div.rounded-xl.border.bg-white:not(.fixed),
-html:not(.dark):not(.high-contrast) main div.rounded-2xl.border.bg-white:not(.fixed),
-html:not(.dark):not(.high-contrast) main div.rounded-xl.border[class*="bg-white/"]:not(.fixed),
-html:not(.dark):not(.high-contrast) main div.rounded-2xl.border[class*="bg-white/"]:not(.fixed),
-html:not(.dark):not(.high-contrast) main div.rounded-xl.border[class*="bg-zinc-50"]:not(.fixed),
-html:not(.dark):not(.high-contrast) main div.rounded-xl.border[class*="bg-slate-50"]:not(.fixed) {
-  background: transparent !important;
-  border-radius: 0 !important;
+/* Nested cards / inner form drawers inside a white parent card get a crisp cool-tinted inset surface */
+html:not(.dark):not(.high-contrast) main div.rounded-xl.border div.rounded-xl.border:not(.fixed):not([class*="text-white"]),
+html:not(.dark):not(.high-contrast) main div.rounded-2xl.border div.rounded-xl.border:not(.fixed):not([class*="text-white"]),
+html:not(.dark):not(.high-contrast) main div.rounded-xl.border form.rounded-xl.border:not([class*="text-white"]),
+html:not(.dark):not(.high-contrast) main div.rounded-2xl.border form.rounded-xl.border:not([class*="text-white"]),
+html:not(.dark):not(.high-contrast) main div.rounded-lg.border:not(.fixed):not([class*="text-white"]):not([class*="bg-zinc-950"]):not([class*="bg-slate-950"]),
+html:not(.dark):not(.high-contrast) main form.rounded-lg.border:not([class*="text-white"]) {
+  background-color: #f7f8fc !important;
+  border: 1px solid rgba(15, 5, 31, 0.095) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
-html.dark:not(.high-contrast) main div.rounded-xl.border[class*="dark:bg-zinc-900"]:not(.fixed),
-html.dark:not(.high-contrast) main div.rounded-2xl.border[class*="dark:bg-zinc-900"]:not(.fixed),
-html.dark:not(.high-contrast) main div.rounded-xl.border[class*="dark:bg-slate-900"]:not(.fixed),
-html.dark:not(.high-contrast) main div.rounded-2xl.border[class*="dark:bg-slate-900"]:not(.fixed),
-html.dark:not(.high-contrast) main div.rounded-xl.border[class*="dark:bg-[#1212"]:not(.fixed),
-html.dark:not(.high-contrast) main div.rounded-xl.border[class*="dark:bg-white/"]:not(.fixed) {
-  background: transparent !important;
-  border-radius: 0 !important;
+/* Enhance ring-1 cards & sections in light mode (Timesheets, Payments, Timer, Config Cards) */
+html:not(.dark):not(.high-contrast) main .bg-white.ring-1,
+html:not(.dark):not(.high-contrast) main article.bg-white,
+html:not(.dark):not(.high-contrast) main section.bg-white,
+html:not(.dark):not(.high-contrast) main form.bg-white {
+  border: 1px solid rgba(15, 5, 31, 0.09) !important;
+  box-shadow: var(--dp-shadow-card) !important;
 }
 
-/* Clean horizontal hairline between major stacked neutral sections */
-html:not(.high-contrast) main .space-y-6>div.rounded-xl.border:not(.fixed):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]),
-html:not(.high-contrast) main .space-y-6>div.rounded-2xl.border:not(.fixed):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]),
-html:not(.high-contrast) main .space-y-5>div.rounded-xl.border:not(.fixed):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]),
-html:not(.high-contrast) main .space-y-8>div.rounded-xl.border:not(.fixed):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-[#6d25da]"]) {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  padding-top: 0.25rem !important;
-  padding-bottom: 1.75rem !important;
-  border-bottom: 1px solid var(--dp-hairline) !important;
+html:not(.dark):not(.high-contrast) main article.bg-white:hover {
+  border-color: rgba(109, 37, 218, 0.24) !important;
+  box-shadow: var(--dp-shadow-card-hover) !important;
 }
 
-html:not(.high-contrast) main .space-y-6>div.rounded-xl.border:last-child,
-html:not(.high-contrast) main .space-y-6>div.rounded-2xl.border:last-child,
-html:not(.high-contrast) main .space-y-5>div.rounded-xl.border:last-child,
-html:not(.high-contrast) main .space-y-8>div.rounded-xl.border:last-child {
-  border-bottom: none !important;
-  padding-bottom: 0.5rem !important;
+/* Crisp light-mode tonal strips inside white cards */
+html:not(.dark):not(.high-contrast) main .bg-white .bg-zinc-50\/90,
+html:not(.dark):not(.high-contrast) main .bg-white .bg-zinc-50 {
+  background-color: #f6f7fb;
+  box-shadow: inset 0 0 0 1px rgba(15, 5, 31, 0.06);
 }
 
-/* Grid columns sit side-by-side cleanly without boxed borders */
-html:not(.high-contrast) main .grid>div.rounded-xl.border:not(.fixed):not([class*="text-white"]),
-html:not(.high-contrast) main .grid>div.rounded-2xl.border:not(.fixed):not([class*="text-white"]) {
-  padding: 0.25rem 0 !important;
+/* --- DARK MODE: Clean Editorial Surfaces (preserved) --- */
+html.dark:not(.high-contrast) main div.rounded-xl.border:not(.fixed):not([class*="text-white"]),
+html.dark:not(.high-contrast) main div.rounded-2xl.border:not(.fixed):not([class*="text-white"]),
+html.dark:not(.high-contrast) main form.rounded-xl.border:not([class*="text-white"]),
+html.dark:not(.high-contrast) main form.rounded-2xl.border:not([class*="text-white"]),
+html.dark:not(.high-contrast) main section.rounded-xl.border:not([class*="text-white"]),
+html.dark:not(.high-contrast) main section.rounded-2xl.border:not([class*="text-white"]) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
-/* 2. Neutral inner list rows / compact tiles: flat tonal surface, zero harsh border */
-html:not(.high-contrast) main div.rounded-lg.border:not(.fixed):not([class*="text-white"]):not([class*="bg-zinc-950"]):not([class*="bg-slate-950"]),
-html:not(.high-contrast) main form.rounded-lg.border:not([class*="text-white"]) {
-  border-color: transparent !important;
-  box-shadow: none !important;
+html.dark:not(.high-contrast) main div.rounded-lg.border:not(.fixed):not([class*="text-white"]):not([class*="bg-zinc-950"]):not([class*="bg-slate-950"]),
+html.dark:not(.high-contrast) main form.rounded-lg.border:not([class*="text-white"]) {
+  border-color: rgba(255, 255, 255, 0.07) !important;
   border-radius: 0.625rem !important;
   transition: background-color 160ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-html:not(.dark):not(.high-contrast) main div.rounded-lg.border[class*="bg-zinc-50"]:not(.fixed),
-html:not(.dark):not(.high-contrast) main div.rounded-lg.border[class*="bg-slate-50"]:not(.fixed),
-html:not(.dark):not(.high-contrast) main div.rounded-lg.border.bg-white:not(.fixed),
-html:not(.dark):not(.high-contrast) main form.rounded-lg.border[class*="bg-zinc-50"] {
-  background-color: var(--dp-surface-recessed) !important;
 }
 
 html.dark:not(.high-contrast) main div.rounded-lg.border[class*="dark:bg-zinc-900"]:not(.fixed),
@@ -362,35 +365,39 @@ html.dark:not(.high-contrast) main form.rounded-lg.border[class*="dark:bg-zinc-9
   background-color: var(--dp-surface-recessed) !important;
 }
 
-html:not(.high-contrast) main div.rounded-lg.border.cursor-pointer:hover {
-  background-color: rgba(109, 37, 218, 0.055) !important;
+html:not(.dark):not(.high-contrast) main div.rounded-lg.border.cursor-pointer:hover {
+  background-color: #f2eefb !important;
+  border-color: rgba(109, 37, 218, 0.25) !important;
 }
 
 html.dark:not(.high-contrast) main div.rounded-lg.border.cursor-pointer:hover {
   background-color: rgba(255, 255, 255, 0.055) !important;
 }
 
-/* 3. Semantic feedback banners & alerts: clean left-accent bar instead of boxed card */
+/* 3. Semantic feedback banners & alerts: clean left-accent bar */
 html:not(.high-contrast) main div[class*="border-rose-"]:not([class*="text-white"]) {
-  background-color: rgba(244, 63, 94, 0.07) !important;
-  border-left: 3px solid #f43f5e !important;
-  border-radius: 0.5rem !important;
+  background-color: rgba(244, 63, 94, 0.075) !important;
+  border: 1px solid rgba(244, 63, 94, 0.22) !important;
+  border-left: 3.5px solid #f43f5e !important;
+  border-radius: 0.75rem !important;
   padding-left: 1rem !important;
   padding-right: 1rem !important;
 }
 
 html:not(.high-contrast) main div[class*="border-emerald-"]:not([class*="text-white"]) {
-  background-color: rgba(16, 185, 129, 0.07) !important;
-  border-left: 3px solid #10b981 !important;
-  border-radius: 0.5rem !important;
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  border-left: 3.5px solid #10b981 !important;
+  border-radius: 0.75rem !important;
   padding-left: 1rem !important;
   padding-right: 1rem !important;
 }
 
 html:not(.high-contrast) main div[class*="border-amber-"]:not([class*="text-white"]) {
-  background-color: rgba(245, 158, 11, 0.075) !important;
-  border-left: 3px solid #f59e0b !important;
-  border-radius: 0.5rem !important;
+  background-color: rgba(245, 158, 11, 0.085) !important;
+  border: 1px solid rgba(245, 158, 11, 0.25) !important;
+  border-left: 3.5px solid #f59e0b !important;
+  border-radius: 0.75rem !important;
   padding-left: 1rem !important;
   padding-right: 1rem !important;
 }
@@ -398,8 +405,9 @@ html:not(.high-contrast) main div[class*="border-amber-"]:not([class*="text-whit
 html:not(.high-contrast) main div[class*="border-[#6d25da]"]:not([class*="text-white"]),
 html:not(.high-contrast) main div[class*="border-[#8b51e1]"]:not([class*="text-white"]) {
   background-color: rgba(109, 37, 218, 0.065) !important;
-  border-left: 3px solid #6d25da !important;
-  border-radius: 0.5rem !important;
+  border: 1px solid rgba(109, 37, 218, 0.2) !important;
+  border-left: 3.5px solid #6d25da !important;
+  border-radius: 0.75rem !important;
   padding-left: 1rem !important;
   padding-right: 1rem !important;
 }
@@ -407,7 +415,7 @@ html:not(.high-contrast) main div[class*="border-[#8b51e1]"]:not([class*="text-w
 /* 4. Elevated Modals (fixed overlays) keep clean popover shadow & surface */
 html:not(.high-contrast) .fixed .rounded-xl.border,
 html:not(.high-contrast) .fixed .rounded-2xl.border {
-  border-color: transparent !important;
+  border-color: rgba(15, 5, 31, 0.1) !important;
   box-shadow: var(--dp-shadow-popover) !important;
   border-radius: 1rem !important;
 }
@@ -500,20 +508,26 @@ html.dark select {
 }
 
 html:not(.dark) select {
-  background-color: #f9f9fb !important;
-  border: 1px solid transparent !important;
+  background-color: #ffffff !important;
+  border: 1px solid rgba(15, 5, 31, 0.16) !important;
   color: #09090b !important;
-  box-shadow: 0 0 0 1px rgba(15, 5, 31, 0.08) !important;
+  box-shadow: var(--dp-shadow-input) !important;
 }
 
-select:hover {
+html:not(.dark) select:hover {
+  border-color: rgba(109, 37, 218, 0.48) !important;
+  box-shadow: 0 2px 6px -2px rgba(109, 37, 218, 0.14) !important;
+}
+
+html.dark select:hover {
   box-shadow: 0 0 0 1px rgba(139, 81, 225, 0.45) !important;
 }
 
 select:focus,
 select:focus-visible {
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(109, 37, 218, 0.16), 0 0 0 1px #6d25da !important;
+  border-color: #6d25da !important;
+  box-shadow: 0 0 0 3.5px rgba(109, 37, 218, 0.15), 0 0 0 1px #6d25da !important;
 }
 
 select option,
@@ -545,9 +559,9 @@ input[type="time"],
 input[type="search"],
 input[type="url"],
 textarea {
-  border-radius: 0.5rem !important;
+  border-radius: 0.625rem !important;
   font-family: var(--font-sans);
-  transition: box-shadow 160ms ease, background-color 160ms ease;
+  transition: box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 
 html:not(.dark) input[type="text"],
@@ -559,10 +573,21 @@ html:not(.dark) input[type="time"],
 html:not(.dark) input[type="search"],
 html:not(.dark) input[type="url"],
 html:not(.dark) textarea {
-  background-color: #f9f9fb !important;
-  border: 1px solid transparent !important;
-  box-shadow: 0 0 0 1px rgba(15, 5, 31, 0.08) !important;
+  background-color: #ffffff !important;
+  border: 1px solid rgba(15, 5, 31, 0.16) !important;
+  box-shadow: var(--dp-shadow-input) !important;
   color: #09090b !important;
+}
+
+html:not(.dark) input[type="text"]:disabled,
+html:not(.dark) input[type="email"]:disabled,
+html:not(.dark) input[type="number"]:disabled,
+html:not(.dark) select:disabled,
+html:not(.dark) textarea:disabled {
+  background-color: #f1f2f7 !important;
+  border-color: rgba(15, 5, 31, 0.1) !important;
+  color: #71717a !important;
+  box-shadow: none !important;
 }
 
 html.dark input[type="text"],
@@ -580,22 +605,52 @@ html.dark textarea {
   color: #f4f4f5 !important;
 }
 
-input[type="text"]:hover,
-input[type="email"]:hover,
-input[type="password"]:hover,
-input[type="number"]:hover,
-input[type="date"]:hover,
-input[type="time"]:hover,
-input[type="search"]:hover,
-input[type="url"]:hover,
-textarea:hover {
+html:not(.dark) input[type="text"]:hover:not(:disabled),
+html:not(.dark) input[type="email"]:hover:not(:disabled),
+html:not(.dark) input[type="password"]:hover:not(:disabled),
+html:not(.dark) input[type="number"]:hover:not(:disabled),
+html:not(.dark) input[type="date"]:hover:not(:disabled),
+html:not(.dark) input[type="time"]:hover:not(:disabled),
+html:not(.dark) input[type="search"]:hover:not(:disabled),
+html:not(.dark) input[type="url"]:hover:not(:disabled),
+html:not(.dark) textarea:hover:not(:disabled) {
+  border-color: rgba(109, 37, 218, 0.45) !important;
+  box-shadow: 0 2px 6px -2px rgba(109, 37, 218, 0.12) !important;
+}
+
+html.dark input[type="text"]:hover,
+html.dark input[type="email"]:hover,
+html.dark input[type="password"]:hover,
+html.dark input[type="number"]:hover,
+html.dark input[type="date"]:hover,
+html.dark input[type="time"]:hover,
+html.dark input[type="search"]:hover,
+html.dark input[type="url"]:hover,
+html.dark textarea:hover {
   box-shadow: 0 0 0 1px rgba(139, 81, 225, 0.38) !important;
 }
 
 input:focus,
 textarea:focus {
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(109, 37, 218, 0.16), 0 0 0 1px #6d25da !important;
+  border-color: #6d25da !important;
+  box-shadow: 0 0 0 3.5px rgba(109, 37, 218, 0.15), 0 0 0 1px #6d25da !important;
+}
+
+/* Crisp form labels & checkboxes in light mode */
+html:not(.dark) main form label,
+html:not(.dark) .fixed form label {
+  color: #3f3f46;
+  font-weight: 500;
+}
+
+html:not(.dark) .fixed form.bg-white {
+  border: 1px solid rgba(15, 5, 31, 0.1);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #6d25da;
 }
 
 /* =========================================================================
@@ -652,7 +707,7 @@ html:not(.dark) textarea {
 
 html:not(.dark) input::placeholder,
 html:not(.dark) textarea::placeholder {
-  color: #a1a1aa;
+  color: #71717a;
 }
 
 html.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),

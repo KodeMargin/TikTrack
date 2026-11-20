@@ -2380,6 +2380,12 @@ const PERMISSION_MODULES = [
 		icon: "📅"
 	},
 	{
+		id: "payments",
+		name: "Developer Payments & Payouts",
+		description: "Developer pay rates, payout schedules, disbursement tracking and read-only earnings statements.",
+		icon: "💸"
+	},
+	{
 		id: "billing",
 		name: "Contracts & Billing",
 		description: "Rate card management, draft invoice generation and credit note adjustments.",
@@ -2566,6 +2572,30 @@ const GRANULAR_PERMISSIONS = [
 		module: "timesheets",
 		label: "Lock Accounting Periods",
 		description: "Can lock timesheet billing cycles to make them immutable."
+	},
+	{
+		key: "payment:view_own",
+		module: "payments",
+		label: "View Own Payments (Read-Only)",
+		description: "Can view own configured pay rate, payout schedule, accrued earnings and payout history in read-only mode."
+	},
+	{
+		key: "payment:view_team",
+		module: "payments",
+		label: "View Team Payments",
+		description: "Can inspect payment configurations, accrued payroll and payout history across all workspace members."
+	},
+	{
+		key: "payment:configure",
+		module: "payments",
+		label: "Configure Developer Payments",
+		description: "Can configure developer hourly/retainer pay rates, payout schedules, payment methods and tax withholding."
+	},
+	{
+		key: "payment:record_payout",
+		module: "payments",
+		label: "Record & Mark Payouts Paid",
+		description: "Can create payout disbursements and update payout statuses (Scheduled, Processing, Paid)."
 	},
 	{
 		key: "billing:view",
@@ -2837,6 +2867,7 @@ const DEFAULT_PREDEFINED_ROLES = [
 			"timesheet:submit",
 			"timesheet:approve",
 			"timesheet:reject",
+			"payment:view_own",
 			"member:view",
 			"role:view",
 			"timeline:view_own",
@@ -2866,6 +2897,7 @@ const DEFAULT_PREDEFINED_ROLES = [
 			"timer:view_own",
 			"timesheet:view_own",
 			"timesheet:submit",
+			"payment:view_own",
 			"timeline:view_own",
 			"evidence:annotate",
 			"dispute:open",
@@ -2887,6 +2919,9 @@ const DEFAULT_PREDEFINED_ROLES = [
 			"timesheet:view_own",
 			"timesheet:view_team",
 			"timesheet:lock",
+			"payment:view_own",
+			"payment:view_team",
+			"payment:record_payout",
 			"billing:view",
 			"billing:manage_rates",
 			"invoice:create_draft",
@@ -2908,6 +2943,7 @@ const DEFAULT_PREDEFINED_ROLES = [
 			"timesheet:view_team",
 			"timesheet:approve",
 			"timesheet:reject",
+			"payment:view_own",
 			"dispute:open",
 			"dispute:view",
 			"timeline:view_team",
@@ -2925,6 +2961,8 @@ const DEFAULT_PREDEFINED_ROLES = [
 			"task:view",
 			"project:view",
 			"timesheet:view_team",
+			"payment:view_own",
+			"payment:view_team",
 			"timeline:view_team",
 			"verification:view",
 			"compliance:view",

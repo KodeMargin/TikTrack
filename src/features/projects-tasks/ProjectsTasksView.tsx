@@ -1,7 +1,16 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePhase1Store, type TaskRecord } from '@/context/Phase1Store'
 import type { WorkMode } from '@/types/domain.types'
+
+function formatDuration(minutes: number): string {
+  const safe = Math.max(0, Math.round(minutes))
+  const h = Math.floor(safe / 60)
+  const m = safe % 60
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
 
 const WORK_MODE_OPTIONS: WorkMode[] = [
   'coding',
@@ -32,6 +41,7 @@ export function ProjectsTasksView({
     updateTaskStatus,
     assignTaskMembers,
     addTaskAttachment,
+    timesheetLines,
     hasPermission,
   } = usePhase1Store()
 
@@ -63,6 +73,34 @@ export function ProjectsTasksView({
   const canChangeTaskStatus = hasPermission('task:status_change')
   const canApproveTask = hasPermission('task:approve')
   const canTrackTimer = hasPermission('timer:start_stop')
+  const canViewTeamLogs =
+    activeUser.role === 'super_admin' ||
+    activeUser.role === 'tenant_owner' ||
+    hasPermission('timesheet:view_team')
+
+  const scopedTimesheetLines = useMemo(() => {
+    if (canViewTeamLogs) return timesheetLines
+    return timesheetLines.filter((l) => l.developerId === activeUser.id)
+  }, [canViewTeamLogs, timesheetLines, activeUser.id])
+
+  const taskTimeStats = useMemo(() => {
+    const map = new Map<
+      string,
+      { loggedMinutes: number; approvedMinutes: number; entries: typeof scopedTimesheetLines }
+    >()
+    for (const line of scopedTimesheetLines) {
+      const existing = map.get(line.taskId) ?? {
+        loggedMinutes: 0,
+        approvedMinutes: 0,
+        entries: [],
+      }
+      existing.loggedMinutes += line.claimedMinutes
+      existing.approvedMinutes += line.approvedBillableMinutes
+      existing.entries.push(line)
+      map.set(line.taskId, existing)
+    }
+    return map
+  }, [scopedTimesheetLines])
 
   // New project form state
   const [projCode, setProjCode] = useState('')
@@ -597,6 +635,14 @@ export function ProjectsTasksView({
                       const assignedMembers = members.filter(
                         (m) => m.status === 'active' && task.assignedMemberIds.includes(m.id)
                       )
+                      const stats = taskTimeStats.get(task.id)
+                      const loggedMins = stats?.loggedMinutes ?? 0
+                      const progressPct =
+                        task.estimateMinutes > 0
+                          ? Math.min(100, Math.round((loggedMins / task.estimateMinutes) * 100))
+                          : 0
+                      const isOverEstimate =
+                        task.estimateMinutes > 0 && loggedMins > task.estimateMinutes
 
                       return (
                         <div
@@ -642,14 +688,52 @@ export function ProjectsTasksView({
                             {task.title}
                           </div>
 
+                          {/* Logged vs Estimate Progress Strip */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-mono">
+                              <span
+                                className={
+                                  isOverEstimate
+                                    ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                                    : loggedMins > 0
+                                      ? 'text-zinc-700 dark:text-zinc-200 font-semibold'
+                                      : 'text-zinc-400 dark:text-zinc-500'
+                                }
+                              >
+                                {formatDuration(loggedMins)} logged
+                              </span>
+                              <span className="text-zinc-400 dark:text-zinc-500">
+                                Est. {formatDuration(task.estimateMinutes)}
+                              </span>
+                            </div>
+                            <div className="h-1 w-full rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${
+                                  isOverEstimate
+                                    ? 'bg-rose-500'
+                                    : task.status === 'done'
+                                      ? 'bg-emerald-500'
+                                      : 'bg-[#6d25da]'
+                                }`}
+                                style={{ width: `${progressPct}%` }}
+                              />
+                            </div>
+                          </div>
+
                           {/* Compact Footer: Metadata + Quick Track */}
                           <div className="flex items-center justify-between gap-2 pt-0.5">
                             <div className="flex items-center gap-1.5 min-w-0 text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-                              <span>{task.estimateMinutes}m</span>
-                              <span>·</span>
-                              <span className="text-[#6d25da] dark:text-[#c5a8f0] truncate">
+                              <span className="capitalize text-[#6d25da] dark:text-[#c5a8f0] truncate">
                                 {task.defaultWorkMode}
                               </span>
+                              {stats && stats.entries.length > 0 && (
+                                <>
+                                  <span>·</span>
+                                  <span title="Logged time entries">
+                                    {stats.entries.length} {stats.entries.length === 1 ? 'log' : 'logs'}
+                                  </span>
+                                </>
+                              )}
                               {task.attachments.length > 0 && (
                                 <>
                                   <span>·</span>
@@ -681,7 +765,7 @@ export function ProjectsTasksView({
                                       task.defaultWorkMode
                                     )
                                   }}
-                                  className="h-6 px-2 rounded-md bg-[#6d25da]/10 hover:bg-[#6d25da] text-[#6d25da] hover:text-white dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] dark:hover:bg-[#6d25da] dark:hover:text-white text-[10px] font-semibold transition cursor-pointer"
+                                  className="h-6 px-2 rounded-md bg-[#6d25da]/10 hover:bg-[#6d25da] text-[#6d25da] hover:text-white dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] dark:hover:bg-[#6d25da] dark:hover:text-white text-[10px] font-semibold transition active:scale-95 cursor-pointer"
                                 >
                                   ▶
                                 </button>
@@ -698,86 +782,124 @@ export function ProjectsTasksView({
           })}
         </div>
       ) : (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 overflow-hidden">
+        <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] overflow-x-auto shadow-[0_1px_2px_rgba(15,5,31,0.03)]">
           <table className="w-full text-left text-xs">
-            <thead className="bg-zinc-50 dark:bg-zinc-950/90 text-zinc-500 dark:text-zinc-400 uppercase text-[11px]">
+            <thead className="bg-zinc-50/90 dark:bg-white/[0.03] text-zinc-500 dark:text-zinc-400 uppercase text-[11px]">
               <tr>
-                <th className="py-3 px-4">Code</th>
-                <th className="py-3 px-4">Task & Acceptance Criteria</th>
-                <th className="py-3 px-4">Work Mode</th>
-                <th className="py-3 px-4">Estimate</th>
+                <th className="py-3 px-4">Task</th>
+                <th className="py-3 px-4">Logged / Est.</th>
+                <th className="py-3 px-4">Mode</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {projectTasks.map((t) => (
-                <tr key={t.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-950/40">
-                  <td className="py-3 px-4 font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">
-                    {t.code}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="font-semibold text-zinc-900 dark:text-white">{t.title}</div>
-                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                      {t.acceptanceCriteria}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 font-mono text-[#6d25da] dark:text-[#c5a8f0]">
-                    {t.defaultWorkMode}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-zinc-700 dark:text-zinc-300">
-                    {t.estimateMinutes}m
-                  </td>
-                  <td className="py-3 px-4 uppercase font-mono text-[11px]">
-                    {t.status}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {canEditTask && (
-                        <button
-                          type="button"
-                          title="Edit Task"
-                          onClick={() => startEditTask(t)}
-                          className="px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs cursor-pointer"
-                        >
-                          ✎
-                        </button>
-                      )}
-                      {canDeleteTask && (
-                        <button
-                          type="button"
-                          title="Delete Task"
-                          onClick={() => handleDeleteTask(t.id)}
-                          className="px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-rose-100 dark:hover:bg-rose-950 text-zinc-500 dark:text-zinc-400 hover:text-rose-800 dark:hover:text-rose-300 text-xs cursor-pointer"
-                        >
-                          ✕
-                        </button>
-                      )}
-                      {canApproveTask && (t.status === 'review' || t.status === 'active') && (
-                        <button
-                          type="button"
-                          title="Approve Acceptance Criteria"
-                          onClick={() => handleApproveTask(t)}
-                          className="px-2 py-1 rounded bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs cursor-pointer"
-                        >
-                          ✓ Sign-off
-                        </button>
-                      )}
-                      {canTrackTimer && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onLaunchTimerForTask(t.projectId, t.id, t.defaultWorkMode)
-                          }
-                          className="px-2.5 py-1 rounded bg-emerald-600 text-white font-semibold cursor-pointer text-xs"
-                        >
-                          ▶ Track
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+            <tbody>
+              {projectTasks.map((t) => {
+                const stats = taskTimeStats.get(t.id)
+                const loggedMins = stats?.loggedMinutes ?? 0
+                const pct =
+                  t.estimateMinutes > 0
+                    ? Math.min(100, Math.round((loggedMins / t.estimateMinutes) * 100))
+                    : 0
+                const over = t.estimateMinutes > 0 && loggedMins > t.estimateMinutes
+                const statusBadge =
+                  t.status === 'done'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                    : t.status === 'review'
+                      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                      : t.status === 'active'
+                        ? 'bg-[#6d25da]/10 text-[#581eae] dark:text-[#c5a8f0]'
+                        : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300'
+
+                return (
+                  <tr
+                    key={t.id}
+                    onClick={() => setSelectedTaskId(t.id)}
+                    className="cursor-pointer"
+                  >
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0] shrink-0">
+                          {t.code}
+                        </span>
+                        <span className="font-semibold text-zinc-900 dark:text-white">
+                          {t.title}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">
+                        {t.acceptanceCriteria}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 w-44">
+                      <div className="flex items-center justify-between font-mono text-[11px] mb-1">
+                        <span className={over ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-zinc-800 dark:text-zinc-200 font-semibold'}>
+                          {formatDuration(loggedMins)}
+                        </span>
+                        <span className="text-zinc-400">/ {formatDuration(t.estimateMinutes)}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${over ? 'bg-rose-500' : t.status === 'done' ? 'bg-emerald-500' : 'bg-[#6d25da]'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 capitalize font-medium text-[#6d25da] dark:text-[#c5a8f0]">
+                      {t.defaultWorkMode}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize ${statusBadge}`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {canEditTask && (
+                          <button
+                            type="button"
+                            title="Edit Task"
+                            onClick={() => startEditTask(t)}
+                            className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-white/[0.07] hover:bg-zinc-200 dark:hover:bg-white/[0.12] text-zinc-700 dark:text-zinc-300 text-xs transition cursor-pointer"
+                          >
+                            ✎
+                          </button>
+                        )}
+                        {canDeleteTask && (
+                          <button
+                            type="button"
+                            title="Delete Task"
+                            onClick={() => handleDeleteTask(t.id)}
+                            className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-white/[0.07] hover:bg-rose-100 dark:hover:bg-rose-950 text-zinc-500 dark:text-zinc-400 hover:text-rose-800 dark:hover:text-rose-300 text-xs transition cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        )}
+                        {canApproveTask && (t.status === 'review' || t.status === 'active') && (
+                          <button
+                            type="button"
+                            title="Approve Acceptance Criteria"
+                            onClick={() => handleApproveTask(t)}
+                            className="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs transition cursor-pointer"
+                          >
+                            ✓ Sign-off
+                          </button>
+                        )}
+                        {canTrackTimer && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onLaunchTimerForTask(t.projectId, t.id, t.defaultWorkMode)
+                            }
+                            className="px-2.5 py-1 rounded-lg bg-[#6d25da] hover:bg-[#581eae] text-white font-semibold transition cursor-pointer text-xs"
+                          >
+                            ▶ Track
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -866,6 +988,56 @@ export function ProjectsTasksView({
                     {selectedTask.acceptanceCriteria}
                   </p>
                 </div>
+
+                {/* Developer Logged Time & Sessions for this Task */}
+                {(() => {
+                  const stats = taskTimeStats.get(selectedTask.id)
+                  const entries = stats?.entries ?? []
+                  return (
+                    <div className="space-y-2.5 pt-2 border-t border-zinc-100 dark:border-white/[0.06]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                          Logged Developer Time ({entries.length})
+                        </span>
+                        <span className="font-mono text-xs font-semibold text-[#6d25da] dark:text-[#c5a8f0]">
+                          {formatDuration(stats?.loggedMinutes ?? 0)} / {formatDuration(selectedTask.estimateMinutes)}
+                        </span>
+                      </div>
+                      {entries.length === 0 ? (
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                          No sessions logged against this task yet.
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                          {entries.map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-zinc-50 dark:bg-white/[0.04] text-xs"
+                            >
+                              <div className="min-w-0">
+                                <div className="font-semibold text-zinc-900 dark:text-white truncate">
+                                  {entry.developerName}
+                                </div>
+                                <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
+                                  {entry.workDate} · {entry.startTime}–{entry.endTime} ·{' '}
+                                  <span className="capitalize">{entry.workMode}</span>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="font-mono font-bold text-zinc-900 dark:text-white">
+                                  {formatDuration(entry.claimedMinutes)}
+                                </div>
+                                <div className="text-[10.5px] capitalize text-zinc-500 dark:text-zinc-400">
+                                  {entry.evidenceStatus.replace(/_/g, ' ')}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 <div className="space-y-2.5 pt-2 border-t border-zinc-100 dark:border-white/[0.06]">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">

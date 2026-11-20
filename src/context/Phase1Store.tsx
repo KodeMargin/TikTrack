@@ -220,6 +220,66 @@ export interface NotificationItem {
   createdAt: string
 }
 
+export type PaymentCalculationMode = 'user_wise' | 'task_wise' | 'hybrid'
+
+export interface WorkspacePaymentPolicy {
+  tenantId: string
+  paymentMode: PaymentCalculationMode
+  showTaskBreakdownToUsers: boolean
+  hideClientBillingRatesFromDevelopers: boolean
+  updatedAt: string
+  updatedBy: string
+}
+
+export interface TaskPaymentConfig {
+  id: string
+  tenantId: string
+  taskId: string
+  payType: 'fixed_bounty' | 'hourly_rate'
+  amount: number
+  currency: string
+  notes: string
+  updatedAt: string
+  updatedBy: string
+}
+
+export interface DeveloperPaymentConfig {
+  id: string
+  tenantId: string
+  memberId: string
+  payModel: 'hourly' | 'monthly_retainer' | 'fixed_milestone'
+  hourlyRate: number
+  monthlyRetainerAmount: number
+  currency: string
+  payoutFrequency: 'weekly' | 'biweekly' | 'monthly'
+  payoutMethod: 'bank_transfer' | 'wise' | 'payoneer' | 'stripe_connect' | 'crypto_usdc'
+  accountSummary: string
+  taxWithholdingPercent: number
+  effectiveFrom: string
+  notes: string
+  updatedAt: string
+  updatedBy: string
+}
+
+export interface DeveloperPayoutRecord {
+  id: string
+  tenantId: string
+  memberId: string
+  memberName: string
+  periodLabel: string
+  approvedMinutes: number
+  grossAmount: number
+  taxWithheldAmount: number
+  netAmount: number
+  currency: string
+  status: 'scheduled' | 'processing' | 'paid'
+  payoutMethod: DeveloperPaymentConfig['payoutMethod']
+  referenceCode: string
+  paidAt?: string
+  createdAt: string
+  notes?: string
+}
+
 export interface AuditLogEntry {
   id: string
   tenantId: string
@@ -249,6 +309,10 @@ interface ActiveTimerState {
 const TIMER_RECOVERY_STORAGE_KEY = 'devproof_active_timer_recovery_v1'
 const CUSTOM_ROLES_STORAGE_KEY = 'devproof_custom_roles_v1'
 const TENANT_OWNER_PERMS_STORAGE_KEY = 'devproof_tenant_owner_perms_v1'
+const DEV_PAYMENT_CONFIGS_STORAGE_KEY = 'devproof_dev_payment_configs_v1'
+const DEV_PAYOUTS_STORAGE_KEY = 'devproof_dev_payouts_v1'
+const WORKSPACE_PAYMENT_POLICY_STORAGE_KEY = 'devproof_workspace_payment_policy_v1'
+const TASK_PAYMENT_CONFIGS_STORAGE_KEY = 'devproof_task_payment_configs_v1'
 
 interface Phase1StoreContextValue {
   tenants: TenantWorkspace[]
@@ -399,6 +463,52 @@ interface Phase1StoreContextValue {
     creditAmount: number,
     reason: string
   ) => { ok: boolean; message: string }
+  workspacePaymentPolicy: WorkspacePaymentPolicy
+  updateWorkspacePaymentPolicy: (patch: {
+    paymentMode?: PaymentCalculationMode
+    showTaskBreakdownToUsers?: boolean
+    hideClientBillingRatesFromDevelopers?: boolean
+  }) => { ok: boolean; message: string }
+  taskPaymentConfigs: TaskPaymentConfig[]
+  saveTaskPaymentConfig: (input: {
+    taskId: string
+    payType: TaskPaymentConfig['payType']
+    amount: number
+    currency: string
+    notes: string
+  }) => { ok: boolean; message: string }
+  deleteTaskPaymentConfig: (taskId: string) => { ok: boolean; message: string }
+  developerPaymentConfigs: DeveloperPaymentConfig[]
+  developerPayouts: DeveloperPayoutRecord[]
+  saveDeveloperPaymentConfig: (input: {
+    memberId: string
+    payModel: DeveloperPaymentConfig['payModel']
+    hourlyRate: number
+    monthlyRetainerAmount: number
+    currency: string
+    payoutFrequency: DeveloperPaymentConfig['payoutFrequency']
+    payoutMethod: DeveloperPaymentConfig['payoutMethod']
+    accountSummary: string
+    taxWithholdingPercent: number
+    effectiveFrom: string
+    notes: string
+  }) => { ok: boolean; message: string }
+  recordDeveloperPayout: (input: {
+    memberId: string
+    periodLabel: string
+    approvedMinutes: number
+    grossAmount: number
+    taxWithholdingPercent: number
+    currency: string
+    payoutMethod: DeveloperPaymentConfig['payoutMethod']
+    referenceCode: string
+    status: DeveloperPayoutRecord['status']
+    notes?: string
+  }) => { ok: boolean; message: string }
+  updatePayoutStatus: (
+    payoutId: string,
+    status: DeveloperPayoutRecord['status']
+  ) => { ok: boolean; message: string }
   notifications: NotificationItem[]
   unreadNotificationCount: number
   markNotificationRead: (notificationId: string) => void
@@ -533,6 +643,54 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     useState<ContractBillingPolicy>(EMPTY_CONTRACT_POLICY)
   const [timesheetLines, setTimesheetLines] = useState<TimesheetLineItem[]>([])
   const [invoices, setInvoices] = useState<InvoiceDraftRecord[]>([])
+  const [developerPaymentConfigs, setDeveloperPaymentConfigs] = useState<
+    DeveloperPaymentConfig[]
+  >(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = localStorage.getItem(DEV_PAYMENT_CONFIGS_STORAGE_KEY)
+      if (raw) return JSON.parse(raw) as DeveloperPaymentConfig[]
+    } catch {
+      // ignore
+    }
+    return []
+  })
+  const [developerPayouts, setDeveloperPayouts] = useState<DeveloperPayoutRecord[]>(
+    () => {
+      if (typeof window === 'undefined') return []
+      try {
+        const raw = localStorage.getItem(DEV_PAYOUTS_STORAGE_KEY)
+        if (raw) return JSON.parse(raw) as DeveloperPayoutRecord[]
+      } catch {
+        // ignore
+      }
+      return []
+    }
+  )
+  const [workspacePaymentPolicies, setWorkspacePaymentPolicies] = useState<
+    Record<string, WorkspacePaymentPolicy>
+  >(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const raw = localStorage.getItem(WORKSPACE_PAYMENT_POLICY_STORAGE_KEY)
+      if (raw) return JSON.parse(raw) as Record<string, WorkspacePaymentPolicy>
+    } catch {
+      // ignore
+    }
+    return {}
+  })
+  const [taskPaymentConfigs, setTaskPaymentConfigs] = useState<TaskPaymentConfig[]>(
+    () => {
+      if (typeof window === 'undefined') return []
+      try {
+        const raw = localStorage.getItem(TASK_PAYMENT_CONFIGS_STORAGE_KEY)
+        if (raw) return JSON.parse(raw) as TaskPaymentConfig[]
+      } catch {
+        // ignore
+      }
+      return []
+    }
+  )
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([])
   const [phase2Bootstrap, setPhase2Bootstrap] =
@@ -606,6 +764,58 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [tenantOwnerPermissions])
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          DEV_PAYMENT_CONFIGS_STORAGE_KEY,
+          JSON.stringify(developerPaymentConfigs)
+        )
+      } catch {
+        // ignore
+      }
+    }
+  }, [developerPaymentConfigs])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          DEV_PAYOUTS_STORAGE_KEY,
+          JSON.stringify(developerPayouts)
+        )
+      } catch {
+        // ignore
+      }
+    }
+  }, [developerPayouts])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          WORKSPACE_PAYMENT_POLICY_STORAGE_KEY,
+          JSON.stringify(workspacePaymentPolicies)
+        )
+      } catch {
+        // ignore
+      }
+    }
+  }, [workspacePaymentPolicies])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          TASK_PAYMENT_CONFIGS_STORAGE_KEY,
+          JSON.stringify(taskPaymentConfigs)
+        )
+      } catch {
+        // ignore
+      }
+    }
+  }, [taskPaymentConfigs])
+
   function applyBootstrapPayload(
     payload: NonNullable<Awaited<ReturnType<typeof fetchPrismaBootstrap>>>
   ) {
@@ -654,12 +864,41 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       if (payload.rbac) {
         setRbacSeedStatus(payload.rbac.seedStatus)
         if (payload.rbac.permissions.length > 0) {
-          setPermissionsCatalog(payload.rbac.permissions)
+          // Ensure newly shipped built-in permissions (e.g. payment:*) are always available in catalog
+          const existingKeys = new Set(payload.rbac.permissions.map((p) => p.key))
+          const missingBuiltins = GRANULAR_PERMISSIONS.filter(
+            (p) => !existingKeys.has(p.key)
+          )
+          setPermissionsCatalog([...payload.rbac.permissions, ...missingBuiltins])
         }
         if (payload.rbac.roles.length > 0) {
-          setRoles(payload.rbac.roles)
+          // Merge any newly added built-in payment permissions into matching system roles
+          const mergedRoles = payload.rbac.roles.map((dbRole) => {
+            if (!dbRole.isSystemRole) return dbRole
+            const defaultRole = DEFAULT_PREDEFINED_ROLES.find(
+              (r) => r.code === dbRole.code
+            )
+            if (!defaultRole) return dbRole
+            const newPaymentPerms = defaultRole.permissions.filter(
+              (perm) => perm.startsWith('payment:') && !dbRole.permissions.includes(perm)
+            )
+            if (newPaymentPerms.length === 0) return dbRole
+            return {
+              ...dbRole,
+              permissions: [...dbRole.permissions, ...newPaymentPerms],
+            }
+          })
+          setRoles(mergedRoles)
         }
-        setTenantOwnerPermissions(payload.rbac.tenantOwnerPermissions)
+        // Ensure tenant owner permission maps also include newly shipped payment permissions
+        const mergedOwnerPerms: Record<string, string[]> = {}
+        for (const [tid, perms] of Object.entries(payload.rbac.tenantOwnerPermissions)) {
+          const paymentDefaults = DEFAULT_TENANT_OWNER_PERMISSIONS.filter(
+            (p) => p.startsWith('payment:') && !perms.includes(p)
+          )
+          mergedOwnerPerms[tid] = [...perms, ...paymentDefaults]
+        }
+        setTenantOwnerPermissions(mergedOwnerPerms)
       }
     } else {
       setTenants([])
@@ -2804,6 +3043,382 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function saveDeveloperPaymentConfig(input: {
+    memberId: string
+    payModel: DeveloperPaymentConfig['payModel']
+    hourlyRate: number
+    monthlyRetainerAmount: number
+    currency: string
+    payoutFrequency: DeveloperPaymentConfig['payoutFrequency']
+    payoutMethod: DeveloperPaymentConfig['payoutMethod']
+    accountSummary: string
+    taxWithholdingPercent: number
+    effectiveFrom: string
+    notes: string
+  }): { ok: boolean; message: string } {
+    if (
+      activeUser.role !== 'super_admin' &&
+      activeUser.role !== 'tenant_owner' &&
+      !hasPermission('payment:configure')
+    ) {
+      return {
+        ok: false,
+        message: 'Access denied: Only Tenant Owners or users with payment:configure can edit developer payment settings.',
+      }
+    }
+
+    const member = members.find(
+      (m) => m.id === input.memberId && m.tenantId === activeTenant.id
+    )
+    if (!member) {
+      return { ok: false, message: 'Workspace member not found.' }
+    }
+    if (input.payModel === 'hourly' && input.hourlyRate <= 0) {
+      return { ok: false, message: 'Hourly rate must be greater than 0.' }
+    }
+    if (input.payModel === 'monthly_retainer' && input.monthlyRetainerAmount <= 0) {
+      return { ok: false, message: 'Monthly retainer amount must be greater than 0.' }
+    }
+
+    const nowIso = new Date().toISOString()
+    const nextConfig: DeveloperPaymentConfig = {
+      id: `paycfg-${activeTenant.id}-${member.id}`,
+      tenantId: activeTenant.id,
+      memberId: member.id,
+      payModel: input.payModel,
+      hourlyRate: Math.max(0, Number(input.hourlyRate) || 0),
+      monthlyRetainerAmount: Math.max(0, Number(input.monthlyRetainerAmount) || 0),
+      currency: (input.currency || activeTenant.currency || 'USD').toUpperCase(),
+      payoutFrequency: input.payoutFrequency,
+      payoutMethod: input.payoutMethod,
+      accountSummary: input.accountSummary.trim() || 'Pending payout details',
+      taxWithholdingPercent: Math.min(60, Math.max(0, Number(input.taxWithholdingPercent) || 0)),
+      effectiveFrom: input.effectiveFrom || nowIso.slice(0, 10),
+      notes: input.notes.trim(),
+      updatedAt: nowIso,
+      updatedBy: activeUser.name,
+    }
+
+    setDeveloperPaymentConfigs((prev) => {
+      const exists = prev.some(
+        (c) => c.tenantId === activeTenant.id && c.memberId === member.id
+      )
+      if (exists) {
+        return prev.map((c) =>
+          c.tenantId === activeTenant.id && c.memberId === member.id ? nextConfig : c
+        )
+      }
+      return [nextConfig, ...prev]
+    })
+
+    const rateSummary =
+      nextConfig.payModel === 'hourly'
+        ? `${nextConfig.currency} ${nextConfig.hourlyRate}/hr`
+        : nextConfig.payModel === 'monthly_retainer'
+          ? `${nextConfig.currency} ${nextConfig.monthlyRetainerAmount}/mo`
+          : `Fixed milestone (${nextConfig.currency})`
+
+    appendAudit(
+      'DEVELOPER_PAYMENT_CONFIGURED',
+      `developer_payment_config:${member.id}`,
+      `Updated payment config for ${member.name}: ${rateSummary}, ${nextConfig.payoutFrequency} via ${nextConfig.payoutMethod}`
+    )
+    pushNotification(
+      member.id,
+      'timesheet_approved',
+      'Payment Configuration Updated',
+      `${activeUser.name} updated your payment terms (${rateSummary} · ${nextConfig.payoutFrequency}).`
+    )
+
+    return {
+      ok: true,
+      message: `Saved payment configuration for ${member.name} (${rateSummary}).`,
+    }
+  }
+
+  function recordDeveloperPayout(input: {
+    memberId: string
+    periodLabel: string
+    approvedMinutes: number
+    grossAmount: number
+    taxWithholdingPercent: number
+    currency: string
+    payoutMethod: DeveloperPaymentConfig['payoutMethod']
+    referenceCode: string
+    status: DeveloperPayoutRecord['status']
+    notes?: string
+  }): { ok: boolean; message: string } {
+    if (
+      activeUser.role !== 'super_admin' &&
+      activeUser.role !== 'tenant_owner' &&
+      !hasPermission('payment:record_payout') &&
+      !hasPermission('payment:configure')
+    ) {
+      return {
+        ok: false,
+        message: 'Access denied: Missing payment:record_payout permission.',
+      }
+    }
+
+    const member = members.find(
+      (m) => m.id === input.memberId && m.tenantId === activeTenant.id
+    )
+    if (!member) return { ok: false, message: 'Workspace member not found.' }
+    if (input.grossAmount <= 0) {
+      return { ok: false, message: 'Gross payout amount must be greater than 0.' }
+    }
+
+    const gross = Math.round(input.grossAmount * 100) / 100
+    const taxWithheld =
+      Math.round(gross * (Math.max(0, input.taxWithholdingPercent) / 100) * 100) / 100
+    const net = Math.round((gross - taxWithheld) * 100) / 100
+    const nowIso = new Date().toISOString()
+
+    const newPayout: DeveloperPayoutRecord = {
+      id: `payout-${Date.now()}`,
+      tenantId: activeTenant.id,
+      memberId: member.id,
+      memberName: member.name,
+      periodLabel: input.periodLabel.trim() || `Period ${nowIso.slice(0, 10)}`,
+      approvedMinutes: Math.max(0, Math.round(input.approvedMinutes)),
+      grossAmount: gross,
+      taxWithheldAmount: taxWithheld,
+      netAmount: net,
+      currency: (input.currency || activeTenant.currency || 'USD').toUpperCase(),
+      status: input.status,
+      payoutMethod: input.payoutMethod,
+      referenceCode:
+        input.referenceCode.trim() ||
+        `PAY-${new Date().getFullYear()}-${String(developerPayouts.length + 101)}`,
+      paidAt: input.status === 'paid' ? nowIso : undefined,
+      createdAt: nowIso,
+      notes: input.notes?.trim() || undefined,
+    }
+
+    setDeveloperPayouts((prev) => [newPayout, ...prev])
+    appendAudit(
+      'DEVELOPER_PAYOUT_RECORDED',
+      `developer_payouts:${newPayout.referenceCode}`,
+      `Recorded ${newPayout.status} payout ${newPayout.referenceCode} for ${member.name} (${newPayout.currency} ${newPayout.netAmount.toFixed(2)} net)`
+    )
+    pushNotification(
+      member.id,
+      'invoice_locked',
+      `Payout ${newPayout.status === 'paid' ? 'Paid' : 'Scheduled'}: ${newPayout.referenceCode}`,
+      `${newPayout.currency} ${newPayout.netAmount.toFixed(2)} net for ${newPayout.periodLabel}.`
+    )
+
+    return {
+      ok: true,
+      message: `Recorded payout ${newPayout.referenceCode} for ${member.name} (${newPayout.currency} ${newPayout.netAmount.toFixed(2)} net).`,
+    }
+  }
+
+  function updatePayoutStatus(
+    payoutId: string,
+    status: DeveloperPayoutRecord['status']
+  ): { ok: boolean; message: string } {
+    if (
+      activeUser.role !== 'super_admin' &&
+      activeUser.role !== 'tenant_owner' &&
+      !hasPermission('payment:record_payout') &&
+      !hasPermission('payment:configure')
+    ) {
+      return {
+        ok: false,
+        message: 'Access denied: Missing payment:record_payout permission.',
+      }
+    }
+
+    const target = developerPayouts.find(
+      (p) => p.id === payoutId && p.tenantId === activeTenant.id
+    )
+    if (!target) return { ok: false, message: 'Payout record not found.' }
+
+    const nowIso = new Date().toISOString()
+    setDeveloperPayouts((prev) =>
+      prev.map((p) =>
+        p.id === payoutId
+          ? {
+              ...p,
+              status,
+              paidAt: status === 'paid' ? nowIso : p.paidAt,
+            }
+          : p
+      )
+    )
+    appendAudit(
+      'DEVELOPER_PAYOUT_STATUS_UPDATED',
+      `developer_payouts:${target.referenceCode}`,
+      `Updated payout ${target.referenceCode} for ${target.memberName} to "${status}"`
+    )
+    if (status === 'paid') {
+      pushNotification(
+        target.memberId,
+        'invoice_locked',
+        `Payout Disbursed: ${target.referenceCode}`,
+        `${target.currency} ${target.netAmount.toFixed(2)} has been marked as paid.`
+      )
+    }
+
+    return {
+      ok: true,
+      message: `Payout ${target.referenceCode} marked as ${status}.`,
+    }
+  }
+
+  const activeWorkspacePaymentPolicy: WorkspacePaymentPolicy = useMemo(() => {
+    const existing = workspacePaymentPolicies[activeTenant.id]
+    if (existing) return existing
+    return {
+      tenantId: activeTenant.id,
+      paymentMode: 'user_wise',
+      showTaskBreakdownToUsers: true,
+      hideClientBillingRatesFromDevelopers: true,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'System Default',
+    }
+  }, [workspacePaymentPolicies, activeTenant.id])
+
+  function updateWorkspacePaymentPolicy(patch: {
+    paymentMode?: PaymentCalculationMode
+    showTaskBreakdownToUsers?: boolean
+    hideClientBillingRatesFromDevelopers?: boolean
+  }): { ok: boolean; message: string } {
+    if (
+      activeUser.role !== 'super_admin' &&
+      activeUser.role !== 'tenant_owner' &&
+      !hasPermission('payment:configure')
+    ) {
+      return {
+        ok: false,
+        message: 'Access denied: Only Tenant Owners or admins with payment:configure can change payment mode settings.',
+      }
+    }
+
+    const next: WorkspacePaymentPolicy = {
+      ...activeWorkspacePaymentPolicy,
+      tenantId: activeTenant.id,
+      paymentMode: patch.paymentMode ?? activeWorkspacePaymentPolicy.paymentMode,
+      showTaskBreakdownToUsers:
+        patch.showTaskBreakdownToUsers ??
+        activeWorkspacePaymentPolicy.showTaskBreakdownToUsers,
+      hideClientBillingRatesFromDevelopers:
+        patch.hideClientBillingRatesFromDevelopers ??
+        activeWorkspacePaymentPolicy.hideClientBillingRatesFromDevelopers,
+      updatedAt: new Date().toISOString(),
+      updatedBy: activeUser.name,
+    }
+
+    setWorkspacePaymentPolicies((prev) => ({
+      ...prev,
+      [activeTenant.id]: next,
+    }))
+
+    const modeLabel =
+      next.paymentMode === 'user_wise'
+        ? 'User-Wise'
+        : next.paymentMode === 'task_wise'
+          ? 'Task-Wise'
+          : 'Hybrid (User + Task)'
+
+    appendAudit(
+      'WORKSPACE_PAYMENT_POLICY_UPDATED',
+      `tenant:${activeTenant.id}`,
+      `Payment mode set to "${modeLabel}" (task breakdown: ${next.showTaskBreakdownToUsers ? 'on' : 'off'}, hide client billing rates: ${next.hideClientBillingRatesFromDevelopers ? 'on' : 'off'})`
+    )
+
+    return {
+      ok: true,
+      message: `Workspace payment configuration updated (${modeLabel}).`,
+    }
+  }
+
+  function saveTaskPaymentConfig(input: {
+    taskId: string
+    payType: TaskPaymentConfig['payType']
+    amount: number
+    currency: string
+    notes: string
+  }): { ok: boolean; message: string } {
+    if (
+      activeUser.role !== 'super_admin' &&
+      activeUser.role !== 'tenant_owner' &&
+      !hasPermission('payment:configure')
+    ) {
+      return {
+        ok: false,
+        message: 'Access denied: Only Tenant Owners or admins with payment:configure can configure task payments.',
+      }
+    }
+
+    const task = tasks.find(
+      (t) => t.id === input.taskId && t.tenantId === activeTenant.id
+    )
+    if (!task) return { ok: false, message: 'Task not found.' }
+    if (input.amount <= 0) {
+      return { ok: false, message: 'Payment amount must be greater than 0.' }
+    }
+
+    const nowIso = new Date().toISOString()
+    const nextCfg: TaskPaymentConfig = {
+      id: `taskpay-${activeTenant.id}-${task.id}`,
+      tenantId: activeTenant.id,
+      taskId: task.id,
+      payType: input.payType,
+      amount: Math.round(Number(input.amount) * 100) / 100,
+      currency: (input.currency || activeTenant.currency || 'USD').toUpperCase(),
+      notes: input.notes.trim(),
+      updatedAt: nowIso,
+      updatedBy: activeUser.name,
+    }
+
+    setTaskPaymentConfigs((prev) => {
+      const exists = prev.some(
+        (c) => c.tenantId === activeTenant.id && c.taskId === task.id
+      )
+      if (exists) {
+        return prev.map((c) =>
+          c.tenantId === activeTenant.id && c.taskId === task.id ? nextCfg : c
+        )
+      }
+      return [nextCfg, ...prev]
+    })
+
+    const summary =
+      nextCfg.payType === 'fixed_bounty'
+        ? `${nextCfg.currency} ${nextCfg.amount} fixed bounty`
+        : `${nextCfg.currency} ${nextCfg.amount}/hr`
+
+    appendAudit(
+      'TASK_PAYMENT_CONFIGURED',
+      `task_payment_config:${task.code}`,
+      `Configured payment for task ${task.code}: ${summary}`
+    )
+
+    return {
+      ok: true,
+      message: `Saved task payment for ${task.code} (${summary}).`,
+    }
+  }
+
+  function deleteTaskPaymentConfig(taskId: string): { ok: boolean; message: string } {
+    if (
+      activeUser.role !== 'super_admin' &&
+      activeUser.role !== 'tenant_owner' &&
+      !hasPermission('payment:configure')
+    ) {
+      return {
+        ok: false,
+        message: 'Access denied: Missing payment:configure permission.',
+      }
+    }
+    setTaskPaymentConfigs((prev) =>
+      prev.filter((c) => !(c.tenantId === activeTenant.id && c.taskId === taskId))
+    )
+    return { ok: true, message: 'Removed task-specific payment override.' }
+  }
+
   function markNotificationRead(notificationId: string) {
     setNotifications((prev) =>
       prev.map((n) =>
@@ -2896,6 +3511,22 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         generateInvoiceFromApproved,
         lockInvoice,
         issueCreditAdjustmentInvoice,
+        workspacePaymentPolicy: activeWorkspacePaymentPolicy,
+        updateWorkspacePaymentPolicy,
+        taskPaymentConfigs: taskPaymentConfigs.filter(
+          (c) => c.tenantId === activeTenant.id
+        ),
+        saveTaskPaymentConfig,
+        deleteTaskPaymentConfig,
+        developerPaymentConfigs: developerPaymentConfigs.filter(
+          (c) => c.tenantId === activeTenant.id
+        ),
+        developerPayouts: developerPayouts.filter(
+          (p) => p.tenantId === activeTenant.id
+        ),
+        saveDeveloperPaymentConfig,
+        recordDeveloperPayout,
+        updatePayoutStatus,
         notifications: tenantNotifications,
         unreadNotificationCount,
         markNotificationRead,

@@ -13,6 +13,7 @@ import { isSupabaseAuthConfigured } from '@/lib/supabaseClient'
 import { ProjectsTasksView } from '@/features/projects-tasks/ProjectsTasksView'
 import { WorkSessionTimerView } from '@/features/sessions-timer/WorkSessionTimerView'
 import { TimesheetsAndReviewView } from '@/features/timesheets-review/TimesheetsAndReviewView'
+import { DeveloperPaymentsView } from '@/features/payments/DeveloperPaymentsView'
 import { BillingAndAdminView } from '@/features/billing-contracts/BillingAndAdminView'
 import { UnifiedTimelineView } from '@/features/timeline-evidence/UnifiedTimelineView'
 import { PrivacyAuditView } from '@/features/timeline-evidence/PrivacyAuditView'
@@ -28,6 +29,7 @@ import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaIns
 
 type NavSection =
   | 'timesheets-review'
+  | 'developer-payments'
   | 'timer-sessions'
   | 'projects-tasks'
   | 'timeline-evidence'
@@ -86,6 +88,23 @@ const NAV_ITEMS: NavItem[] = [
       'auditor',
     ],
     icon: <NavIcon path="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4" />,
+  },
+  {
+    id: 'developer-payments',
+    path: '/payments',
+    label: 'Payments',
+    description: 'Pay rates, earnings breakdown & payout history',
+    group: 'workspace',
+    allowedRoles: [
+      'super_admin',
+      'tenant_owner',
+      'project_manager',
+      'developer',
+      'finance',
+      'client_reviewer',
+      'auditor',
+    ],
+    icon: <NavIcon path="M17 9V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2m2 4h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Zm7-5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />,
   },
   {
     id: 'timer-sessions',
@@ -382,6 +401,12 @@ function FirstTimePasswordChangeModal({
 // (tenant_owner, predefined roles, custom roles, and individual overrides).
 const NAV_PERMISSION_MAP: Partial<Record<NavSection, string[]>> = {
   'timesheets-review': ['timesheet:view_own', 'timesheet:view_team', 'timesheet:approve'],
+  'developer-payments': [
+    'payment:view_own',
+    'payment:view_team',
+    'payment:configure',
+    'payment:record_payout',
+  ],
   'timer-sessions': ['timer:start_stop', 'timer:view_own', 'timer:view_team'],
   'projects-tasks': ['task:view', 'project:view'],
   'timeline-evidence': ['timeline:view_own', 'timeline:view_team'],
@@ -627,7 +652,7 @@ function DevProofShell() {
     (activeUser.status === 'invited' || Boolean(activeUser.mustChangePassword))
 
   return (
-    <div className="h-screen overflow-hidden bg-white text-zinc-900 dark:bg-[#09090c] dark:text-zinc-100 flex relative">
+    <div className="h-screen overflow-hidden bg-[#f4f5f9] text-zinc-900 dark:bg-[#09090c] dark:text-zinc-100 flex relative">
       {isFirstTimePasswordRequired && (
         <FirstTimePasswordChangeModal
           user={activeUser}
@@ -651,7 +676,7 @@ function DevProofShell() {
 
       {/* Fixed Independent Left Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 h-full shrink-0 bg-[#fafafc] shadow-[1px_0_0_rgba(15,5,31,0.06)] dark:bg-[#0c0c10] dark:shadow-[1px_0_0_rgba(255,255,255,0.06)] flex flex-col transition-transform duration-250 ease-out lg:static lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-50 w-64 h-full shrink-0 bg-white shadow-[1px_0_0_rgba(15,5,31,0.08)] dark:bg-[#0c0c10] dark:shadow-[1px_0_0_rgba(255,255,255,0.06)] flex flex-col transition-transform duration-250 ease-out lg:static lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
         {/* Brand */}
@@ -693,7 +718,7 @@ function DevProofShell() {
       {/* Independently Scrollable Main Column */}
       <div className="flex-1 min-w-0 h-full overflow-y-auto flex flex-col relative z-10">
         {/* Sticky Top Bar */}
-        <header className="h-16 shrink-0 sticky top-0 z-30 bg-white/85 dark:bg-[#09090c]/85 backdrop-blur-xl shadow-[0_1px_0_rgba(15,5,31,0.055)] dark:shadow-[0_1px_0_rgba(255,255,255,0.055)] px-4 sm:px-8 flex items-center justify-between gap-3">
+        <header className="h-16 shrink-0 sticky top-0 z-30 bg-white/90 dark:bg-[#09090c]/85 backdrop-blur-xl shadow-[0_1px_0_rgba(15,5,31,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.055)] px-4 sm:px-8 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
@@ -1280,6 +1305,7 @@ function DevProofShell() {
           ) : (
             <div key={activeSection} className="dp-view-enter">
               {activeSection === 'timesheets-review' && <TimesheetsAndReviewView />}
+              {activeSection === 'developer-payments' && <DeveloperPaymentsView />}
               {activeSection === 'timer-sessions' && <WorkSessionTimerView />}
               {activeSection === 'projects-tasks' && (
                 <ProjectsTasksView

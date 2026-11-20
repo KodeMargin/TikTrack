@@ -11,6 +11,7 @@ export type PermissionModuleId =
   | 'projects'
   | 'timer'
   | 'timesheets'
+  | 'payments'
   | 'billing'
   | 'team'
   | 'roles'
@@ -52,6 +53,12 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     name: 'Timesheets & Approvals',
     description: 'Timesheet submissions, line-item approvals, rejections and locking periods.',
     icon: '📅',
+  },
+  {
+    id: 'payments',
+    name: 'Developer Payments & Payouts',
+    description: 'Developer pay rates, payout schedules, disbursement tracking and read-only earnings statements.',
+    icon: '💸',
   },
   {
     id: 'billing',
@@ -256,6 +263,32 @@ export const GRANULAR_PERMISSIONS: GranularPermissionDef[] = [
     module: 'timesheets',
     label: 'Lock Accounting Periods',
     description: 'Can lock timesheet billing cycles to make them immutable.',
+  },
+
+  // --- DEVELOPER PAYMENTS & PAYOUTS ---
+  {
+    key: 'payment:view_own',
+    module: 'payments',
+    label: 'View Own Payments (Read-Only)',
+    description: 'Can view own configured pay rate, payout schedule, accrued earnings and payout history in read-only mode.',
+  },
+  {
+    key: 'payment:view_team',
+    module: 'payments',
+    label: 'View Team Payments',
+    description: 'Can inspect payment configurations, accrued payroll and payout history across all workspace members.',
+  },
+  {
+    key: 'payment:configure',
+    module: 'payments',
+    label: 'Configure Developer Payments',
+    description: 'Can configure developer hourly/retainer pay rates, payout schedules, payment methods and tax withholding.',
+  },
+  {
+    key: 'payment:record_payout',
+    module: 'payments',
+    label: 'Record & Mark Payouts Paid',
+    description: 'Can create payout disbursements and update payout statuses (Scheduled, Processing, Paid).',
   },
 
   // --- CONTRACTS & BILLING ---
@@ -567,6 +600,7 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'timesheet:submit',
       'timesheet:approve',
       'timesheet:reject',
+      'payment:view_own',
       'member:view',
       'role:view',
       'timeline:view_own',
@@ -596,6 +630,7 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'timer:view_own',
       'timesheet:view_own',
       'timesheet:submit',
+      'payment:view_own',
       'timeline:view_own',
       'evidence:annotate',
       'dispute:open',
@@ -617,6 +652,9 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'timesheet:view_own',
       'timesheet:view_team',
       'timesheet:lock',
+      'payment:view_own',
+      'payment:view_team',
+      'payment:record_payout',
       'billing:view',
       'billing:manage_rates',
       'invoice:create_draft',
@@ -638,6 +676,7 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'timesheet:view_team',
       'timesheet:approve',
       'timesheet:reject',
+      'payment:view_own',
       'dispute:open',
       'dispute:view',
       'timeline:view_team',
@@ -655,6 +694,8 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'task:view',
       'project:view',
       'timesheet:view_team',
+      'payment:view_own',
+      'payment:view_team',
       'timeline:view_team',
       'verification:view',
       'compliance:view',

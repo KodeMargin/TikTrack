@@ -3,6 +3,7 @@ import { usePhase1Store } from '@/context/Phase1Store'
 import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
 import { detectUserLocation } from '@/lib/countryTimezones'
 import { RolesAndPermissionsManager } from '@/features/billing-contracts/RolesAndPermissionsManager'
+import { PaymentModeConfigCard } from '@/features/payments/PaymentModeConfigCard'
 
 export function AuthAndOnboardingView() {
   const {
@@ -403,6 +404,11 @@ export function AuthAndOnboardingView() {
           )}
         </div>
       )}
+
+      {/* Workspace Feature Configuration (Payment Calculation Mode: User-Wise / Task-Wise / Hybrid) */}
+      {(activeUser.role === 'tenant_owner' ||
+        isSuperAdminSession ||
+        hasPermission('payment:configure')) && <PaymentModeConfigCard />}
 
       {/* Team, Roles & Granular Permissions (RBAC) */}
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5">
