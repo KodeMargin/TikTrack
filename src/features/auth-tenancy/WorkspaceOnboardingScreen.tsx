@@ -395,7 +395,7 @@ export function WorkspaceOnboardingScreen({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                   <div>
                     <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300 mb-1">
                       Role
@@ -403,7 +403,7 @@ export function WorkspaceOnboardingScreen({
                     <select
                       value={devRole}
                       onChange={(e) => setDevRole(e.target.value as UserRole)}
-                      className="w-full rounded-lg border border-zinc-200 bg-white dark:border-white/10 dark:bg-white/[0.04] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
+                      className="w-full h-[38px] rounded-lg border border-zinc-200 bg-white dark:border-white/10 dark:bg-white/[0.04] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                     >
                       <option value="developer">Developer</option>
                       <option value="project_manager">Project Manager</option>
@@ -412,16 +412,17 @@ export function WorkspaceOnboardingScreen({
                     </select>
                   </div>
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                        Temp Password (Optional)
+                    <div className="flex items-center justify-between gap-1.5 mb-1">
+                      <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                        Temp Password <span className="text-zinc-400 font-normal">(Optional)</span>
                       </label>
                       <button
                         type="button"
                         onClick={handleGenerateTempPassword}
-                        className="text-[11px] font-medium text-[#6d25da] dark:text-[#c5a8f0] hover:underline cursor-pointer"
+                        title="Auto-generate a temporary password"
+                        className="text-[11px] font-medium text-[#6d25da] dark:text-[#c5a8f0] hover:underline cursor-pointer shrink-0 whitespace-nowrap"
                       >
-                        Auto-generate
+                        Generate
                       </button>
                     </div>
                     <input
@@ -429,7 +430,7 @@ export function WorkspaceOnboardingScreen({
                       placeholder="Leave blank for email link"
                       value={devTempPassword}
                       onChange={(e) => setDevTempPassword(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-200 bg-white dark:border-white/10 dark:bg-white/[0.04] px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
+                      className="w-full h-[38px] rounded-lg border border-zinc-200 bg-white dark:border-white/10 dark:bg-white/[0.04] px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
                     />
                   </div>
                 </div>

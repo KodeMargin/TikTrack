@@ -278,6 +278,9 @@ interface Phase1StoreContextValue {
   members: WorkspaceMember[]
   activeUser: WorkspaceMember
   isSuperAdminSession: boolean
+  isSuperAdminAccount: boolean
+  superAdminViewMode: 'portal' | 'workspace'
+  setSuperAdminViewMode: (mode: 'portal' | 'workspace') => void
   authChecking: boolean
   sessionUserEmail: string | null
   sessionUserName: string | null
@@ -520,6 +523,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   const [activeTenantId, setActiveTenantIdState] = useState<string>('')
   const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [activeUserId, setActiveUserId] = useState<string>('')
+  const [superAdminViewMode, setSuperAdminViewMode] = useState<'portal' | 'workspace'>('portal')
   const [authChecking, setAuthChecking] = useState(isSupabaseAuthConfigured)
   const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(null)
   const [sessionUserName, setSessionUserName] = useState<string | null>(null)
@@ -621,14 +625,15 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       )
       setMembers(upgradedMembers)
       setActiveUserId((prev) => {
-        if (prev && payload.members.some((m) => m.id === prev)) return prev
         if (sessionUserEmail) {
           const match = payload.members.find(
             (m) => m.email.toLowerCase().trim() === sessionUserEmail
           )
           if (match) return match.id
           if (SUPER_ADMIN_EMAILS_SET.has(sessionUserEmail.toLowerCase().trim())) return 'super-admin'
+          return ''
         }
+        if (prev && payload.members.some((m) => m.id === prev)) return prev
         return payload.members[0]?.id ?? ''
       })
       setProjects(payload.projects)
@@ -794,22 +799,26 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       : rawSessionMember)
     : undefined
 
-  const isSuperAdminSession = sessionMember
+  const isSuperAdminAccount = sessionMember
     ? sessionMember.role === 'super_admin'
     : (sessionUserEmail ? SUPER_ADMIN_EMAILS_SET.has(sessionUserEmail.toLowerCase().trim()) : false)
 
+  // Effective Super Admin privileges apply ONLY in Super Admin Portal mode.
+  // In Workspace mode, the user operates strictly under that workspace's role-based permissions.
+  const isSuperAdminSession = isSuperAdminAccount && superAdminViewMode === 'portal'
+
   const accessibleTenants = useMemo(() => {
-    if (!sessionUserEmail || isSuperAdminSession) return tenants
+    if (!sessionUserEmail) return tenants
     const myTenantIds = new Set(
       normalizedMembers
         .filter((m) => m.email.toLowerCase().trim() === sessionUserEmail)
         .map((m) => m.tenantId)
     )
     return tenants.filter((t) => myTenantIds.has(t.id))
-  }, [tenants, normalizedMembers, sessionUserEmail, isSuperAdminSession])
+  }, [tenants, normalizedMembers, sessionUserEmail])
 
-  const hasWorkspace = sessionUserEmail && !isSuperAdminSession
-    ? accessibleTenants.length > 0 && Boolean(sessionMember)
+  const hasWorkspace = sessionUserEmail
+    ? accessibleTenants.length > 0 && (Boolean(sessionMember) || isSuperAdminAccount)
     : tenants.length > 0 && members.length > 0
 
   const activeTenant =
@@ -837,13 +846,29 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
 
   const activeUser: WorkspaceMember = useMemo(() => {
     if (isSuperAdminSession) {
-      if (activeUserId && activeUserId !== 'super-admin' && activeUserId !== sessionMember?.id) {
-        const simulated = tenantMembers.find((m) => m.id === activeUserId)
-        if (simulated) {
-          return simulated
+      const ownTenantMember = sessionUserEmail
+        ? tenantMembers.find(
+            (m) => m.email.toLowerCase().trim() === sessionUserEmail
+          )
+        : undefined
+      return (
+        ownTenantMember ??
+        sessionMember ??
+        superAdminFallbackMember ??
+        EMPTY_MEMBER_PLACEHOLDER
+      )
+    }
+
+    if (isSuperAdminAccount && superAdminViewMode === 'workspace' && sessionUserEmail) {
+      const rawOwnMember = members.find(
+        (m) => m.tenantId === activeTenant.id && m.email.toLowerCase().trim() === sessionUserEmail
+      )
+      if (rawOwnMember) {
+        return {
+          ...rawOwnMember,
+          role: rawOwnMember.role === 'super_admin' ? 'tenant_owner' : rawOwnMember.role,
         }
       }
-      return sessionMember ?? superAdminFallbackMember ?? EMPTY_MEMBER_PLACEHOLDER
     }
 
     if (sessionUserEmail) {
@@ -862,6 +887,10 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     return tenantMembers[0] ?? normalizedMembers[0] ?? EMPTY_MEMBER_PLACEHOLDER
   }, [
     isSuperAdminSession,
+    isSuperAdminAccount,
+    superAdminViewMode,
+    activeTenant.id,
+    members,
     activeUserId,
     sessionMember,
     superAdminFallbackMember,
@@ -881,6 +910,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     setSessionUserEmail(null)
     setSessionUserName(null)
     setActiveUserId('')
+    setSuperAdminViewMode('portal')
     try {
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('sb-') || key.includes('supabase.auth')) {
@@ -939,8 +969,11 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   }
 
   function setActiveTenantId(id: string) {
+    if (sessionUserEmail && !accessibleTenants.some((t) => t.id === id)) {
+      return
+    }
     setActiveTenantIdState(id)
-    if (sessionUserEmail && !isSuperAdminSession) {
+    if (sessionUserEmail) {
       const myMember = members.find(
         (m) => m.tenantId === id && m.email.toLowerCase().trim() === sessionUserEmail
       )
@@ -948,6 +981,11 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         setActiveUserId(myMember.id)
         return
       }
+      if (isSuperAdminAccount) {
+        setActiveUserId('super-admin')
+        return
+      }
+      return
     }
     const firstMember = members.find((m) => m.tenantId === id)
     if (firstMember) setActiveUserId(firstMember.id)
@@ -1010,7 +1048,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     tempOwnerId: string,
     realTenantId: string,
     realOwnerId: string,
-    realSlug?: string
+    realSlug?: string,
+    activateWorkspace = true
   ) {
     setTenants((prev) =>
       prev.map((t) =>
@@ -1028,8 +1067,10 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
             : m
       )
     )
-    setActiveTenantIdState(realTenantId)
-    setActiveUserId(realOwnerId)
+    if (activateWorkspace) {
+      setActiveTenantIdState(realTenantId)
+      setActiveUserId(realOwnerId)
+    }
   }
 
   async function createTenantWorkspace(input: {
@@ -1047,17 +1088,29 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     }
 
     const { newTenantId, newOwnerId, newTenant, newOwner } = buildLocalTenantAndOwner(input)
+    const isOwnWorkspace =
+      !sessionUserEmail ||
+      input.ownerEmail.toLowerCase().trim() === sessionUserEmail.toLowerCase().trim()
 
     setTenants((prev) => [...prev, newTenant])
     setMembers((prev) => [...prev, newOwner])
-    setActiveTenantIdState(newTenantId)
-    setActiveUserId(newOwnerId)
+    if (isOwnWorkspace) {
+      setActiveTenantIdState(newTenantId)
+      setActiveUserId(newOwnerId)
+    }
 
     if (prismaStatus.connected) {
       try {
         const res = await createTenantViaPrisma(input)
         if (res?.ok && res.tenantId && res.ownerId) {
-          syncProvisionedIds(newTenantId, newOwnerId, res.tenantId, res.ownerId, res.slug)
+          syncProvisionedIds(
+            newTenantId,
+            newOwnerId,
+            res.tenantId,
+            res.ownerId,
+            res.slug,
+            isOwnWorkspace
+          )
           void refreshPrismaConnection()
         } else {
           return {
@@ -1071,7 +1124,12 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    return { ok: true, message: `Workspace "${input.name}" provisioned and activated.` }
+    return {
+      ok: true,
+      message: isOwnWorkspace
+        ? `Workspace "${input.name}" provisioned and activated.`
+        : `Workspace "${input.name}" provisioned for ${input.ownerEmail}.`,
+    }
   }
 
   async function provisionWorkspaceSelfService(input: {
@@ -2779,6 +2837,9 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         members: tenantMembers,
         activeUser,
         isSuperAdminSession,
+        isSuperAdminAccount,
+        superAdminViewMode,
+        setSuperAdminViewMode,
         authChecking,
         sessionUserEmail,
         sessionUserName,

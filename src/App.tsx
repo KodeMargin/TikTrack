@@ -226,15 +226,29 @@ const NAV_ITEMS: NavItem[] = [
 function FirstTimePasswordChangeModal({
   user,
   onComplete,
+  onClose,
+  onSignOut,
 }: {
   user: { name: string; email: string; role: string }
   onComplete: (newPassword: string) => Promise<{ ok: boolean; message: string }>
+  onClose: () => void
+  onSignOut: () => void
 }) {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !loading) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [loading, onClose])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -257,7 +271,27 @@ function FirstTimePasswordChangeModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-zinc-900/40 dark:bg-[#09090b]/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white text-zinc-900 dark:border-zinc-800/80 dark:bg-[#121215] dark:text-white p-6 sm:p-8 shadow-2xl space-y-5">
+      <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white text-zinc-900 dark:border-zinc-800/80 dark:bg-[#121215] dark:text-white p-6 sm:p-8 shadow-2xl space-y-5">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={loading}
+          aria-label="Close password change popup"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-white/10 transition cursor-pointer disabled:opacity-50"
+        >
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+
         <div className="space-y-1.5 text-center">
           <img
             src="/images/logo-only.png"
@@ -327,25 +361,44 @@ function FirstTimePasswordChangeModal({
           >
             {loading ? 'Securing Account...' : 'Set Password & Enter Workspace'}
           </button>
+
+          <div className="flex items-center justify-between pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition cursor-pointer disabled:opacity-50"
+            >
+              Close for now
+            </button>
+            <button
+              type="button"
+              onClick={onSignOut}
+              disabled={loading}
+              className="text-xs font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 transition cursor-pointer disabled:opacity-50"
+            >
+              Sign Out
+            </button>
+          </div>
         </form>
       </div>
     </div>
   )
 }
 
-// Granular permission that unlocks each section for custom (tenant-defined) roles
-// and for members with individual permission overrides.
-const NAV_PERMISSION_MAP: Partial<Record<string, string>> = {
-  'timesheets-review': 'timesheet:view_own',
-  'timer-sessions': 'timer:start_stop',
-  'projects-tasks': 'task:view',
-  'timeline-evidence': 'timeline:view_own',
-  'verification-ai': 'verification:view',
-  'disputes-appeals': 'dispute:view',
-  'integrations-devices': 'integration:view',
-  'privacy-audit': 'compliance:view',
-  'billing-admin': 'billing:view',
-  'enterprise-compliance': 'compliance:view',
+// Granular permissions that unlock each section for workspace roles
+// (tenant_owner, predefined roles, custom roles, and individual overrides).
+const NAV_PERMISSION_MAP: Partial<Record<NavSection, string[]>> = {
+  'timesheets-review': ['timesheet:view_own', 'timesheet:view_team', 'timesheet:approve'],
+  'timer-sessions': ['timer:start_stop', 'timer:view_own', 'timer:view_team'],
+  'projects-tasks': ['task:view', 'project:view'],
+  'timeline-evidence': ['timeline:view_own', 'timeline:view_team'],
+  'verification-ai': ['verification:view', 'verification:manage_rules'],
+  'disputes-appeals': ['dispute:view', 'dispute:open', 'dispute:resolve'],
+  'integrations-devices': ['integration:view', 'integration:manage'],
+  'privacy-audit': ['compliance:view', 'compliance:audit_export'],
+  'billing-admin': ['billing:view', 'invoice:create_draft'],
+  'auth-privacy': ['role:view', 'member:view', 'member:invite'],
 }
 
 function resolveSectionFromPath(pathname: string): NavSection {
@@ -362,6 +415,9 @@ function DevProofShell() {
     members,
     activeUser,
     isSuperAdminSession,
+    isSuperAdminAccount,
+    superAdminViewMode,
+    setSuperAdminViewMode,
     setActiveUserId,
     authChecking,
     sessionUserEmail,
@@ -378,18 +434,34 @@ function DevProofShell() {
     hasPermission,
   } = usePhase1Store()
 
+  const isInSuperAdminPortal = isSuperAdminAccount && superAdminViewMode === 'portal'
+
   const canAccessNav = (item: NavItem) => {
-    if (activeUser.role === 'super_admin') return true
-    if (item.allowedRoles.includes(activeUser.role)) return true
-    const perm = NAV_PERMISSION_MAP[item.id]
-    if (perm && hasPermission(perm)) return true
-    // Team & role management lives in Workspace & Access
-    if (item.id === 'auth-privacy' && (hasPermission('role:view') || hasPermission('member:invite'))) return true
-    return false
+    // Super Admin Portal mode: full access to every page & system detail
+    if (isSuperAdminSession || activeUser.role === 'super_admin') return true
+
+    // Super Admin-only pages are never accessible in Workspace mode or by non-super-admin roles
+    if (item.allowedRoles.length === 1 && item.allowedRoles[0] === 'super_admin') {
+      return false
+    }
+
+    // Role-based granular permission check
+    const requiredPerms = NAV_PERMISSION_MAP[item.id]
+    if (requiredPerms && requiredPerms.length > 0) {
+      return requiredPerms.some((perm) => hasPermission(perm))
+    }
+
+    // Fallback for sections without granular permission keys (e.g. pricing-plans, client-portal, saas-ecosystem)
+    return item.allowedRoles.includes(activeUser.role)
   }
 
   const [onboardingActive, setOnboardingActive] = useState(false)
   const [creatingAdditionalWorkspace, setCreatingAdditionalWorkspace] = useState(false)
+  const [passwordModalDismissed, setPasswordModalDismissed] = useState(false)
+
+  useEffect(() => {
+    setPasswordModalDismissed(false)
+  }, [sessionUserEmail, activeUser.id])
 
   useEffect(() => {
     if (bootstrapLoaded && !authChecking && !hasWorkspace) {
@@ -401,6 +473,7 @@ function DevProofShell() {
     if (!sessionUserEmail) {
       setOnboardingActive(false)
       setCreatingAdditionalWorkspace(false)
+      setSuperAdminViewMode('portal')
     }
   }, [sessionUserEmail])
 
@@ -545,13 +618,20 @@ function DevProofShell() {
       <WorkspaceOnboardingScreen
         allowCancel
         onCancel={() => setCreatingAdditionalWorkspace(false)}
-        onComplete={() => setCreatingAdditionalWorkspace(false)}
+        onComplete={() => {
+          setCreatingAdditionalWorkspace(false)
+          if (isSuperAdminAccount) {
+            setSuperAdminViewMode('workspace')
+          }
+        }}
       />
     )
   }
 
   const isFirstTimePasswordRequired =
     Boolean(sessionUserEmail) &&
+    !passwordModalDismissed &&
+    activeUser.email.toLowerCase().trim() === (sessionUserEmail || '').toLowerCase().trim() &&
     (activeUser.status === 'invited' || Boolean(activeUser.mustChangePassword))
 
   return (
@@ -560,6 +640,13 @@ function DevProofShell() {
         <FirstTimePasswordChangeModal
           user={activeUser}
           onComplete={completeFirstTimePasswordChange}
+          onClose={() => setPasswordModalDismissed(true)}
+          onSignOut={() => {
+            setPasswordModalDismissed(false)
+            void signOut().then(() => {
+              navigateToSection('timer-sessions')
+            })
+          }}
         />
       )}
       {/* Mobile Sidebar Backdrop */}
@@ -584,9 +671,14 @@ function DevProofShell() {
               className="h-10 w-auto object-contain transition-transform duration-200 hover:scale-[1.02]"
             />
           </div>
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-200/60 text-zinc-700 dark:bg-white/[0.07] dark:text-zinc-300 text-xs font-semibold tracking-tight truncate max-w-[115px] shrink-0">
+          <span
+            className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold tracking-tight truncate max-w-[125px] shrink-0 ${isInSuperAdminPortal
+              ? 'bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]'
+              : 'bg-zinc-200/60 text-zinc-700 dark:bg-white/[0.07] dark:text-zinc-300'
+              }`}
+          >
             <span className="h-1.5 w-1.5 rounded-full bg-[#6d25da] dark:bg-[#a87ce9] shrink-0" />
-            <span className="truncate">{activeTenant.name}</span>
+            <span className="truncate">{isInSuperAdminPortal ? 'Admin Portal' : activeTenant.name}</span>
           </span>
           <button
             type="button"
@@ -671,7 +763,7 @@ function DevProofShell() {
             </button>
 
             {/* Workspace Switcher: Custom Sleek Dropdown */}
-            {isSuperAdminSession || activeUser.role === 'super_admin' || activeUser.role === 'tenant_owner' || accessibleTenants.length > 1 ? (
+            {isSuperAdminAccount || activeUser.role === 'super_admin' || activeUser.role === 'tenant_owner' || accessibleTenants.length > 1 ? (
               <div className="relative" ref={workspaceMenuRef}>
                 <button
                   type="button"
@@ -713,6 +805,9 @@ function DevProofShell() {
                             type="button"
                             onClick={() => {
                               setActiveTenantId(t.id)
+                              if (isSuperAdminAccount) {
+                                setSuperAdminViewMode('workspace')
+                              }
                               setWorkspaceMenuOpen(false)
                             }}
                             className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-left ${isSelected
@@ -769,8 +864,8 @@ function DevProofShell() {
               </span>
             )}
 
-            {/* Custom Super Admin Identity & Persona Simulation Dropdown */}
-            {isSuperAdminSession ? (
+            {/* Custom Super Admin Portal & Accessible Workspaces Switcher Dropdown */}
+            {isSuperAdminAccount ? (
               <div className="relative" ref={personaMenuRef}>
                 <button
                   type="button"
@@ -779,20 +874,23 @@ function DevProofShell() {
                     setWorkspaceMenuOpen(false)
                     setNotifOpen(false)
                   }}
-                  aria-label="User role and simulation menu"
+                  aria-label="Switch between Super Admin Portal and Workspaces"
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-50 shadow-(--dp-shadow-pill) dark:bg-white/[0.05] dark:hover:bg-white/[0.09] text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition cursor-pointer"
                 >
                   <span
-                    className={`h-2 w-2 rounded-full shrink-0 ${activeUser.role === 'super_admin' ? 'bg-[#8b51e1]' : 'bg-zinc-400'
+                    className={`h-2 w-2 rounded-full shrink-0 ${isInSuperAdminPortal ? 'bg-[#8b51e1]' : 'bg-emerald-500'
                       }`}
                   />
-                  <span className="truncate max-w-[120px] font-bold">
-                    {activeUser.name || 'Super Admin'}
+                  <span className="truncate max-w-[130px] font-bold">
+                    {isInSuperAdminPortal ? 'Super Admin' : activeTenant.name}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono uppercase shrink-0 font-bold tracking-wider bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]">
-                    {activeUser.role === 'super_admin'
-                      ? 'SUPER ADMIN'
-                      : `PREVIEW: ${activeUser.role.replace('_', ' ')}`}
+                  <span
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono uppercase shrink-0 font-bold tracking-wider ${isInSuperAdminPortal
+                        ? 'bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]'
+                        : 'bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                      }`}
+                  >
+                    {isInSuperAdminPortal ? 'PORTAL' : 'WORKSPACE'}
                   </span>
                   <svg
                     className={`h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 ${personaMenuOpen ? 'rotate-180' : ''}`}
@@ -824,38 +922,41 @@ function DevProofShell() {
                       </div>
                       <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-[#6d25da]/15 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#a87ce9]">
                         <span className="h-1.5 w-1.5 rounded-full bg-[#8b51e1]" />
-                        System Super Admin • Full Access
+                        System Super Admin
                       </div>
                     </div>
 
-                    {/* Simulation Section */}
+                    {/* Super Admin Portal Switch */}
                     <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                      Simulate Workspace View
+                      Super Admin Portal
                     </div>
-
-                    <div className="space-y-0.5">
-                      {/* Default Super Admin option */}
+                    <div className="mb-2">
                       <button
                         type="button"
                         onClick={() => {
-                          setActiveUserId('super-admin')
+                          setSuperAdminViewMode('portal')
                           setPersonaMenuOpen(false)
                         }}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${activeUser.role === 'super_admin'
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${isInSuperAdminPortal
                             ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
                             : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                           }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-[#8b51e1] shrink-0" />
-                          <div>
-                            <span className="font-semibold">Super Admin</span>
-                            <span className="text-[11px] text-zinc-400 ml-1">(System-wide)</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`h-2 w-2 rounded-full shrink-0 ${isInSuperAdminPortal ? 'bg-[#8b51e1]' : 'bg-zinc-300 dark:bg-zinc-600'
+                              }`}
+                          />
+                          <div className="truncate">
+                            <div className="truncate font-semibold">Super Admin Portal</div>
+                            <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                              Full system access &amp; all pages
+                            </div>
                           </div>
                         </div>
-                        {activeUser.role === 'super_admin' && (
+                        {isInSuperAdminPortal && (
                           <svg
-                            className="h-4 w-4 text-[#8b51e1] shrink-0"
+                            className="h-4 w-4 text-[#8b51e1] shrink-0 ml-1.5"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -865,48 +966,69 @@ function DevProofShell() {
                           </svg>
                         )}
                       </button>
+                    </div>
 
-                      {/* Members simulation list */}
-                      {members
-                        .filter((m) => m.email.toLowerCase().trim() !== (sessionUserEmail || '').toLowerCase().trim())
-                        .map((m) => {
-                          const isSimulating = activeUser.id === m.id
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => {
-                                setActiveUserId(m.id)
-                                setPersonaMenuOpen(false)
-                              }}
-                              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${isSimulating
-                                  ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
-                                  : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
-                                }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className={`h-2 w-2 rounded-full shrink-0 ${isSimulating ? 'bg-[#8b51e1]' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
-                                <div className="truncate">
-                                  <div className="truncate font-medium">{m.name}</div>
-                                  <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate capitalize font-mono">
-                                    {m.role.replace('_', ' ')}
-                                  </div>
+                    {/* Accessible Workspaces Section (own/authorized workspaces only — separate from Super Admin Portal) */}
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-2">
+                      <span>Your Workspaces</span>
+                      <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-1.5 py-0.5 rounded text-[9px] font-mono">
+                        {accessibleTenants.length}
+                      </span>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto space-y-0.5">
+                      {accessibleTenants.map((t) => {
+                        const isSelected = !isInSuperAdminPortal && t.id === activeTenant.id
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveTenantId(t.id)
+                              setSuperAdminViewMode('workspace')
+                              setPersonaMenuOpen(false)
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${isSelected
+                                ? 'bg-emerald-500/12 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300 font-semibold'
+                                : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                              }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`h-2 w-2 rounded-full shrink-0 ${isSelected ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600'
+                                  }`}
+                              />
+                              <div className="truncate">
+                                <div className="truncate font-medium">{t.name}</div>
+                                <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate font-mono">
+                                  {t.slug} • {t.currency}
                                 </div>
                               </div>
-                              {isSimulating && (
-                                <svg
-                                  className="h-4 w-4 text-[#8b51e1] shrink-0 ml-1.5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={2.2}
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
-                              )}
-                            </button>
-                          )
-                        })}
+                            </div>
+                            {isSelected && (
+                              <svg
+                                className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.2}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            )}
+                          </button>
+                        )
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPersonaMenuOpen(false)
+                          setCreatingAdditionalWorkspace(true)
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#6d25da] dark:text-[#c5a8f0] hover:bg-[#6d25da]/10 transition cursor-pointer text-left"
+                      >
+                        <span>+ Create New Workspace</span>
+                      </button>
                     </div>
 
                     <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-zinc-800">
