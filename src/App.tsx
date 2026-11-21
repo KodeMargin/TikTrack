@@ -50,7 +50,7 @@ interface NavItem {
   path: string
   label: string
   description: string
-  group: 'workspace' | 'evidence' | 'admin'
+  group: 'workspace' | 'evidence' | 'finance' | 'admin'
   allowedRoles: UserRole[]
   icon: ReactNode
 }
@@ -72,6 +72,25 @@ function NavIcon({ path }: { path: string }) {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  // 1. WORK & TIME (Plan -> Track -> Review -> Resolve)
+  {
+    id: 'projects-tasks',
+    path: '/projects',
+    label: 'Projects & Tasks',
+    description: 'Boards, task estimates & assignments',
+    group: 'workspace',
+    allowedRoles: ['super_admin', 'tenant_owner', 'project_manager', 'developer'],
+    icon: <NavIcon path="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />,
+  },
+  {
+    id: 'timer-sessions',
+    path: '/timer',
+    label: 'Focus Timer',
+    description: 'Live session tracker & deep-work modes',
+    group: 'workspace',
+    allowedRoles: ['super_admin', 'tenant_owner', 'project_manager', 'developer'],
+    icon: <NavIcon path="M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z" />,
+  },
   {
     id: 'timesheets-review',
     path: '/timesheets',
@@ -90,40 +109,16 @@ const NAV_ITEMS: NavItem[] = [
     icon: <NavIcon path="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4" />,
   },
   {
-    id: 'developer-payments',
-    path: '/payments',
-    label: 'Payments',
-    description: 'Pay rates, earnings breakdown & payout history',
+    id: 'disputes-appeals',
+    path: '/disputes',
+    label: 'Disputes & Appeals',
+    description: 'Clarifications, 2nd review & audit export',
     group: 'workspace',
-    allowedRoles: [
-      'super_admin',
-      'tenant_owner',
-      'project_manager',
-      'developer',
-      'finance',
-      'client_reviewer',
-      'auditor',
-    ],
-    icon: <NavIcon path="M17 9V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2m2 4h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Zm7-5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />,
+    allowedRoles: ['super_admin', 'tenant_owner', 'project_manager', 'developer', 'auditor'],
+    icon: <NavIcon path="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-5 5v-5Z" />,
   },
-  {
-    id: 'timer-sessions',
-    path: '/timer',
-    label: 'Focus Timer',
-    description: 'Live session tracker & deep-work modes',
-    group: 'workspace',
-    allowedRoles: ['super_admin', 'tenant_owner', 'project_manager', 'developer'],
-    icon: <NavIcon path="M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z" />,
-  },
-  {
-    id: 'projects-tasks',
-    path: '/projects',
-    label: 'Projects & Tasks',
-    description: 'Boards, task estimates & assignments',
-    group: 'workspace',
-    allowedRoles: ['super_admin', 'tenant_owner', 'project_manager', 'developer'],
-    icon: <NavIcon path="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />,
-  },
+
+  // 2. CONTEXT & EVIDENCE (Observe -> Verify -> Connect -> Protect)
   {
     id: 'timeline-evidence',
     path: '/timeline',
@@ -143,15 +138,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: <NavIcon path="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016Z" />,
   },
   {
-    id: 'disputes-appeals',
-    path: '/disputes',
-    label: 'Disputes & Appeals',
-    description: 'Clarifications, 2nd review & audit export',
-    group: 'workspace',
-    allowedRoles: ['super_admin', 'tenant_owner', 'project_manager', 'developer', 'auditor'],
-    icon: <NavIcon path="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-5 5v-5Z" />,
-  },
-  {
     id: 'integrations-devices',
     path: '/integrations',
     label: 'Integrations',
@@ -169,32 +155,62 @@ const NAV_ITEMS: NavItem[] = [
     allowedRoles: ['super_admin', 'tenant_owner', 'auditor'],
     icon: <NavIcon path="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />,
   },
+
+  // 3. PAYMENTS & BILLING (Staff Payouts -> Client Billing -> Portal -> Subscription)
+  {
+    id: 'developer-payments',
+    path: '/payments',
+    label: 'Payments',
+    description: 'Pay rates, earnings breakdown & payout history',
+    group: 'finance',
+    allowedRoles: [
+      'super_admin',
+      'tenant_owner',
+      'project_manager',
+      'developer',
+      'finance',
+      'client_reviewer',
+      'auditor',
+    ],
+    icon: <NavIcon path="M17 9V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2m2 4h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Zm7-5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />,
+  },
   {
     id: 'billing-admin',
     path: '/billing',
     label: 'Contracts & Invoicing',
     description: 'Contracts, rate cards & client invoices',
-    group: 'admin',
+    group: 'finance',
     allowedRoles: ['super_admin', 'tenant_owner', 'finance'],
     icon: <NavIcon path="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3Z" />,
-  },
-  {
-    id: 'pricing-plans',
-    path: '/pricing',
-    label: 'Pricing & Plans',
-    description: 'SaaS tiers, seat quotas & subscription upgrade',
-    group: 'admin',
-    allowedRoles: ['super_admin', 'tenant_owner', 'finance'],
-    icon: <NavIcon path="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />,
   },
   {
     id: 'client-portal',
     path: '/portal',
     label: 'Client Portal',
     description: 'Read-only approved hours & deliverables',
-    group: 'workspace',
+    group: 'finance',
     allowedRoles: ['super_admin', 'tenant_owner', 'finance', 'client_reviewer'],
     icon: <NavIcon path="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 0c-2.5 4.5-6 6-9 6s-6.5-1.5-9-6c2.5-4.5 6-6 9-6s6.5 1.5 9 6Z" />,
+  },
+  {
+    id: 'pricing-plans',
+    path: '/pricing',
+    label: 'Pricing & Plans',
+    description: 'SaaS tiers, seat quotas & subscription upgrade',
+    group: 'finance',
+    allowedRoles: ['super_admin', 'tenant_owner', 'finance'],
+    icon: <NavIcon path="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />,
+  },
+
+  // 4. ORGANIZATION (Access & Config -> Ecosystem -> Enterprise -> Lab)
+  {
+    id: 'auth-privacy',
+    path: '/auth-privacy',
+    label: 'Workspace & Access',
+    description: 'Workspaces, team members, roles & consent',
+    group: 'admin',
+    allowedRoles: ['super_admin', 'tenant_owner'],
+    icon: <NavIcon path="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-1.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />,
   },
   {
     id: 'saas-ecosystem',
@@ -213,15 +229,6 @@ const NAV_ITEMS: NavItem[] = [
     group: 'admin',
     allowedRoles: ['super_admin'],
     icon: <NavIcon path="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-5 4v4h4v-4" />,
-  },
-  {
-    id: 'auth-privacy',
-    path: '/auth-privacy',
-    label: 'Workspace & Access',
-    description: 'Workspaces, team members, roles & consent',
-    group: 'admin',
-    allowedRoles: ['super_admin', 'tenant_owner'],
-    icon: <NavIcon path="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-1.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />,
   },
   {
     id: 'phase0-simulator',
@@ -420,7 +427,7 @@ const NAV_PERMISSION_MAP: Partial<Record<NavSection, string[]>> = {
 
 function resolveSectionFromPath(pathname: string): NavSection {
   const match = NAV_ITEMS.find((item) => item.path === pathname)
-  return match ? match.id : 'timesheets-review'
+  return match ? match.id : 'projects-tasks'
 }
 
 function DevProofShell() {
@@ -710,7 +717,8 @@ function DevProofShell() {
         {/* Independently Scrollable Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
           {renderNavGroup('workspace', 'Work & Time')}
-          {renderNavGroup('evidence', 'Context & Privacy')}
+          {renderNavGroup('evidence', 'Context & Evidence')}
+          {renderNavGroup('finance', 'Payments & Billing')}
           {renderNavGroup('admin', 'Organization')}
         </nav>
       </aside>
