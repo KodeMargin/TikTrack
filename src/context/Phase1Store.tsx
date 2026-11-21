@@ -243,6 +243,14 @@ export interface TaskPaymentConfig {
   updatedBy: string
 }
 
+export interface DeveloperBankDetails {
+  bankName: string
+  branchName?: string
+  accountHolderName: string
+  accountNumber: string
+  swiftOrRoutingCode?: string
+}
+
 export interface DeveloperPaymentConfig {
   id: string
   tenantId: string
@@ -254,6 +262,7 @@ export interface DeveloperPaymentConfig {
   payoutFrequency: 'weekly' | 'biweekly' | 'monthly'
   payoutMethod: 'bank_transfer' | 'wise' | 'payoneer' | 'stripe_connect' | 'crypto_usdc'
   accountSummary: string
+  bankDetails?: DeveloperBankDetails
   taxWithholdingPercent: number
   effectiveFrom: string
   notes: string
@@ -489,6 +498,7 @@ interface Phase1StoreContextValue {
     payoutFrequency: DeveloperPaymentConfig['payoutFrequency']
     payoutMethod: DeveloperPaymentConfig['payoutMethod']
     accountSummary: string
+    bankDetails?: DeveloperBankDetails
     taxWithholdingPercent: number
     effectiveFrom: string
     notes: string
@@ -3052,6 +3062,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     payoutFrequency: DeveloperPaymentConfig['payoutFrequency']
     payoutMethod: DeveloperPaymentConfig['payoutMethod']
     accountSummary: string
+    bankDetails?: DeveloperBankDetails
     taxWithholdingPercent: number
     effectiveFrom: string
     notes: string
@@ -3080,6 +3091,29 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       return { ok: false, message: 'Monthly retainer amount must be greater than 0.' }
     }
 
+    const cleanedBank: DeveloperBankDetails | undefined =
+      input.payoutMethod === 'bank_transfer' && input.bankDetails
+        ? {
+            bankName: input.bankDetails.bankName.trim(),
+            branchName: input.bankDetails.branchName?.trim() || undefined,
+            accountHolderName: input.bankDetails.accountHolderName.trim(),
+            accountNumber: input.bankDetails.accountNumber.trim(),
+            swiftOrRoutingCode: input.bankDetails.swiftOrRoutingCode?.trim() || undefined,
+          }
+        : undefined
+
+    const derivedSummary = cleanedBank
+      ? [
+          cleanedBank.bankName,
+          cleanedBank.branchName,
+          cleanedBank.accountNumber
+            ? `****${cleanedBank.accountNumber.slice(-4)}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : input.accountSummary.trim()
+
     const nowIso = new Date().toISOString()
     const nextConfig: DeveloperPaymentConfig = {
       id: `paycfg-${activeTenant.id}-${member.id}`,
@@ -3091,7 +3125,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       currency: (input.currency || activeTenant.currency || 'USD').toUpperCase(),
       payoutFrequency: input.payoutFrequency,
       payoutMethod: input.payoutMethod,
-      accountSummary: input.accountSummary.trim() || 'Pending payout details',
+      accountSummary: derivedSummary || 'Pending payout details',
+      bankDetails: cleanedBank,
       taxWithholdingPercent: Math.min(60, Math.max(0, Number(input.taxWithholdingPercent) || 0)),
       effectiveFrom: input.effectiveFrom || nowIso.slice(0, 10),
       notes: input.notes.trim(),

@@ -147,6 +147,11 @@ export function DeveloperPaymentsView() {
   const [cfgMethod, setCfgMethod] =
     useState<DeveloperPaymentConfig['payoutMethod']>('bank_transfer')
   const [cfgAccount, setCfgAccount] = useState<string>('')
+  const [cfgBankName, setCfgBankName] = useState<string>('')
+  const [cfgBranchName, setCfgBranchName] = useState<string>('')
+  const [cfgAccountHolder, setCfgAccountHolder] = useState<string>('')
+  const [cfgAccountNumber, setCfgAccountNumber] = useState<string>('')
+  const [cfgSwiftCode, setCfgSwiftCode] = useState<string>('')
   const [cfgTaxPct, setCfgTaxPct] = useState<number>(0)
   const [cfgEffectiveFrom, setCfgEffectiveFrom] = useState<string>(
     new Date().toISOString().slice(0, 10)
@@ -454,6 +459,11 @@ export function DeveloperPaymentsView() {
     setCfgFrequency(existing?.payoutFrequency ?? 'biweekly')
     setCfgMethod(existing?.payoutMethod ?? 'bank_transfer')
     setCfgAccount(existing?.accountSummary ?? '')
+    setCfgBankName(existing?.bankDetails?.bankName ?? (existing?.payoutMethod === 'bank_transfer' ? existing.accountSummary : ''))
+    setCfgBranchName(existing?.bankDetails?.branchName ?? '')
+    setCfgAccountHolder(existing?.bankDetails?.accountHolderName ?? member.name)
+    setCfgAccountNumber(existing?.bankDetails?.accountNumber ?? '')
+    setCfgSwiftCode(existing?.bankDetails?.swiftOrRoutingCode ?? '')
     setCfgTaxPct(existing?.taxWithholdingPercent ?? 0)
     setCfgEffectiveFrom(
       existing?.effectiveFrom ?? new Date().toISOString().slice(0, 10)
@@ -473,6 +483,16 @@ export function DeveloperPaymentsView() {
       payoutFrequency: cfgFrequency,
       payoutMethod: cfgMethod,
       accountSummary: cfgAccount,
+      bankDetails:
+        cfgMethod === 'bank_transfer'
+          ? {
+              bankName: cfgBankName,
+              branchName: cfgBranchName,
+              accountHolderName: cfgAccountHolder,
+              accountNumber: cfgAccountNumber,
+              swiftOrRoutingCode: cfgSwiftCode,
+            }
+          : undefined,
       taxWithholdingPercent: cfgTaxPct,
       effectiveFrom: cfgEffectiveFrom,
       notes: cfgNotes,
@@ -1296,12 +1316,51 @@ export function DeveloperPaymentsView() {
                       {METHOD_LABEL[myConfig.payoutMethod]}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-white/[0.06]">
-                    <dt className="text-zinc-500 dark:text-zinc-400">Destination</dt>
-                    <dd className="font-mono text-zinc-800 dark:text-zinc-200">
-                      {myConfig.accountSummary}
-                    </dd>
-                  </div>
+                  {myConfig.payoutMethod === 'bank_transfer' && myConfig.bankDetails ? (
+                    <>
+                      <div className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-white/[0.06]">
+                        <dt className="text-zinc-500 dark:text-zinc-400">Bank Name</dt>
+                        <dd className="font-semibold text-zinc-900 dark:text-white">
+                          {myConfig.bankDetails.bankName}
+                        </dd>
+                      </div>
+                      {myConfig.bankDetails.branchName && (
+                        <div className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-white/[0.06]">
+                          <dt className="text-zinc-500 dark:text-zinc-400">Branch</dt>
+                          <dd className="text-zinc-800 dark:text-zinc-200">
+                            {myConfig.bankDetails.branchName}
+                          </dd>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-white/[0.06]">
+                        <dt className="text-zinc-500 dark:text-zinc-400">Account Holder</dt>
+                        <dd className="text-zinc-800 dark:text-zinc-200">
+                          {myConfig.bankDetails.accountHolderName}
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-white/[0.06]">
+                        <dt className="text-zinc-500 dark:text-zinc-400">Account Number</dt>
+                        <dd className="font-mono text-zinc-800 dark:text-zinc-200">
+                          {myConfig.bankDetails.accountNumber}
+                        </dd>
+                      </div>
+                      {myConfig.bankDetails.swiftOrRoutingCode && (
+                        <div className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-white/[0.06]">
+                          <dt className="text-zinc-500 dark:text-zinc-400">SWIFT / Routing</dt>
+                          <dd className="font-mono text-zinc-800 dark:text-zinc-200">
+                            {myConfig.bankDetails.swiftOrRoutingCode}
+                          </dd>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-white/[0.06]">
+                      <dt className="text-zinc-500 dark:text-zinc-400">Destination</dt>
+                      <dd className="font-mono text-zinc-800 dark:text-zinc-200">
+                        {myConfig.accountSummary}
+                      </dd>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-white/[0.06]">
                     <dt className="text-zinc-500 dark:text-zinc-400">Tax Withholding</dt>
                     <dd className="font-mono text-zinc-800 dark:text-zinc-200">
@@ -1551,17 +1610,12 @@ export function DeveloperPaymentsView() {
             <form
               onSubmit={handleSaveConfig}
               onClick={(e) => e.stopPropagation()}
-              className="dp-popover-enter w-full max-w-lg rounded-2xl bg-white dark:bg-[#131319] shadow-(--dp-shadow-popover) p-6 space-y-4 text-xs"
+              className="dp-popover-enter w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-[#131319] shadow-(--dp-shadow-popover) p-6 space-y-4 text-xs"
             >
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white">
-                    Configure Payment · {configMember.name}
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Visible to {configMember.name} in read-only mode.
-                  </p>
-                </div>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white">
+                  Configure Payment · {configMember.name}
+                </h3>
                 <button
                   type="button"
                   onClick={() => setConfigMember(null)}
@@ -1708,19 +1762,102 @@ export function DeveloperPaymentsView() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
-                  Account / Destination Summary (Masked)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Commercial Bank **** 4821 or Wise · dev@company.com"
-                  value={cfgAccount}
-                  onChange={(e) => setCfgAccount(e.target.value)}
-                  className="w-full rounded-xl bg-zinc-50 dark:bg-white/[0.04] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] px-3 py-2 text-zinc-900 dark:text-white"
-                  required
-                />
-              </div>
+              {cfgMethod === 'bank_transfer' ? (
+                <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-4 space-y-3">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Bank Account Details
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Commercial Bank"
+                        value={cfgBankName}
+                        onChange={(e) => setCfgBankName(e.target.value)}
+                        className="w-full rounded-xl px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                        Branch Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Colombo Fort"
+                        value={cfgBranchName}
+                        onChange={(e) => setCfgBranchName(e.target.value)}
+                        className="w-full rounded-xl px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                        Account Holder Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Full name on account"
+                        value={cfgAccountHolder}
+                        onChange={(e) => setCfgAccountHolder(e.target.value)}
+                        className="w-full rounded-xl px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 100023456789"
+                        value={cfgAccountNumber}
+                        onChange={(e) => setCfgAccountNumber(e.target.value)}
+                        className="w-full rounded-xl px-3 py-2 font-mono"
+                        required
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                        SWIFT / Routing Code (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. CCEYLKLX"
+                        value={cfgSwiftCode}
+                        onChange={(e) => setCfgSwiftCode(e.target.value)}
+                        className="w-full rounded-xl px-3 py-2 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                    {cfgMethod === 'wise'
+                      ? 'Wise Email / Account ID'
+                      : cfgMethod === 'payoneer'
+                        ? 'Payoneer Account Email'
+                        : cfgMethod === 'stripe_connect'
+                          ? 'Stripe Account ID'
+                          : 'USDC Wallet Address & Network'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={
+                      cfgMethod === 'crypto_usdc'
+                        ? 'e.g. 0x... (Base / Polygon)'
+                        : 'e.g. dev@company.com'
+                    }
+                    value={cfgAccount}
+                    onChange={(e) => setCfgAccount(e.target.value)}
+                    className="w-full rounded-xl px-3 py-2"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">

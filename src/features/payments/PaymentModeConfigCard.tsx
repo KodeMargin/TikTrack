@@ -1,37 +1,97 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   usePhase1Store,
   type PaymentCalculationMode,
 } from '@/context/Phase1Store'
 
-const MODE_OPTIONS: {
+interface ModeOption {
   id: PaymentCalculationMode
   title: string
-  badge: string
-  description: string
-}[] = [
+  tagline: string
+  formula: string
+  highlights: string[]
+  icon: ReactNode
+}
+
+const MODE_OPTIONS: ModeOption[] = [
   {
     id: 'user_wise',
-    title: 'User-Wise Payments',
-    badge: 'Salary / Personal Rate',
-    description:
-      'Each developer has their own configured hourly rate, monthly retainer, or milestone plan. No client billing rates leak to staff.',
+    title: 'User-Wise',
+    tagline: 'Pay each team member by personal rate or salary',
+    formula: 'Approved Hours × Personal Rate (or Monthly Salary) → Payout',
+    highlights: ['Hourly or Monthly Salary', 'Personal bank / wallet details'],
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
   },
   {
     id: 'task_wise',
-    title: 'Task-Wise Payments',
-    badge: 'Per-Task Bounty / Rate',
-    description:
-      'Configure a fixed bounty or dedicated hourly rate per task. Developers earn based on the specific tasks they complete or log approved time on.',
+    title: 'Task-Wise',
+    tagline: 'Pay fixed bounties or rates assigned per task',
+    formula: 'Completed Task Bounty or Task Hourly Rate → Payout',
+    highlights: ['Fixed bounty per task', 'Task-specific hourly rate'],
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
   },
   {
     id: 'hybrid',
-    title: 'Hybrid (User + Task)',
-    badge: 'Flexible Override',
-    description:
-      'Uses each developer’s personal rate by default, while allowing task-specific bounties or rates to override when configured.',
+    title: 'Hybrid (Both)',
+    tagline: 'User rate by default, task rate overrides when set',
+    formula: 'Task Rate (if set) else Personal Rate → Payout',
+    highlights: ['Default personal rate', 'Custom bounty overrides'],
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
+      </svg>
+    ),
   },
 ]
+
+function ToggleSwitch({
+  checked,
+  disabled,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  disabled?: boolean
+  onChange: (next: boolean) => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6d25da]/40 ${
+        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+      } ${
+        checked
+          ? 'bg-[#6d25da]'
+          : 'bg-zinc-200 dark:bg-white/15'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  )
+}
 
 export function PaymentModeConfigCard({
   onSaved,
@@ -52,26 +112,28 @@ export function PaymentModeConfigCard({
 
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
 
+  const activeOption =
+    MODE_OPTIONS.find((m) => m.id === workspacePaymentPolicy.paymentMode) ??
+    MODE_OPTIONS[0]
+
   function applyPatch(patch: Parameters<typeof updateWorkspacePaymentPolicy>[0]) {
     if (!canConfigure) return
     const res = updateWorkspacePaymentPolicy(patch)
-    setNotice({ ok: res.ok, text: res.message })
-    onSaved?.(res)
+    if (onSaved) {
+      onSaved(res)
+    } else {
+      setNotice({ ok: res.ok, text: res.message })
+    }
   }
 
   return (
-    <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4 shadow-[0_1px_2px_rgba(15,5,31,0.03)]">
+    <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 sm:p-6 space-y-5">
+      {/* Top Row */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-            Payment Calculation Mode &amp; Visibility
-          </h3>
-          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#6d25da]/10 text-[#581eae] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]">
-            Workspace Config
-          </span>
-        </div>
-
-        <span className="text-[11px] text-zinc-400 font-mono">
+        <h3 className="text-base font-bold text-zinc-900 dark:text-white">
+          How Should Payments Be Calculated?
+        </h3>
+        <span className="text-[11px] font-mono text-zinc-400">
           Updated by {workspacePaymentPolicy.updatedBy}
         </span>
       </div>
@@ -95,8 +157,8 @@ export function PaymentModeConfigCard({
         </div>
       )}
 
-      {/* 3 Interactive Mode Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* 3 Scannable Mode Selector Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {MODE_OPTIONS.map((opt) => {
           const selected = workspacePaymentPolicy.paymentMode === opt.id
           return (
@@ -105,90 +167,108 @@ export function PaymentModeConfigCard({
               type="button"
               disabled={!canConfigure}
               onClick={() => applyPatch({ paymentMode: opt.id })}
-              className={`group rounded-2xl p-4 text-left space-y-2 transition-all duration-150 ${
-                !canConfigure ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
+              className={`group rounded-2xl p-4 sm:p-5 text-left space-y-3 transition-all duration-150 ${
+                !canConfigure
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'cursor-pointer hover:-translate-y-[1px] active:scale-[0.99]'
               } ${
                 selected
-                  ? 'bg-[#6d25da]/[0.07] dark:bg-[#6d25da]/20 ring-2 ring-[#6d25da] dark:ring-[#a87ce9] shadow-xs'
-                  : 'bg-zinc-50/90 dark:bg-white/[0.03] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] hover:ring-[#6d25da]/35'
+                  ? 'bg-[#6d25da]/[0.06] dark:bg-[#6d25da]/20 ring-2 ring-[#6d25da] dark:ring-[#a87ce9] shadow-[0_6px_20px_-8px_rgba(109,37,218,0.22)]'
+                  : 'bg-zinc-50/90 dark:bg-white/[0.03] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.08] hover:ring-[#6d25da]/40'
               }`}
             >
+              {/* Icon + Active Pill */}
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-zinc-900 dark:text-white">
-                  {opt.title}
-                </span>
                 <span
-                  className={`h-4 w-4 rounded-full flex items-center justify-center shrink-0 transition ${
+                  className={`h-10 w-10 rounded-xl flex items-center justify-center transition ${
                     selected
-                      ? 'bg-[#6d25da] text-white'
-                      : 'ring-1 ring-zinc-300 dark:ring-zinc-600'
+                      ? 'bg-[#6d25da] text-white shadow-sm shadow-[#6d25da]/30'
+                      : 'bg-white dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300 ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] group-hover:text-[#6d25da]'
                   }`}
                 >
-                  {selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  {opt.icon}
                 </span>
+
+                {selected ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#6d25da] text-white text-[11px] font-semibold">
+                    ✓ Active
+                  </span>
+                ) : (
+                  <span className="h-4 w-4 rounded-full ring-1 ring-zinc-300 dark:ring-zinc-600 group-hover:ring-[#6d25da]/60 transition" />
+                )}
               </div>
-              <div className="inline-block text-[10.5px] font-semibold px-2 py-0.5 rounded-md bg-white/90 dark:bg-white/[0.07] text-[#581eae] dark:text-[#c5a8f0]">
-                {opt.badge}
+
+              {/* Title + Short Tagline */}
+              <div className="space-y-0.5">
+                <div className="text-sm font-bold text-zinc-900 dark:text-white">
+                  {opt.title}
+                </div>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {opt.tagline}
+                </div>
               </div>
-              <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                {opt.description}
-              </p>
+
+              {/* 2 Crisp Highlights */}
+              <ul className="space-y-1 pt-1 text-xs text-zinc-700 dark:text-zinc-300">
+                {opt.highlights.map((item) => (
+                  <li key={item} className="flex items-center gap-1.5">
+                    <span className="text-[#6d25da] dark:text-[#c5a8f0] font-bold">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </button>
           )
         })}
       </div>
 
-      {/* Feature Toggles */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-100 dark:border-white/[0.06] text-xs">
-        <label
-          className={`flex items-start justify-between gap-3 rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] px-3.5 py-3 ${
-            canConfigure ? 'cursor-pointer hover:bg-zinc-100/80 dark:hover:bg-white/[0.05]' : 'opacity-60'
-          } transition`}
-        >
+      {/* Live Formula Bar */}
+      <div className="rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="font-semibold text-zinc-500 dark:text-zinc-400">
+          Active Formula
+        </span>
+        <span className="font-mono font-semibold text-[#581eae] dark:text-[#c5a8f0]">
+          {activeOption.formula}
+        </span>
+      </div>
+
+      {/* Tactile Visibility Switches */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1 border-t border-zinc-100 dark:border-white/[0.06] text-xs">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] px-4 py-3.5">
           <div className="space-y-0.5">
             <div className="font-semibold text-zinc-900 dark:text-white">
-              Hide Client Billing Rates from Developers
+              Hide Client Rates on Timesheets
             </div>
             <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Developers without billing permission see hours &amp; status on Timesheets, never client charge rates.
+              Developers only see hours &amp; status
             </div>
           </div>
-          <input
-            type="checkbox"
+          <ToggleSwitch
+            label="Hide Client Rates on Timesheets"
             disabled={!canConfigure}
             checked={workspacePaymentPolicy.hideClientBillingRatesFromDevelopers}
-            onChange={(e) =>
-              applyPatch({
-                hideClientBillingRatesFromDevelopers: e.target.checked,
-              })
+            onChange={(next) =>
+              applyPatch({ hideClientBillingRatesFromDevelopers: next })
             }
-            className="mt-1 h-4 w-4 accent-[#6d25da] cursor-pointer"
           />
-        </label>
+        </div>
 
-        <label
-          className={`flex items-start justify-between gap-3 rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] px-3.5 py-3 ${
-            canConfigure ? 'cursor-pointer hover:bg-zinc-100/80 dark:hover:bg-white/[0.05]' : 'opacity-60'
-          } transition`}
-        >
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] px-4 py-3.5">
           <div className="space-y-0.5">
             <div className="font-semibold text-zinc-900 dark:text-white">
-              Show Per-Task Breakdown in My Payments
+              Show Task Breakdown in My Payments
             </div>
             <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Display individual logged task lines &amp; calculated payouts in the user&apos;s read-only statement.
+              List logged sessions inside read-only view
             </div>
           </div>
-          <input
-            type="checkbox"
+          <ToggleSwitch
+            label="Show Task Breakdown in My Payments"
             disabled={!canConfigure}
             checked={workspacePaymentPolicy.showTaskBreakdownToUsers}
-            onChange={(e) =>
-              applyPatch({ showTaskBreakdownToUsers: e.target.checked })
-            }
-            className="mt-1 h-4 w-4 accent-[#6d25da] cursor-pointer"
+            onChange={(next) => applyPatch({ showTaskBreakdownToUsers: next })}
           />
-        </label>
+        </div>
       </div>
     </section>
   )
