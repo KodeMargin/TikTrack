@@ -61,19 +61,14 @@ export function PaymentModeConfigCard({
 
   return (
     <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4 shadow-[0_1px_2px_rgba(15,5,31,0.03)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-              Payment Calculation Mode &amp; Visibility
-            </h3>
-            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#6d25da]/10 text-[#581eae] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]">
-              Workspace Feature Config
-            </span>
-          </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Choose whether developer compensation is calculated user-wise, task-wise, or hybrid across this workspace.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+            Payment Calculation Mode &amp; Visibility
+          </h3>
+          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#6d25da]/10 text-[#581eae] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]">
+            Workspace Config
+          </span>
         </div>
 
         <span className="text-[11px] text-zinc-400 font-mono">

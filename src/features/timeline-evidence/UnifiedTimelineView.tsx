@@ -52,6 +52,7 @@ const NOTE_TYPE_LABEL: Record<SessionAnnotationItem['annotationType'], string> =
   thinking_note: 'Thinking & Architecture',
   research_outcome: 'Research Summary',
   pair_programming: 'Pair Programming',
+  idle_reconciliation: 'Quiet Period Explanation',
 }
 
 export function UnifiedTimelineView() {
@@ -227,14 +228,9 @@ export function UnifiedTimelineView() {
 
       {/* Clean Header + Date Filter */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
-            Daily Work Activity &amp; Proof
-          </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            See logged sessions, tool activity, quiet periods, and linked commits or PRs in one simple view — no screenshots or keystroke tracking.
-          </p>
-        </div>
+        <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
+          Daily Work Activity &amp; Proof
+        </h2>
 
         <div className="flex items-center gap-2 text-xs">
           <label
@@ -268,28 +264,22 @@ export function UnifiedTimelineView() {
           <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-white">
             {formatDuration(totalActiveMinutes)}
           </div>
-          <div className="text-[11px] text-zinc-400">
-            Across {filteredRollups.length} activity blocks
-          </div>
         </div>
 
         <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-4 space-y-1">
           <div className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
             <span>Combined Tool Time</span>
-            <InfoTooltip text="When your code editor and desktop app are active at the same time, they are merged so time is never counted twice." />
+            <InfoTooltip text="Overlapping editor and desktop time is merged so it is never counted twice." />
           </div>
           <div className="text-2xl font-bold font-mono text-[#6d25da] dark:text-[#c5a8f0]">
             {formatDuration(syncedToolsMinutes)}
-          </div>
-          <div className="text-[11px] text-zinc-400">
-            Automatically de-duplicated
           </div>
         </div>
 
         <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-4 space-y-1">
           <div className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            <span>Quiet Periods to Label</span>
-            <InfoTooltip text="Times with no keyboard or editor activity (like thinking, reading docs, or meetings). Never treated as a violation — just add a quick label." />
+            <span>Quiet Periods</span>
+            <InfoTooltip text="Intervals without keyboard or editor activity (thinking, reading, meetings)." />
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400">
@@ -301,9 +291,6 @@ export function UnifiedTimelineView() {
               </span>
             )}
           </div>
-          <div className="text-[11px] text-zinc-400">
-            {quietGaps.length === 0 ? 'All quiet periods explained' : 'Click any amber block below'}
-          </div>
         </div>
 
         <div className="rounded-2xl bg-[#6d25da]/[0.06] dark:bg-[#6d25da]/15 ring-1 ring-[#6d25da]/20 dark:ring-[#8b51e1]/30 p-4 space-y-1">
@@ -313,23 +300,15 @@ export function UnifiedTimelineView() {
           <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-white">
             {filteredArtifacts.length}
           </div>
-          <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-            Commits, PRs &amp; test runs
-          </div>
         </div>
       </div>
 
       {/* Section 1: Logged Work Sessions */}
       <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-              1. Logged Work Sessions
-            </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Sessions recorded from Focus Timer or manual entries.
-            </p>
-          </div>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+            1. Logged Work Sessions
+          </h3>
           <span className="text-xs font-mono text-zinc-400">
             {scopedSessions.length} {scopedSessions.length === 1 ? 'session' : 'sessions'}
           </span>
@@ -396,14 +375,9 @@ export function UnifiedTimelineView() {
       {/* Section 2: App Activity & Quiet Periods */}
       <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-              2. App Activity &amp; Quiet Periods
-            </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              High-level summary of tools used. Click any amber quiet period to add a quick label below.
-            </p>
-          </div>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+            2. App Activity &amp; Quiet Periods
+          </h3>
           <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
             <span className="px-2.5 py-0.5 rounded-full bg-[#6d25da]/10 text-[#581eae] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] font-medium">
               Code Editor
@@ -512,14 +486,9 @@ export function UnifiedTimelineView() {
       {/* Section 3: Linked Work Proof (Commits, PRs & Tests) */}
       <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-              3. Linked Work Proof (Commits, PRs &amp; Tests)
-            </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Outputs from GitHub, your editor, or test runs automatically matched to tasks. Click any item to confirm or move it to another task.
-            </p>
-          </div>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+            3. Linked Work Proof
+          </h3>
           <span className="text-xs font-mono text-zinc-400">
             {filteredArtifacts.length} {filteredArtifacts.length === 1 ? 'item' : 'items'}
           </span>
@@ -611,14 +580,9 @@ export function UnifiedTimelineView() {
           className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 flex flex-col justify-between gap-4"
         >
           <div className="space-y-3">
-            <div>
-              <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
-                Explain a Quiet Period
-              </h4>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                Tell reviewers what happened during an idle or thinking gap.
-              </p>
-            </div>
+            <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
+              Explain a Quiet Period
+            </h4>
 
             <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] px-3 py-2 text-xs">
               <span className="text-zinc-500 dark:text-zinc-400">Selected time: </span>
@@ -684,15 +648,10 @@ export function UnifiedTimelineView() {
           className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 flex flex-col justify-between gap-4"
         >
           <div className="space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
-                  Connect Proof to Task
-                </h4>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Confirm or change which task a commit or PR belongs to.
-                </p>
-              </div>
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
+                Connect Proof to Task
+              </h4>
               {activeArtifact && (
                 <button
                   type="button"
@@ -784,15 +743,10 @@ export function UnifiedTimelineView() {
           className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 flex flex-col justify-between gap-4"
         >
           <div className="space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
-                  Add a Work Note
-                </h4>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Leave helpful context for your team or reviewer.
-                </p>
-              </div>
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
+                Add a Work Note
+              </h4>
               <span className="text-[11px] text-zinc-400 shrink-0">
                 {projects.length} {projects.length === 1 ? 'project' : 'projects'}
               </span>

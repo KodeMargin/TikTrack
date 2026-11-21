@@ -427,6 +427,40 @@ export const publishRuleSetViaPrisma = (input: {
   createdBy?: string
 }) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase3/rule-sets', input)
 
+export async function fetchGeminiStatusViaApi(): Promise<{
+  configured: boolean
+  model: string
+}> {
+  try {
+    const res = await fetch('/api/prisma/phase3/ai-status')
+    if (!res.ok) return { configured: false, model: 'gemini-2.5-flash' }
+    return (await res.json()) as { configured: boolean; model: string }
+  } catch {
+    return { configured: false, model: 'gemini-2.5-flash' }
+  }
+}
+
+export const generateGeminiDraftViaApi = (input: {
+  targetType:
+    | 'daily_summary'
+    | 'reviewer_digest'
+    | 'gap_explanation'
+    | 'task_mapping'
+    | 'debug_investigation'
+    | 'pattern_cluster'
+  targetLabel: string
+  sanitizedPayload: Record<string, unknown>
+  citedIds: string[]
+}) =>
+  postJson<{
+    ok: boolean
+    configured: boolean
+    modelId: string
+    draftMarkdown?: string
+    tokensUsed?: number
+    error?: string
+  }>('/api/prisma/phase3/ai-draft-gemini', input)
+
 export const createAiGenerationViaPrisma = (input: {
   tenantId: string
   userId?: string

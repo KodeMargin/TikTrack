@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { usePhase1Store, type TimesheetLineItem } from '@/context/Phase1Store'
+import { ActiveRulesSummaryBanner } from '@/features/verification-ai/ActiveRulesSummaryBanner'
 
 function formatDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes))
@@ -809,24 +810,17 @@ export function TimesheetsAndReviewView() {
 
       {/* Clean Header + Primary Actions */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
-              {canViewTeam
-                ? 'Team Timesheets & Logged Tasks'
-                : isFinance
-                  ? 'Approved Billing Hours'
-                  : `${activeUser.name}’s Logged Tasks`}
-            </h2>
-            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300">
-              {filteredLines.length} {filteredLines.length === 1 ? 'entry' : 'entries'}
-            </span>
-          </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
             {canViewTeam
-              ? 'Review developer-logged sessions, verify context notes, and approve billable hours.'
-              : 'Track your logged work sessions, add context notes, and submit periods for review.'}
-          </p>
+              ? 'Team Timesheets & Logged Tasks'
+              : isFinance
+                ? 'Approved Billing Hours'
+                : `${activeUser.name}’s Logged Tasks`}
+          </h2>
+          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300">
+            {filteredLines.length} {filteredLines.length === 1 ? 'entry' : 'entries'}
+          </span>
         </div>
 
         {/* Period Submission & Bulk Approve Controls */}
@@ -978,6 +972,9 @@ export function TimesheetsAndReviewView() {
           </div>
         </div>
       </div>
+
+      {/* Active Workspace Review Rules Strip (Read-Only Transparency) */}
+      <ActiveRulesSummaryBanner />
 
       {/* Team Developer Quick-Filter Strip (visible for Tenant Owner / Team Viewers) */}
       {canViewTeam && developerSummaries.length > 0 && (

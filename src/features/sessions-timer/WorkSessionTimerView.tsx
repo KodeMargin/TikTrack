@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import type { WorkMode } from '@/types/domain.types'
 import { InfoTooltip } from '@/components/InfoTooltip'
+import { ActiveRulesSummaryBanner } from '@/features/verification-ai/ActiveRulesSummaryBanner'
 
 const WORK_MODE_DETAILS: {
   mode: WorkMode
@@ -418,14 +419,9 @@ export function WorkSessionTimerView() {
           {/* Log Completed Session Card */}
           <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4 shadow-[0_1px_2px_rgba(15,5,31,0.03)]">
             <div className="flex items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-                  Log Completed Session
-                </h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Records directly to Timesheets for review &amp; approval.
-                </p>
-              </div>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+                Log Completed Session
+              </h3>
               <div className="text-right">
                 <div className="text-[11px] text-zinc-400">Net Claimed</div>
                 <div className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
@@ -522,17 +518,12 @@ export function WorkSessionTimerView() {
             onSubmit={handleManualSubmit}
             className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4 shadow-[0_1px_2px_rgba(15,5,31,0.03)]"
           >
-            <div>
-              <div className="inline-flex items-center gap-1.5 text-sm font-bold text-zinc-900 dark:text-white">
-                <span>Manual Time Entry</span>
-                <InfoTooltip
-                  align="left"
-                  text="Log offline work or missed timers separately from tracked telemetry for manager review."
-                />
-              </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                Tagged as manual and routed to Timesheets for audit review.
-              </p>
+            <div className="inline-flex items-center gap-1.5 text-sm font-bold text-zinc-900 dark:text-white">
+              <span>Manual Time Entry</span>
+              <InfoTooltip
+                align="left"
+                text="Log offline work or missed timers for manager review."
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 text-xs">
@@ -675,17 +666,15 @@ export function WorkSessionTimerView() {
         </div>
       </div>
 
+      {/* Transparent Active Workspace Review Rules Banner */}
+      <ActiveRulesSummaryBanner />
+
       {/* Recent Logged Sessions Strip */}
       <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-3.5 shadow-[0_1px_2px_rgba(15,5,31,0.03)]">
         <div className="flex items-center justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-              {canViewTeamSessions ? 'Recent Team Logged Sessions' : 'Your Recent Logged Sessions'}
-            </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Latest task logs synced to Timesheets.
-            </p>
-          </div>
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+            {canViewTeamSessions ? 'Recent Team Logged Sessions' : 'Your Recent Logged Sessions'}
+          </h3>
           <span className="text-xs font-mono text-zinc-400">
             Showing {recentLogs.length} of {timesheetLines.length}
           </span>

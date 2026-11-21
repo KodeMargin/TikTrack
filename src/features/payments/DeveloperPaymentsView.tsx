@@ -592,25 +592,18 @@ export function DeveloperPaymentsView() {
 
       {/* Header & Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
-              {effectiveTab === 'mine' ? 'My Payments & Earnings' : 'Developer Payments & Payouts'}
-            </h2>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${modeBadge.cls}`}>
-              {modeBadge.label}
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
+            {effectiveTab === 'mine' ? 'My Payments & Earnings' : 'Developer Payments & Payouts'}
+          </h2>
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${modeBadge.cls}`}>
+            {modeBadge.label}
+          </span>
+          {!canConfigure && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300">
+              🔒 Read-Only
             </span>
-            {!canConfigure && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300">
-                🔒 Read-Only
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            {canConfigure
-              ? 'Switch between User-Wise, Task-Wise, or Hybrid payments anytime in Mode Settings.'
-              : 'Read-only view of your configured compensation terms, accrued earnings, and payout history.'}
-          </p>
+          )}
         </div>
 
         {canViewTeam && (
@@ -929,15 +922,8 @@ export function DeveloperPaymentsView() {
       {effectiveTab === 'tasks' && canViewTeam && usesTaskConfig && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div>
-              <div className="text-sm font-bold text-zinc-900 dark:text-white">
-                Task-Wise Bounties &amp; Hourly Rates ({filteredTasks.length})
-              </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                {paymentMode === 'hybrid'
-                  ? 'Configured task payments override the developer’s default user rate. Unconfigured tasks inherit the developer’s personal rate.'
-                  : 'Configure a fixed bounty or task-specific hourly rate for each task.'}
-              </p>
+            <div className="text-sm font-bold text-zinc-900 dark:text-white">
+              Task-Wise Bounties &amp; Hourly Rates ({filteredTasks.length})
             </div>
 
             <div className="flex flex-wrap items-center gap-2">

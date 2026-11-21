@@ -48,6 +48,11 @@ import {
   handleToggleTenantAiPrisma,
 } from './prismaPhase3Handlers.ts'
 import {
+  generateGeminiSummaryDraft,
+  getGeminiConfig,
+  type GeminiDraftRequest,
+} from './geminiService.ts'
+import {
   handleCheckoutSubscriptionPrisma,
   handleCreateApiKeyPrisma,
   handleCreatePortableReportPrisma,
@@ -983,6 +988,17 @@ export async function handlePrismaApiRequest(
             if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase2/reconcile-gap')) {
               const body = await readJsonBody<Parameters<typeof handleReconcileGapPrisma>[0]>(req)
               return sendJson(res, 200, await handleReconcileGapPrisma(body))
+            }
+
+            if (req.method === 'GET' && url.startsWith('/api/prisma/phase3/ai-status')) {
+              const cfg = getGeminiConfig()
+              return sendJson(res, 200, { configured: cfg.configured, model: cfg.model })
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase3/ai-draft-gemini')) {
+              const body = await readJsonBody<GeminiDraftRequest>(req)
+              const result = await generateGeminiSummaryDraft(body)
+              return sendJson(res, 200, result)
             }
 
             if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase3/tenant-ai')) {

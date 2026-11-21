@@ -2,6 +2,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -37,6 +38,8 @@ import { generateGuardrailedAiDraft } from '@/lib/phase3/aiAssistant'
 import {
   createAiGenerationViaPrisma,
   decideAiGenerationViaPrisma,
+  fetchGeminiStatusViaApi,
+  generateGeminiDraftViaApi,
   openDisputeViaPrisma,
   performDisputeActionViaPrisma,
   publishRuleSetViaPrisma,
@@ -45,6 +48,7 @@ import {
 
 interface Phase3StoreContextValue {
   aiEnabled: boolean
+  aiServerStatus: { configured: boolean; model: string }
   toggleTenantAi: (enabled: boolean) => void
   ruleSets: VerificationRuleSetRecord[]
   activeRuleSet: VerificationRuleSetRecord
@@ -66,7 +70,7 @@ interface Phase3StoreContextValue {
   generateAiDraft: (
     targetType: AiTargetType,
     targetId: string
-  ) => { ok: boolean; generation: AiGenerationRecord; message: string }
+  ) => Promise<{ ok: boolean; generation: AiGenerationRecord; message: string }>
   approveAiGeneration: (id: string, editedMarkdown: string) => void
   discardAiGeneration: (id: string) => void
   disputes: DisputeRecord[]
@@ -140,6 +144,20 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Set<string>>(
     () => new Set()
   )
+  const [aiServerStatus, setAiServerStatus] = useState<{
+    configured: boolean
+    model: string
+  }>({ configured: false, model: 'gemini-2.5-flash' })
+
+  useEffect(() => {
+    let active = true
+    void fetchGeminiStatusViaApi().then((st) => {
+      if (active) setAiServerStatus(st)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   if (phase3Bootstrap !== syncedBootstrap) {
     setSyncedBootstrap(phase3Bootstrap)
@@ -366,10 +384,10 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
     setDismissedSuggestionIds((prev) => new Set(prev).add(id))
   }
 
-  function generateAiDraft(
+  async function generateAiDraft(
     targetType: AiTargetType,
     targetId: string
-  ): { ok: boolean; generation: AiGenerationRecord; message: string } {
+  ): Promise<{ ok: boolean; generation: AiGenerationRecord; message: string }> {
     const validEventIds = new Set<string>([
       ...activityRollups.map((r) => r.id),
       ...privacyAuditBatches.map((b) => b.batchId),
@@ -400,7 +418,7 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
       (l) => l.evidenceStatus === 'needs_clarification' || l.evidenceStatus === 'disputed'
     ).length
 
-    const generation = generateGuardrailedAiDraft({
+    const baseGeneration = generateGuardrailedAiDraft({
       tenantId: activeTenant.id,
       aiEnabled,
       userId: activeUser.id,
@@ -418,7 +436,7 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
         artifact_summaries: matchingArtifacts.map((a) => a.summaryTitle),
         branch_name: matchingMapping?.branchName ?? 'main',
         repo_name: matchingMapping?.repoFullName ?? 'devproof/tiktrack',
-        // Intentionally test-demonstrating that even if caller passes private fields, sanitizer strips them:
+        // Sanitizer strips private/blocked fields before any payload leaves the browser:
         keystrokes: 'stripped_by_sanitizer',
         window_title_raw: '/Users/dev/secret.env',
       },
@@ -442,6 +460,54 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
       },
     })
 
+    let generation: AiGenerationRecord = baseGeneration
+    let statusMessage = ''
+
+    if (aiEnabled) {
+      const citedIds = [
+        ...baseGeneration.citedEventIds.map((id) => `event:${id.slice(0, 8)}`),
+        ...baseGeneration.citedArtifactIds.map((id) => `artifact:${id.slice(0, 8)}`),
+      ]
+      const geminiRes = await generateGeminiDraftViaApi({
+        targetType,
+        targetLabel: baseGeneration.targetLabel,
+        sanitizedPayload: baseGeneration.sanitizedPromptPayload,
+        citedIds,
+      })
+
+      if (geminiRes?.ok && geminiRes.draftMarkdown) {
+        setAiServerStatus({ configured: true, model: geminiRes.modelId })
+        generation = {
+          ...baseGeneration,
+          generationMode: 'ai_guardrailed',
+          modelId: geminiRes.modelId,
+          draftMarkdown: geminiRes.draftMarkdown,
+          tokensUsed: geminiRes.tokensUsed ?? baseGeneration.tokensUsed,
+        }
+        statusMessage = `Generated live Gemini summary (${geminiRes.modelId}, ${generation.tokensUsed} tokens). Review & edit before approving.`
+      } else {
+        // Graceful fallback to deterministic template if GEMINI_API_KEY is missing or API failed
+        if (geminiRes) {
+          setAiServerStatus({
+            configured: geminiRes.configured,
+            model: geminiRes.modelId,
+          })
+        }
+        generation = {
+          ...baseGeneration,
+          generationMode: 'deterministic_template',
+          modelId: 'deterministic-template-v1',
+          tokensUsed: 0,
+        }
+        statusMessage = geminiRes?.configured === false
+          ? 'GEMINI_API_KEY not found in .env yet — generated using built-in template (0 tokens). Add GEMINI_API_KEY to .env and restart server to enable live Gemini.'
+          : `Gemini unavailable (${geminiRes?.error ?? 'network error'}) — fell back to built-in template.`
+      }
+    } else {
+      statusMessage =
+        'AI Assistant is OFF — generated using built-in template (0 tokens).'
+    }
+
     setAllAiGenerations((prev) => [generation, ...prev])
 
     if (prismaStatus.connected && activeTenant.id) {
@@ -464,9 +530,7 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
     return {
       ok: true,
       generation,
-      message: aiEnabled
-        ? `Generated AI-Drafted ${targetType.replace('_', ' ')} citing ${generation.citedEventIds.length + generation.citedArtifactIds.length} verified ID(s). Review & confirm before sharing.`
-        : `Tenant AI disabled (F3-027): generated deterministic template with 0 LLM tokens.`,
+      message: statusMessage,
     }
   }
 
@@ -784,6 +848,7 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
     <Phase3StoreContext.Provider
       value={{
         aiEnabled,
+        aiServerStatus,
         toggleTenantAi,
         ruleSets: tenantRuleSets,
         activeRuleSet,

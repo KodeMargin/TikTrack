@@ -4439,6 +4439,105 @@ async function handleDesktopSubmitSession(body) {
 		taskStatus: body.markTaskForReview ? "review" : "active"
 	};
 }
+// src/server/geminiService.ts
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+function getGeminiConfig() {
+	const apiKey = (process.env.GEMINI_API_KEY || "").trim();
+	const model = (process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL).trim();
+	return {
+		configured: apiKey.length > 0 && apiKey !== "your-gemini-api-key",
+		apiKey,
+		model
+	};
+}
+const TARGET_INSTRUCTIONS = {
+	daily_summary: "Write a concise Daily Work Summary (3-5 bullet points) describing the logged time, work modes used, and linked work proof for the developer to review before submitting.",
+	reviewer_digest: "Write a concise Manager Review Brief (3-5 bullet points) summarizing logged vs. supported time, linked deliverables, and any open items awaiting human confirmation.",
+	gap_explanation: "Write a polite, clear Quiet-Gap Note prompt explaining why a quiet period needs a quick label (e.g., Thinking, Reading Docs, Meeting, or Break) and reminding that no automatic pay cuts occur.",
+	task_mapping: "Write a concise Task Match Summary explaining how the repository/branch metadata aligns with the target task, noting that developer confirmation is required.",
+	debug_investigation: "Write a concise Debugging Recap summarizing debugging & local testing progress from lifecycle metadata without assuming or inventing code changes.",
+	pattern_cluster: "Write a constructive Work Pattern Recap grouping recurring review notices and suggesting practical workflow improvements (like selecting Deep Work mode upfront)."
+};
+async function generateGeminiSummaryDraft(input) {
+	const { configured, apiKey, model } = getGeminiConfig();
+	if (!configured) return {
+		ok: false,
+		configured: false,
+		modelId: model,
+		error: "GEMINI_API_KEY is not configured in the server environment."
+	};
+	const systemInstruction = [
+		"You are TikTrack Smart Assistant for a privacy-first engineering time tracker.",
+		"Rules you MUST strictly obey:",
+		"1. Only use the sanitized metadata provided in JSON. Never invent commits, bugs, or hours.",
+		"2. Never accuse any developer of fraud, idleness, slacking, or low performance.",
+		"3. Never recommend automatic pay deductions or punitive actions; human review is always authoritative.",
+		"4. Use clear, plain, everyday English — avoid technical jargon.",
+		"5. Output clean Markdown (a short bold title + 3 to 5 concise bullets). Keep it under 160 words."
+	].join("\n");
+	const taskInstruction = TARGET_INSTRUCTIONS[input.targetType] ?? "Write a clear, concise summary of the provided work metadata.";
+	const userPrompt = [
+		`Target: ${input.targetLabel}`,
+		`Draft Type: ${input.targetType}`,
+		`Instruction: ${taskInstruction}`,
+		`Verified Metadata (JSON):`,
+		JSON.stringify(input.sanitizedPayload, null, 2)
+	].join("\n\n");
+	const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+	try {
+		const response = await fetch(endpoint, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				system_instruction: { parts: [{ text: systemInstruction }] },
+				contents: [{
+					role: "user",
+					parts: [{ text: userPrompt }]
+				}],
+				generationConfig: {
+					temperature: .35,
+					maxOutputTokens: 512
+				}
+			})
+		});
+		if (!response.ok) {
+			const errBody = await response.text().catch(() => "");
+			let errMsg = `Gemini API error (${response.status})`;
+			try {
+				const parsed = JSON.parse(errBody);
+				if (parsed.error?.message) errMsg = parsed.error.message;
+			} catch {}
+			return {
+				ok: false,
+				configured: true,
+				modelId: model,
+				error: errMsg
+			};
+		}
+		const data = await response.json();
+		const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim() ?? "";
+		if (!text) return {
+			ok: false,
+			configured: true,
+			modelId: model,
+			error: "Gemini returned an empty response."
+		};
+		return {
+			ok: true,
+			configured: true,
+			modelId: model,
+			draftMarkdown: `${text}${input.citedIds.length > 0 ? `\n\n_Sources cited: ${input.citedIds.join(", ")}_` : ""}`,
+			tokensUsed: data.usageMetadata?.totalTokenCount ?? Math.max(80, Math.round(text.length / 3))
+		};
+	} catch (err) {
+		return {
+			ok: false,
+			configured: true,
+			modelId: model,
+			error: err instanceof Error ? err.message : "Failed to reach Gemini API."
+		};
+	}
+}
 // src/server/prismaApiPlugin.ts
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
@@ -5098,6 +5197,14 @@ async function handlePrismaApiRequest(req, res) {
 		if (req.method === "DELETE" && url.startsWith("/api/prisma/phase2/exclusions")) return sendJson(res, 200, await handleRemovePrivacyExclusionPrisma(await readJsonBody(req)));
 		if (req.method === "PATCH" && url.startsWith("/api/prisma/phase2/devices/revoke")) return sendJson(res, 200, await handleToggleDeviceRevocationPrisma(await readJsonBody(req)));
 		if (req.method === "PATCH" && url.startsWith("/api/prisma/phase2/reconcile-gap")) return sendJson(res, 200, await handleReconcileGapPrisma(await readJsonBody(req)));
+		if (req.method === "GET" && url.startsWith("/api/prisma/phase3/ai-status")) {
+			const cfg = getGeminiConfig();
+			return sendJson(res, 200, {
+				configured: cfg.configured,
+				model: cfg.model
+			});
+		}
+		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/ai-draft-gemini")) return sendJson(res, 200, await generateGeminiSummaryDraft(await readJsonBody(req)));
 		if (req.method === "PATCH" && url.startsWith("/api/prisma/phase3/tenant-ai")) return sendJson(res, 200, await handleToggleTenantAiPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/rule-sets")) return sendJson(res, 201, await handlePublishRuleSetPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/ai-generate")) return sendJson(res, 201, await handleCreateAiGenerationPrisma(await readJsonBody(req)));
