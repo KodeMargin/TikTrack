@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store, type EnrolledDeviceRecord } from '@/context/Phase2Store'
+import {
+  CalendarAndPmPanel,
+  PublicApiAndWebhooksPanel,
+} from '@/features/integrations/EcosystemToolsAndApiPanels'
 
 const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/KodeMargin/TikTrack-Release/releases/latest'
 
@@ -30,6 +34,7 @@ export function IntegrationsAndDevicesView() {
     toggleDeviceRevocation,
   } = usePhase2Store()
 
+  const [activeTab, setActiveTab] = useState<'apps-git' | 'calendar-pm' | 'api-webhooks'>('apps-git')
   const [selectedTaskByMapping, setSelectedTaskByMapping] = useState<Record<string, string>>({})
   const [simTaskId, setSimTaskId] = useState<string>(() => tasks[0]?.id ?? '')
   const [whProvider, setWhProvider] = useState<'github' | 'gitlab'>('github')
@@ -74,6 +79,12 @@ export function IntegrationsAndDevicesView() {
 
   const isFinanceOrClient =
     activeUser.role === 'finance' || activeUser.role === 'client_reviewer'
+  const canManageApi =
+    activeUser.role === 'super_admin' ||
+    activeUser.role === 'tenant_owner' ||
+    activeUser.role === 'project_manager'
+  const effectiveTab =
+    activeTab === 'api-webhooks' && !canManageApi ? 'apps-git' : activeTab
 
   if (isFinanceOrClient) {
     return (
@@ -116,47 +127,79 @@ export function IntegrationsAndDevicesView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 p-5 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-            Integrations & Enrolled Devices
-          </h2>
+      {/* Header + Segmented Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
+          Integrations &amp; API
+        </h2>
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold">Target Task:</label>
-            <select
-              value={simTaskId}
-              onChange={(e) => setSimTaskId(e.target.value)}
-              className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-900 dark:text-white"
-            >
-              {tasks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.code} - {t.title}
-                </option>
+        <div className="flex flex-wrap items-center gap-3">
+          {effectiveTab === 'apps-git' && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold">Target Task:</label>
+              <select
+                value={simTaskId}
+                onChange={(e) => setSimTaskId(e.target.value)}
+                className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white"
+              >
+                {tasks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.code} - {t.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-zinc-200/70 dark:bg-zinc-900/90 p-1">
+            {[
+              { id: 'apps-git' as const, label: 'Apps & Git', show: true },
+              { id: 'calendar-pm' as const, label: 'Calendar & PM', show: true },
+              { id: 'api-webhooks' as const, label: 'API & Webhooks', show: canManageApi },
+            ]
+              .filter((t) => t.show)
+              .map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTab(t.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    effectiveTab === t.id
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                  }`}
+                >
+                  {t.label}
+                </button>
               ))}
-            </select>
           </div>
         </div>
-
-        {feedback && (
-          <div
-            className={`rounded-xl border px-3.5 py-2 text-xs flex items-center justify-between ${feedback.ok
-                ? 'border-emerald-500/40 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
-                : 'border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200'
-              }`}
-          >
-            <span>{feedback.text}</span>
-            <button
-              type="button"
-              onClick={() => setFeedback(null)}
-              className="font-semibold hover:underline cursor-pointer"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
       </div>
+
+      {feedback && (
+        <div
+          className={`rounded-xl border px-3.5 py-2.5 text-xs flex items-center justify-between ${feedback.ok
+              ? 'border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200'
+              : 'border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200'
+            }`}
+        >
+          <span>{feedback.text}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="font-semibold hover:underline cursor-pointer ml-4"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {effectiveTab === 'calendar-pm' ? (
+        <CalendarAndPmPanel onFeedback={setFeedback} />
+      ) : effectiveTab === 'api-webhooks' && canManageApi ? (
+        <PublicApiAndWebhooksPanel onFeedback={setFeedback} />
+      ) : (
+        <div className="space-y-6">
 
       {/* Developer Apps Download & Connection Center */}
       <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 p-5 space-y-4">
@@ -714,6 +757,8 @@ export function IntegrationsAndDevicesView() {
           ))}
         </div>
       </div>
+        </div>
+      )}
     </div>
   )
 }

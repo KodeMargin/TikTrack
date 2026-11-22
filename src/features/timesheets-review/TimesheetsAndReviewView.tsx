@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { usePhase1Store, type TimesheetLineItem } from '@/context/Phase1Store'
 import { ActiveRulesSummaryBanner } from '@/features/verification-ai/ActiveRulesSummaryBanner'
+import { PortableWorkReportPanel } from '@/features/timesheets-review/PortableWorkReportPanel'
 
 function formatDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes))
@@ -106,7 +107,7 @@ export function TimesheetsAndReviewView() {
   }, [canViewTeam, timesheetLines, activeUser.id])
 
   // Filters & view state
-  const [viewMode, setViewMode] = useState<'entries' | 'by_developer'>('entries')
+  const [viewMode, setViewMode] = useState<'entries' | 'by_developer' | 'reports'>('entries')
   const [filterDeveloperId, setFilterDeveloperId] = useState<string>('all')
   const [filterProjectId, setFilterProjectId] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
@@ -1101,19 +1102,19 @@ export function TimesheetsAndReviewView() {
             ))}
           </select>
 
-          {canViewTeam && (
-            <div className="inline-flex rounded-xl bg-zinc-100 dark:bg-white/[0.05] p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode('entries')}
-                className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
-                  viewMode === 'entries'
-                    ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
-                }`}
-              >
-                Entries
-              </button>
+          <div className="inline-flex rounded-xl bg-zinc-100 dark:bg-white/[0.05] p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('entries')}
+              className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                viewMode === 'entries'
+                  ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
+            >
+              Entries
+            </button>
+            {canViewTeam && (
               <button
                 type="button"
                 onClick={() => setViewMode('by_developer')}
@@ -1125,13 +1126,26 @@ export function TimesheetsAndReviewView() {
               >
                 By Developer
               </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={() => setViewMode('reports')}
+              className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                viewMode === 'reports'
+                  ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
+            >
+              Work Reports
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Entries List or Grouped By Developer */}
-      {filteredLines.length === 0 ? (
+      {/* Verified Work Reports, Entries List, or Grouped By Developer */}
+      {viewMode === 'reports' ? (
+        <PortableWorkReportPanel onFeedback={setBanner} />
+      ) : filteredLines.length === 0 ? (
         <div className="rounded-2xl bg-zinc-50 dark:bg-white/[0.02] ring-1 ring-dashed ring-zinc-300 dark:ring-white/10 p-10 text-center space-y-2.5">
           <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
             No logged task entries match your filters

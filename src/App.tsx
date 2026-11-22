@@ -20,7 +20,6 @@ import { PrivacyAuditView } from '@/features/timeline-evidence/PrivacyAuditView'
 import { IntegrationsAndDevicesView } from '@/features/integrations/IntegrationsAndDevicesView'
 import { VerificationAndAiView } from '@/features/verification-ai/VerificationAndAiView'
 import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
-import { SaasBillingAndEcosystemView } from '@/features/saas-ecosystem/SaasBillingAndEcosystemView'
 import { PricingPlansView } from '@/features/saas-ecosystem/PricingPlansView'
 import { EnterpriseComplianceView } from '@/features/enterprise-compliance/EnterpriseComplianceView'
 import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
@@ -38,7 +37,6 @@ type NavSection =
   | 'privacy-audit'
   | 'billing-admin'
   | 'pricing-plans'
-  | 'saas-ecosystem'
   | 'enterprise-compliance'
   | 'auth-privacy'
   | 'phase0-simulator'
@@ -138,8 +136,8 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'integrations-devices',
     path: '/integrations',
-    label: 'Integrations',
-    description: 'IDE extensions, GitHub & enrolled devices',
+    label: 'Integrations & API',
+    description: 'Apps, Git, Calendar, PM tools, API keys & webhooks',
     group: 'evidence',
     allowedRoles: ['super_admin', 'tenant_owner', 'project_manager', 'developer'],
     icon: <NavIcon path="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />,
@@ -184,31 +182,22 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'pricing-plans',
     path: '/pricing',
-    label: 'Pricing & Plans',
-    description: 'SaaS tiers, seat quotas & subscription upgrade',
+    label: 'Plan & Usage',
+    description: 'Subscription plans, usage limits & billing receipts',
     group: 'finance',
     allowedRoles: ['super_admin', 'tenant_owner', 'finance'],
     icon: <NavIcon path="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />,
   },
 
-  // 4. ORGANIZATION (Access & Config -> Ecosystem -> Enterprise -> Lab)
+  // 4. ORGANIZATION (Access & Config -> Enterprise -> Lab)
   {
     id: 'auth-privacy',
     path: '/auth-privacy',
     label: 'Workspace & Access',
-    description: 'Workspaces, team members, roles & consent',
+    description: 'Workspaces, branding, team members, roles & consent',
     group: 'admin',
     allowedRoles: ['super_admin', 'tenant_owner'],
     icon: <NavIcon path="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-1.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />,
-  },
-  {
-    id: 'saas-ecosystem',
-    path: '/ecosystem',
-    label: 'SaaS & Ecosystem',
-    description: 'Plans, metering, API keys, webhooks & reports',
-    group: 'admin',
-    allowedRoles: ['super_admin', 'tenant_owner'],
-    icon: <NavIcon path="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" />,
   },
   {
     id: 'enterprise-compliance',
@@ -464,7 +453,7 @@ function DevProofShell() {
       return requiredPerms.some((perm) => hasPermission(perm))
     }
 
-    // Fallback for sections without granular permission keys (e.g. pricing-plans, saas-ecosystem)
+    // Fallback for sections without granular permission keys (e.g. pricing-plans)
     return item.allowedRoles.includes(activeUser.role)
   }
 
@@ -1320,7 +1309,6 @@ function DevProofShell() {
               {activeSection === 'privacy-audit' && <PrivacyAuditView />}
               {activeSection === 'billing-admin' && <BillingAndAdminView />}
               {activeSection === 'pricing-plans' && <PricingPlansView />}
-              {activeSection === 'saas-ecosystem' && <SaasBillingAndEcosystemView />}
               {activeSection === 'enterprise-compliance' && <EnterpriseComplianceView />}
               {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
               {activeSection === 'phase0-simulator' && (

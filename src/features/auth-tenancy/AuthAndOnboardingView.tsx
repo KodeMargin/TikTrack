@@ -4,6 +4,7 @@ import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
 import { detectUserLocation } from '@/lib/countryTimezones'
 import { RolesAndPermissionsManager } from '@/features/billing-contracts/RolesAndPermissionsManager'
 import { PaymentModeConfigCard } from '@/features/payments/PaymentModeConfigCard'
+import { WorkspaceBrandingCard } from '@/features/auth-tenancy/WorkspaceBrandingCard'
 
 export function AuthAndOnboardingView() {
   const {
@@ -409,6 +410,11 @@ export function AuthAndOnboardingView() {
       {(activeUser.role === 'tenant_owner' ||
         isSuperAdminSession ||
         hasPermission('payment:configure')) && <PaymentModeConfigCard />}
+
+      {/* Workspace Branding */}
+      {(activeUser.role === 'tenant_owner' || isSuperAdminSession) && (
+        <WorkspaceBrandingCard />
+      )}
 
       {/* Team, Roles & Granular Permissions (RBAC) */}
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5">

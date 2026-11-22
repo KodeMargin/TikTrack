@@ -6,6 +6,7 @@ import {
   PHASE4_PLAN_CATALOG,
 } from '@/lib/phase4/saasBilling'
 import type { BillingProvider, SaasPlanTier } from '@/types/domain.types'
+import { UsageAndReceiptsPanel } from '@/features/saas-ecosystem/UsageAndReceiptsPanel'
 
 const TIERS_ORDER: SaasPlanTier[] = ['starter', 'team', 'agency', 'enterprise']
 
@@ -27,10 +28,9 @@ const TIER_HIGHLIGHTS: Record<SaasPlanTier, { label: string; highlight?: boolean
   ],
   agency: [
     { label: 'Everything in Team, plus:', highlight: true },
-    { label: 'Read-Only Client Reviewer Portal' },
-    { label: 'White-Label Custom Branding' },
+    { label: 'Custom Workspace Branding' },
     { label: 'QuickBooks & Xero Accounting Sync' },
-    { label: 'Signed Developer Portable Reports' },
+    { label: 'Signed Developer Work Reports' },
     { label: 'Priority Support (730d Retention)' },
   ],
   enterprise: [
@@ -167,15 +167,7 @@ const COMPARISON_FEATURES: FeatureRow[] = [
   // Client & Agency Operations
   {
     category: 'Client & Agency Tools',
-    name: 'Read-Only Client Portal',
-    starter: false,
-    team: false,
-    agency: true,
-    enterprise: true,
-  },
-  {
-    category: 'Client & Agency Tools',
-    name: 'Custom White-Label Branding',
+    name: 'Custom Workspace Branding',
     starter: false,
     team: false,
     agency: true,
@@ -272,6 +264,7 @@ export function PricingPlansView() {
     checkoutSubscriptionPlan,
   } = usePhase4Store()
 
+  const [pricingTab, setPricingTab] = useState<'plans' | 'usage'>('plans')
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [calculatorSeats, setCalculatorSeats] = useState<number>(() =>
     Math.max(5, usageSnapshot.activeSeats || 5)
@@ -323,7 +316,39 @@ export function PricingPlansView() {
   }
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-8 pb-12">
+      {/* Top Bar: Title + Plans vs Usage Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
+            Plan &amp; Usage
+          </h2>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#6d25da]/10 dark:bg-[#6d25da]/25 px-2.5 py-0.5 text-[11px] font-semibold text-[#581eae] dark:text-[#c5a8f0]">
+            {PHASE4_PLAN_CATALOG[currentPlan].displayName} Plan · {usageSnapshot.activeSeats}/{PHASE4_PLAN_CATALOG[currentPlan].maxSeats} seats
+          </span>
+        </div>
+
+        <div className="inline-flex items-center gap-1 rounded-xl bg-zinc-200/70 dark:bg-zinc-900/90 p-1">
+          {[
+            { id: 'plans' as const, label: 'Plans & Upgrade' },
+            { id: 'usage' as const, label: 'Usage & Receipts' },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setPricingTab(t.id)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                pricingTab === t.id
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Alert Banner */}
       {actionMessage && (
         <div
@@ -357,11 +382,15 @@ export function PricingPlansView() {
         </div>
       )}
 
+      {pricingTab === 'usage' ? (
+        <UsageAndReceiptsPanel />
+      ) : (
+        <div className="space-y-10">
       {/* Header & Subtitle */}
       <div className="text-center max-w-3xl mx-auto space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 border border-indigo-200 text-indigo-700 dark:bg-indigo-500/10 dark:border-indigo-500/30 dark:text-indigo-300">
           <span className="w-2 h-2 rounded-full bg-[#702fe3] animate-pulse" />
-          DevProof SaaS Pricing & Plans
+          TikTrack Plans &amp; Subscriptions
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           Predictable Pricing for High-Trust Engineering
@@ -790,6 +819,8 @@ export function PricingPlansView() {
           })}
         </div>
       </div>
+        </div>
+      )}
 
       {/* Checkout / Upgrade Confirmation Modal */}
       {modalTier && (

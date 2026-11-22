@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import type { RoundingRule } from '@/types/domain.types'
+import { BudgetAndAccountingPanel } from '@/features/billing-contracts/BudgetAndAccountingPanel'
 
 function formatDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes))
@@ -45,6 +46,7 @@ export function BillingAndAdminView() {
   const [creditInvoiceId, setCreditInvoiceId] = useState<string | null>(null)
   const [creditAmount, setCreditAmount] = useState<number>(125)
   const [creditReason, setCreditReason] = useState('')
+  const [billingTab, setBillingTab] = useState<'invoicing' | 'accounting'>('invoicing')
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
 
   const summary = useMemo(() => {
@@ -143,16 +145,42 @@ export function BillingAndAdminView() {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header + Segmented Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
-          Client Billing &amp; Invoices
-        </h2>
-        <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300">
-          {contractPolicy.clientName} · {activeTenant.currency}
-        </span>
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
+            Client Billing &amp; Invoices
+          </h2>
+          <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300">
+            {contractPolicy.clientName} · {activeTenant.currency}
+          </span>
+        </div>
+
+        <div className="inline-flex items-center gap-1 rounded-xl bg-zinc-200/70 dark:bg-zinc-900/90 p-1">
+          {[
+            { id: 'invoicing' as const, label: 'Rates & Invoices' },
+            { id: 'accounting' as const, label: 'Budget & Accounting' },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setBillingTab(t.id)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                billingTab === t.id
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {billingTab === 'accounting' ? (
+        <BudgetAndAccountingPanel onFeedback={setBanner} />
+      ) : (
+        <div className="space-y-6">
       {/* First-Sight 4-Card Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
         <div className="rounded-2xl bg-[#6d25da]/[0.06] dark:bg-[#6d25da]/15 ring-1 ring-[#6d25da]/20 dark:ring-[#8b51e1]/30 p-4 space-y-1">
@@ -574,6 +602,8 @@ export function BillingAndAdminView() {
           )}
         </section>
       </div>
+        </div>
+      )}
     </div>
   )
 }
