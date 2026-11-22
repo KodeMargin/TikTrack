@@ -137,12 +137,10 @@ function getSupabaseAdminClient$1() {
 	const url = process.env.VITE_SUPABASE_URL || "";
 	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 	if (!url || !serviceKey) return null;
-	return createClient(url, serviceKey, {
-		auth: {
-			autoRefreshToken: false,
-			persistSession: false
-		}
-	});
+	return createClient(url, serviceKey, { auth: {
+		autoRefreshToken: false,
+		persistSession: false
+	} });
 }
 /**
 * Ensures the user exists in Supabase Auth (`auth.users`) BEFORE Prisma inserts into
@@ -456,14 +454,10 @@ async function handleIngestWebhookPrisma(body) {
 		deliveryAttemptCount: 1
 	};
 	return prisma.$transaction(async (tx) => {
-		const existingReceipt = await tx.webhookReceipt.findUnique({
-			where: {
-				provider_deliveryId: {
-					provider: body.provider,
-					deliveryId: body.deliveryId
-				}
-			}
-		});
+		const existingReceipt = await tx.webhookReceipt.findUnique({ where: { provider_deliveryId: {
+			provider: body.provider,
+			deliveryId: body.deliveryId
+		} } });
 		let deliveryAttemptCount = 1;
 		let deduplicated = false;
 		if (existingReceipt) {
@@ -476,19 +470,17 @@ async function handleIngestWebhookPrisma(body) {
 					processedAtUtc: /* @__PURE__ */ new Date()
 				}
 			})).deliveryAttemptCount;
-		} else await tx.webhookReceipt.create({
-			data: {
-				tenantId: body.tenantId,
-				provider: body.provider,
-				deliveryId: body.deliveryId,
-				eventType: body.eventType,
-				signatureVerified: body.signatureVerified,
-				payloadSha256: body.payloadSha256,
-				deliveryAttemptCount: 1,
-				status: body.signatureVerified ? "processed" : "rejected_signature",
-				processedAtUtc: /* @__PURE__ */ new Date()
-			}
-		});
+		} else await tx.webhookReceipt.create({ data: {
+			tenantId: body.tenantId,
+			provider: body.provider,
+			deliveryId: body.deliveryId,
+			eventType: body.eventType,
+			signatureVerified: body.signatureVerified,
+			payloadSha256: body.payloadSha256,
+			deliveryAttemptCount: 1,
+			status: body.signatureVerified ? "processed" : "rejected_signature",
+			processedAtUtc: /* @__PURE__ */ new Date()
+		} });
 		if (!body.signatureVerified) return {
 			ok: false,
 			deduplicated,
@@ -496,13 +488,11 @@ async function handleIngestWebhookPrisma(body) {
 			error: "Invalid HMAC signature"
 		};
 		const artifact = await tx.evidenceArtifact.upsert({
-			where: {
-				tenantId_sourceType_externalId: {
-					tenantId: body.tenantId,
-					sourceType: body.sourceType,
-					externalId: body.externalId
-				}
-			},
+			where: { tenantId_sourceType_externalId: {
+				tenantId: body.tenantId,
+				sourceType: body.sourceType,
+				externalId: body.externalId
+			} },
 			update: { summaryTitle: body.summaryTitle },
 			create: {
 				tenantId: body.tenantId,
@@ -518,13 +508,11 @@ async function handleIngestWebhookPrisma(body) {
 			}
 		});
 		if (body.taskId && isValidUuid(body.taskId)) await tx.evidenceLink.upsert({
-			where: {
-				tenantId_taskId_artifactId: {
-					tenantId: body.tenantId,
-					taskId: body.taskId,
-					artifactId: artifact.id
-				}
-			},
+			where: { tenantId_taskId_artifactId: {
+				tenantId: body.tenantId,
+				taskId: body.taskId,
+				artifactId: artifact.id
+			} },
 			update: {},
 			create: {
 				tenantId: body.tenantId,
@@ -548,18 +536,16 @@ async function handleCreateSessionAnnotationPrisma(body) {
 	if (!isValidUuid(body.tenantId) || !isValidUuid(body.userId) || !isValidUuid(body.sessionId)) return { ok: false };
 	return {
 		ok: true,
-		annotationId: (await prisma.sessionAnnotation.create({
-			data: {
-				tenantId: body.tenantId,
-				userId: body.userId,
-				sessionId: body.sessionId,
-				annotationType: body.annotationType,
-				title: body.title,
-				contentMarkdown: body.contentMarkdown,
-				startMinuteOfDay: body.startMinuteOfDay ?? null,
-				endMinuteOfDay: body.endMinuteOfDay ?? null
-			}
-		})).id
+		annotationId: (await prisma.sessionAnnotation.create({ data: {
+			tenantId: body.tenantId,
+			userId: body.userId,
+			sessionId: body.sessionId,
+			annotationType: body.annotationType,
+			title: body.title,
+			contentMarkdown: body.contentMarkdown,
+			startMinuteOfDay: body.startMinuteOfDay ?? null,
+			endMinuteOfDay: body.endMinuteOfDay ?? null
+		} })).id
 	};
 }
 async function handleBootstrapPhase2Data() {
@@ -778,13 +764,11 @@ async function handleAddPrivacyExclusionPrisma(body) {
 	return {
 		ok: true,
 		id: (await prisma.privacyExclusion.upsert({
-			where: {
-				tenantId_userId_exclusionPattern: {
-					tenantId: body.tenantId,
-					userId: body.userId,
-					exclusionPattern: body.exclusionPattern
-				}
-			},
+			where: { tenantId_userId_exclusionPattern: {
+				tenantId: body.tenantId,
+				userId: body.userId,
+				exclusionPattern: body.exclusionPattern
+			} },
 			update: {
 				isActive: true,
 				reason: body.reason
@@ -974,15 +958,13 @@ async function handleToggleTenantAiPrisma(body) {
 			where: { id: body.tenantId },
 			data: { aiEnabled: body.aiEnabled }
 		});
-		await tx.auditEntry.create({
-			data: {
-				tenantId: body.tenantId,
-				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-				actionType: "TENANT_AI_SETTING_CHANGED",
-				targetEntity: `tenants:${body.tenantId}`,
-				reason: `Set ai_enabled = ${String(body.aiEnabled)} (F3-027)`
-			}
-		});
+		await tx.auditEntry.create({ data: {
+			tenantId: body.tenantId,
+			actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+			actionType: "TENANT_AI_SETTING_CHANGED",
+			targetEntity: `tenants:${body.tenantId}`,
+			reason: `Set ai_enabled = ${String(body.aiEnabled)} (F3-027)`
+		} });
 	});
 	return { ok: true };
 }
@@ -998,27 +980,23 @@ async function handlePublishRuleSetPrisma(body) {
 				},
 				data: { status: "superseded" }
 			});
-			const ruleSet = await tx.verificationRuleSet.create({
-				data: {
-					tenantId: body.tenantId,
-					versionNumber: body.versionNumber,
-					versionLabel: body.versionLabel,
-					status: "active",
-					rulesConfig: body.rulesConfig,
-					simulationSummary: body.simulationSummary ?? null,
-					createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-				}
-			});
-			await tx.auditEntry.create({
-				data: {
-					tenantId: body.tenantId,
-					actorUserId: isValidUuid(body.createdBy) ? body.createdBy : null,
-					actionType: "VERIFICATION_RULE_SET_PUBLISHED",
-					targetEntity: `verification_rule_sets:v${body.versionNumber}`,
-					targetId: ruleSet.id,
-					reason: `Published rule set ${body.versionLabel} (no retroactive historical changes).`
-				}
-			});
+			const ruleSet = await tx.verificationRuleSet.create({ data: {
+				tenantId: body.tenantId,
+				versionNumber: body.versionNumber,
+				versionLabel: body.versionLabel,
+				status: "active",
+				rulesConfig: body.rulesConfig,
+				simulationSummary: body.simulationSummary ?? null,
+				createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
+			} });
+			await tx.auditEntry.create({ data: {
+				tenantId: body.tenantId,
+				actorUserId: isValidUuid(body.createdBy) ? body.createdBy : null,
+				actionType: "VERIFICATION_RULE_SET_PUBLISHED",
+				targetEntity: `verification_rule_sets:v${body.versionNumber}`,
+				targetId: ruleSet.id,
+				reason: `Published rule set ${body.versionLabel} (no retroactive historical changes).`
+			} });
 			return ruleSet;
 		})).id
 	};
@@ -1036,23 +1014,21 @@ async function handleCreateAiGenerationPrisma(body) {
 	};
 	return {
 		ok: true,
-		id: (await prisma.aiGeneration.create({
-			data: {
-				tenantId: body.tenantId,
-				userId: isValidUuid(body.userId) ? body.userId : null,
-				targetType: body.targetType,
-				targetId: body.targetId,
-				generationMode: body.generationMode,
-				modelId: body.modelId,
-				promptVersion: body.promptVersion,
-				sanitizedPromptPayload: body.sanitizedPromptPayload,
-				citedEventIds: body.citedEventIds,
-				citedArtifactIds: body.citedArtifactIds,
-				draftMarkdown: body.draftMarkdown,
-				status: "draft",
-				tokensUsed: body.tokensUsed
-			}
-		})).id
+		id: (await prisma.aiGeneration.create({ data: {
+			tenantId: body.tenantId,
+			userId: isValidUuid(body.userId) ? body.userId : null,
+			targetType: body.targetType,
+			targetId: body.targetId,
+			generationMode: body.generationMode,
+			modelId: body.modelId,
+			promptVersion: body.promptVersion,
+			sanitizedPromptPayload: body.sanitizedPromptPayload,
+			citedEventIds: body.citedEventIds,
+			citedArtifactIds: body.citedArtifactIds,
+			draftMarkdown: body.draftMarkdown,
+			status: "draft",
+			tokensUsed: body.tokensUsed
+		} })).id
 	};
 }
 async function handleDecideAiGenerationPrisma(body) {
@@ -1086,18 +1062,16 @@ async function handlePartialApproveTimesheetPrisma(body) {
 					reviewerComment: body.reason
 				}
 			});
-			await tx.reviewDecision.create({
-				data: {
-					tenantId: body.tenantId,
-					timesheetId: line.timesheetId,
-					timesheetLineId: lineId,
-					reviewerUserId: body.reviewerUserId,
-					decisionType: "approve",
-					reason: body.reason,
-					previousApprovedMinutes: line.approvedBillableMinutes,
-					newApprovedMinutes: line.claimedMinutes
-				}
-			});
+			await tx.reviewDecision.create({ data: {
+				tenantId: body.tenantId,
+				timesheetId: line.timesheetId,
+				timesheetLineId: lineId,
+				reviewerUserId: body.reviewerUserId,
+				decisionType: "approve",
+				reason: body.reason,
+				previousApprovedMinutes: line.approvedBillableMinutes,
+				newApprovedMinutes: line.claimedMinutes
+			} });
 		}
 		if (isValidUuid(body.timesheetId)) await tx.timesheet.update({
 			where: { id: body.timesheetId },
@@ -1111,30 +1085,26 @@ async function handleOpenDisputePrisma(body) {
 	return {
 		ok: true,
 		id: (await prisma.$transaction(async (tx) => {
-			const dispute = await tx.dispute.create({
-				data: {
-					tenantId: body.tenantId,
-					timesheetId: body.timesheetId,
-					timesheetLineId: body.timesheetLineId,
-					openedByUserId: body.openedByUserId,
-					assignedReviewerId: isValidUuid(body.assignedReviewerId) ? body.assignedReviewerId : null,
-					dueDate: body.dueDate ? new Date(body.dueDate) : null,
-					requestedEvidenceType: body.requestedEvidenceType ?? null,
-					disputedMinutes: body.disputedMinutes,
-					reason: body.reason,
-					status: body.messageType === "clarification_request" ? "awaiting_developer" : "open"
-				}
-			});
-			await tx.disputeMessage.create({
-				data: {
-					tenantId: body.tenantId,
-					disputeId: dispute.id,
-					authorUserId: body.openedByUserId,
-					messageType: body.messageType ?? "developer_appeal",
-					messageMarkdown: body.reason,
-					attachedArtifactIds: (body.attachedArtifactIds ?? []).filter(isValidUuid)
-				}
-			});
+			const dispute = await tx.dispute.create({ data: {
+				tenantId: body.tenantId,
+				timesheetId: body.timesheetId,
+				timesheetLineId: body.timesheetLineId,
+				openedByUserId: body.openedByUserId,
+				assignedReviewerId: isValidUuid(body.assignedReviewerId) ? body.assignedReviewerId : null,
+				dueDate: body.dueDate ? new Date(body.dueDate) : null,
+				requestedEvidenceType: body.requestedEvidenceType ?? null,
+				disputedMinutes: body.disputedMinutes,
+				reason: body.reason,
+				status: body.messageType === "clarification_request" ? "awaiting_developer" : "open"
+			} });
+			await tx.disputeMessage.create({ data: {
+				tenantId: body.tenantId,
+				disputeId: dispute.id,
+				authorUserId: body.openedByUserId,
+				messageType: body.messageType ?? "developer_appeal",
+				messageMarkdown: body.reason,
+				attachedArtifactIds: (body.attachedArtifactIds ?? []).filter(isValidUuid)
+			} });
 			await tx.timesheetLine.update({
 				where: { id: body.timesheetLineId },
 				data: { lineStatus: "disputed" }
@@ -1164,15 +1134,13 @@ async function handleDisputeActionPrisma(body) {
 					escalationReason: body.messageMarkdown ?? "Escalated for independent second review"
 				}
 			});
-			await tx.disputeMessage.create({
-				data: {
-					tenantId: body.tenantId,
-					disputeId: body.disputeId,
-					authorUserId: body.actorUserId,
-					messageType: "escalation",
-					messageMarkdown: body.messageMarkdown ?? "Escalated for independent second review"
-				}
-			});
+			await tx.disputeMessage.create({ data: {
+				tenantId: body.tenantId,
+				disputeId: body.disputeId,
+				authorUserId: body.actorUserId,
+				messageType: "escalation",
+				messageMarkdown: body.messageMarkdown ?? "Escalated for independent second review"
+			} });
 		});
 		return { ok: true };
 	}
@@ -1183,16 +1151,14 @@ async function handleDisputeActionPrisma(body) {
 				where: { id: body.disputeId },
 				data: { status: nextStatus }
 			});
-			await tx.disputeMessage.create({
-				data: {
-					tenantId: body.tenantId,
-					disputeId: body.disputeId,
-					authorUserId: body.actorUserId,
-					messageType: existing.openedByUserId === body.actorUserId ? "developer_appeal" : "reviewer_note",
-					messageMarkdown: body.messageMarkdown ?? "",
-					attachedArtifactIds: (body.attachedArtifactIds ?? []).filter(isValidUuid)
-				}
-			});
+			await tx.disputeMessage.create({ data: {
+				tenantId: body.tenantId,
+				disputeId: body.disputeId,
+				authorUserId: body.actorUserId,
+				messageType: existing.openedByUserId === body.actorUserId ? "developer_appeal" : "reviewer_note",
+				messageMarkdown: body.messageMarkdown ?? "",
+				attachedArtifactIds: (body.attachedArtifactIds ?? []).filter(isValidUuid)
+			} });
 		});
 		return { ok: true };
 	}
@@ -1207,26 +1173,22 @@ async function handleDisputeActionPrisma(body) {
 				resolvedAt: /* @__PURE__ */ new Date()
 			}
 		});
-		await tx.disputeMessage.create({
-			data: {
-				tenantId: body.tenantId,
-				disputeId: body.disputeId,
-				authorUserId: body.actorUserId,
-				messageType: "resolution",
-				messageMarkdown: body.resolutionSummary ?? "Dispute resolved",
-				afterMinutes: body.adjustedApprovedMinutes ?? null
-			}
-		});
-		await tx.auditEntry.create({
-			data: {
-				tenantId: body.tenantId,
-				actorUserId: body.actorUserId,
-				actionType: "DISPUTE_RESOLVED",
-				targetEntity: `disputes:${body.disputeId}`,
-				targetId: body.disputeId,
-				reason: body.resolutionSummary ?? "Dispute resolved"
-			}
-		});
+		await tx.disputeMessage.create({ data: {
+			tenantId: body.tenantId,
+			disputeId: body.disputeId,
+			authorUserId: body.actorUserId,
+			messageType: "resolution",
+			messageMarkdown: body.resolutionSummary ?? "Dispute resolved",
+			afterMinutes: body.adjustedApprovedMinutes ?? null
+		} });
+		await tx.auditEntry.create({ data: {
+			tenantId: body.tenantId,
+			actorUserId: body.actorUserId,
+			actionType: "DISPUTE_RESOLVED",
+			targetEntity: `disputes:${body.disputeId}`,
+			targetId: body.disputeId,
+			reason: body.resolutionSummary ?? "Dispute resolved"
+		} });
 	});
 	return { ok: true };
 }
@@ -1498,32 +1460,28 @@ async function handleCheckoutSubscriptionPrisma(body) {
 				where: { id: body.tenantId },
 				data: { planTier: body.planTier }
 			});
-			const saasInvoice = await tx.saasSubscriptionInvoice.create({
-				data: {
-					tenantId: body.tenantId,
-					subscriptionAccountId: sub.id,
-					invoiceNumber: body.invoiceNumber,
-					billingPeriodLabel: body.billingPeriodLabel,
-					planTier: body.planTier,
-					seatsBilled: body.seatsBilled,
-					unitPriceCents: body.unitPriceCents,
-					subtotalCents: body.subtotalCents,
-					taxCents: 0,
-					totalCents: body.totalCents,
-					currency: body.currency,
-					status: "paid",
-					paidAt: /* @__PURE__ */ new Date()
-				}
-			});
-			await tx.auditEntry.create({
-				data: {
-					tenantId: body.tenantId,
-					actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-					actionType: "SAAS_SUBSCRIPTION_UPDATED",
-					targetEntity: `subscription_accounts:${sub.id}`,
-					reason: `Upgraded/synced ${body.billingProvider} subscription to ${body.planTier} (${body.billingCycle}).`
-				}
-			});
+			const saasInvoice = await tx.saasSubscriptionInvoice.create({ data: {
+				tenantId: body.tenantId,
+				subscriptionAccountId: sub.id,
+				invoiceNumber: body.invoiceNumber,
+				billingPeriodLabel: body.billingPeriodLabel,
+				planTier: body.planTier,
+				seatsBilled: body.seatsBilled,
+				unitPriceCents: body.unitPriceCents,
+				subtotalCents: body.subtotalCents,
+				taxCents: 0,
+				totalCents: body.totalCents,
+				currency: body.currency,
+				status: "paid",
+				paidAt: /* @__PURE__ */ new Date()
+			} });
+			await tx.auditEntry.create({ data: {
+				tenantId: body.tenantId,
+				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+				actionType: "SAAS_SUBSCRIPTION_UPDATED",
+				targetEntity: `subscription_accounts:${sub.id}`,
+				reason: `Upgraded/synced ${body.billingProvider} subscription to ${body.planTier} (${body.billingCycle}).`
+			} });
 			return {
 				subId: sub.id,
 				invoiceId: saasInvoice.id
@@ -1538,15 +1496,13 @@ async function handleUpdateBrandingPrisma(body) {
 			where: { tenantId: body.tenantId },
 			data: { brandingConfig: body.brandingConfig }
 		});
-		await tx.auditEntry.create({
-			data: {
-				tenantId: body.tenantId,
-				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-				actionType: "WHITE_LABEL_BRANDING_UPDATED",
-				targetEntity: `tenant_settings:${body.tenantId}`,
-				reason: `Updated agency portal branding for "${body.brandingConfig.agencyBrandName}".`
-			}
-		});
+		await tx.auditEntry.create({ data: {
+			tenantId: body.tenantId,
+			actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+			actionType: "WHITE_LABEL_BRANDING_UPDATED",
+			targetEntity: `tenant_settings:${body.tenantId}`,
+			reason: `Updated agency portal branding for "${body.brandingConfig.agencyBrandName}".`
+		} });
 	});
 	return { ok: true };
 }
@@ -1554,17 +1510,15 @@ async function handleCreateApiKeyPrisma(body) {
 	if (!isValidUuid(body.tenantId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.apiKey.create({
-			data: {
-				tenantId: body.tenantId,
-				name: body.name,
-				keyPrefix: body.keyPrefix,
-				keyHashSha256: body.keyHashSha256,
-				scopes: body.scopes,
-				rateLimitPerMin: body.rateLimitPerMin,
-				createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-			}
-		})).id
+		id: (await prisma.apiKey.create({ data: {
+			tenantId: body.tenantId,
+			name: body.name,
+			keyPrefix: body.keyPrefix,
+			keyHashSha256: body.keyHashSha256,
+			scopes: body.scopes,
+			rateLimitPerMin: body.rateLimitPerMin,
+			createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
+		} })).id
 	};
 }
 async function handleRevokeApiKeyPrisma(body) {
@@ -1582,38 +1536,34 @@ async function handleCreateWebhookEndpointPrisma(body) {
 	if (!isValidUuid(body.tenantId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.outboundWebhookEndpoint.create({
-			data: {
-				tenantId: body.tenantId,
-				name: body.name,
-				targetUrl: body.targetUrl,
-				signingSecretPrefix: body.signingSecretPrefix,
-				signingSecretHash: body.signingSecretHash,
-				subscribedEvents: body.subscribedEvents,
-				createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-			}
-		})).id
+		id: (await prisma.outboundWebhookEndpoint.create({ data: {
+			tenantId: body.tenantId,
+			name: body.name,
+			targetUrl: body.targetUrl,
+			signingSecretPrefix: body.signingSecretPrefix,
+			signingSecretHash: body.signingSecretHash,
+			subscribedEvents: body.subscribedEvents,
+			createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
+		} })).id
 	};
 }
 async function handleDispatchWebhookDeliveryPrisma(body) {
 	if (!isValidUuid(body.tenantId) || !isValidUuid(body.endpointId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.outboundWebhookDelivery.create({
-			data: {
-				tenantId: body.tenantId,
-				endpointId: body.endpointId,
-				eventType: body.eventType,
-				eventId: isValidUuid(body.eventId) ? body.eventId : crypto.randomUUID(),
-				payload: body.payload,
-				signatureHeader: body.signatureHeader,
-				deliveryStatus: "delivered",
-				httpStatus: 202,
-				attemptCount: 1,
-				lastAttemptAt: /* @__PURE__ */ new Date(),
-				responseSnippet: body.responseSnippet
-			}
-		})).id
+		id: (await prisma.outboundWebhookDelivery.create({ data: {
+			tenantId: body.tenantId,
+			endpointId: body.endpointId,
+			eventType: body.eventType,
+			eventId: isValidUuid(body.eventId) ? body.eventId : crypto.randomUUID(),
+			payload: body.payload,
+			signatureHeader: body.signatureHeader,
+			deliveryStatus: "delivered",
+			httpStatus: 202,
+			attemptCount: 1,
+			lastAttemptAt: /* @__PURE__ */ new Date(),
+			responseSnippet: body.responseSnippet
+		} })).id
 	};
 }
 async function handleUpsertConnectorPrisma(body) {
@@ -1621,12 +1571,10 @@ async function handleUpsertConnectorPrisma(body) {
 	return {
 		ok: true,
 		id: (await prisma.ecosystemConnector.upsert({
-			where: {
-				tenantId_provider: {
-					tenantId: body.tenantId,
-					provider: body.provider
-				}
-			},
+			where: { tenantId_provider: {
+				tenantId: body.tenantId,
+				provider: body.provider
+			} },
 			update: {
 				status: body.status,
 				displayName: body.displayName,
@@ -1652,13 +1600,11 @@ async function handleSyncCalendarMeetingPrisma(body) {
 	return {
 		ok: true,
 		id: (await prisma.calendarMeetingEvent.upsert({
-			where: {
-				tenantId_userId_externalEventId: {
-					tenantId: body.tenantId,
-					userId: body.userId,
-					externalEventId: body.externalEventId
-				}
-			},
+			where: { tenantId_userId_externalEventId: {
+				tenantId: body.tenantId,
+				userId: body.userId,
+				externalEventId: body.externalEventId
+			} },
 			update: {
 				meetingTitleSanitized: body.meetingTitleSanitized,
 				durationMinutes: body.durationMinutes
@@ -1683,21 +1629,19 @@ async function handleCreatePortableReportPrisma(body) {
 	if (!isValidUuid(body.tenantId) || !isValidUuid(body.developerUserId)) return { ok: false };
 	return {
 		ok: true,
-		id: (await prisma.portableWorkReport.create({
-			data: {
-				tenantId: body.tenantId,
-				developerUserId: body.developerUserId,
-				reportTitle: body.reportTitle,
-				periodStart: new Date(body.periodStart),
-				periodEnd: new Date(body.periodEnd),
-				totalApprovedMinutes: body.totalApprovedMinutes,
-				totalSupportedMinutes: body.totalSupportedMinutes,
-				deliverablesCount: body.deliverablesCount,
-				payloadDigestSha256: body.payloadDigestSha256,
-				signatureHmacSha256: body.signatureHmacSha256,
-				reportPayload: body.reportPayload
-			}
-		})).id
+		id: (await prisma.portableWorkReport.create({ data: {
+			tenantId: body.tenantId,
+			developerUserId: body.developerUserId,
+			reportTitle: body.reportTitle,
+			periodStart: new Date(body.periodStart),
+			periodEnd: new Date(body.periodEnd),
+			totalApprovedMinutes: body.totalApprovedMinutes,
+			totalSupportedMinutes: body.totalSupportedMinutes,
+			deliverablesCount: body.deliverablesCount,
+			payloadDigestSha256: body.payloadDigestSha256,
+			signatureHmacSha256: body.signatureHmacSha256,
+			reportPayload: body.reportPayload
+		} })).id
 	};
 }
 // src/types/permissions.types.ts
@@ -2638,16 +2582,14 @@ async function handleCreateCustomRolePrisma(body) {
 		select: { key: true }
 	})).map((p) => p.key);
 	const created = await prisma.$transaction(async (tx) => {
-		const role = await tx.role.create({
-			data: {
-				tenantId: body.tenantId,
-				code: cleanCode,
-				name: cleanName,
-				description: body.description?.trim() ?? "",
-				isSystemRole: false,
-				createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-			}
-		});
+		const role = await tx.role.create({ data: {
+			tenantId: body.tenantId,
+			code: cleanCode,
+			name: cleanName,
+			description: body.description?.trim() ?? "",
+			isSystemRole: false,
+			createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
+		} });
 		if (validKeys.length > 0) await tx.rolePermission.createMany({
 			data: validKeys.map((permissionKey) => ({
 				roleId: role.id,
@@ -2733,41 +2675,31 @@ async function handleUpdateMemberRoleAndPermissionsPrisma(body) {
 		ok: false,
 		error: "Valid tenantId and userId UUIDs are required."
 	};
-	const membership = await prisma.membership.findUnique({
-		where: {
-			tenantId_userId: {
-				tenantId: body.tenantId,
-				userId: body.userId
-			}
-		}
-	});
+	const membership = await prisma.membership.findUnique({ where: { tenantId_userId: {
+		tenantId: body.tenantId,
+		userId: body.userId
+	} } });
 	if (!membership) return {
 		ok: false,
 		error: "Membership not found."
 	};
 	await prisma.$transaction(async (tx) => {
-		await tx.roleGrant.deleteMany({
-			where: {
-				tenantId: body.tenantId,
-				membershipId: membership.id,
-				projectScopeId: null
-			}
-		});
-		await tx.roleGrant.create({
-			data: {
-				tenantId: body.tenantId,
-				membershipId: membership.id,
-				role: body.role,
-				grantedBy: isValidUuid(body.grantedBy) ? body.grantedBy : null
-			}
-		});
+		await tx.roleGrant.deleteMany({ where: {
+			tenantId: body.tenantId,
+			membershipId: membership.id,
+			projectScopeId: null
+		} });
+		await tx.roleGrant.create({ data: {
+			tenantId: body.tenantId,
+			membershipId: membership.id,
+			role: body.role,
+			grantedBy: isValidUuid(body.grantedBy) ? body.grantedBy : null
+		} });
 		if (body.customPermissions !== void 0) {
-			await tx.memberPermissionGrant.deleteMany({
-				where: {
-					membershipId: membership.id,
-					tenantId: body.tenantId
-				}
-			});
+			await tx.memberPermissionGrant.deleteMany({ where: {
+				membershipId: membership.id,
+				tenantId: body.tenantId
+			} });
 			if (body.customPermissions.length > 0) {
 				const validPerms = await tx.permission.findMany({
 					where: {
@@ -2856,12 +2788,10 @@ async function handleRegisterPermissionPrisma(body) {
 	});
 	await grantAllDatabasePermissionsToSuperAdmin();
 	if (!saved.isSuperAdminOnly && SYSTEM_ROLE_UUIDS.tenant_owner) await prisma.rolePermission.upsert({
-		where: {
-			roleId_permissionKey: {
-				roleId: SYSTEM_ROLE_UUIDS.tenant_owner,
-				permissionKey: saved.key
-			}
-		},
+		where: { roleId_permissionKey: {
+			roleId: SYSTEM_ROLE_UUIDS.tenant_owner,
+			permissionKey: saved.key
+		} },
 		update: {},
 		create: {
 			roleId: SYSTEM_ROLE_UUIDS.tenant_owner,
@@ -2915,21 +2845,17 @@ async function handleBootstrap() {
 			},
 			orderBy: { createdAt: "asc" }
 		}),
-		prisma.membership.findMany({
-			include: {
-				user: {
-					include: {
-						policyConsents: {
-							include: { policyVersion: true },
-							orderBy: { consentedAt: "desc" },
-							take: 1
-						},
-						projectMemberships: true
-					}
+		prisma.membership.findMany({ include: {
+			user: { include: {
+				policyConsents: {
+					include: { policyVersion: true },
+					orderBy: { consentedAt: "desc" },
+					take: 1
 				},
-				roleGrants: true
-			}
-		}),
+				projectMemberships: true
+			} },
+			roleGrants: true
+		} }),
 		prisma.project.findMany({ orderBy: { createdAt: "asc" } }),
 		prisma.task.findMany({
 			include: {
@@ -2942,23 +2868,17 @@ async function handleBootstrap() {
 			include: {
 				timesheet: { include: { user: true } },
 				appliedRateVersion: true,
-				disputes: {
-					include: {
-						messages: {
-							include: { author: true },
-							orderBy: { createdAt: "asc" }
-						}
-					}
-				}
+				disputes: { include: { messages: {
+					include: { author: true },
+					orderBy: { createdAt: "asc" }
+				} } }
 			},
 			orderBy: { workDate: "desc" }
 		}),
-		prisma.contract.findMany({
-			include: {
-				project: true,
-				rateVersions: { orderBy: { createdAt: "asc" } }
-			}
-		}),
+		prisma.contract.findMany({ include: {
+			project: true,
+			rateVersions: { orderBy: { createdAt: "asc" } }
+		} }),
 		prisma.invoiceDraft.findMany({
 			include: {
 				project: true,
@@ -3161,12 +3081,10 @@ async function handleCreateTenant(body) {
 	const baseSlug = body.slug.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || `workspace-${crypto.randomUUID().slice(0, 6)}`;
 	const normalizedOwnerEmail = body.ownerEmail.toLowerCase().trim();
 	const authOwner = !await prisma.userProfile.findFirst({
-		where: {
-			email: {
-				equals: normalizedOwnerEmail,
-				mode: "insensitive"
-			}
-		},
+		where: { email: {
+			equals: normalizedOwnerEmail,
+			mode: "insensitive"
+		} },
 		select: { id: true }
 	}) ? await ensureSupabaseAuthUser({
 		email: normalizedOwnerEmail,
@@ -3179,86 +3097,66 @@ async function handleCreateTenant(body) {
 			where: { slug: baseSlug },
 			select: { id: true }
 		}) ? `${baseSlug}-${crypto.randomUUID().slice(0, 4)}` : baseSlug;
-		const existingUser = (authOwner?.userId ? await tx.userProfile.findUnique({ where: { id: authOwner.userId } }) : null) || await tx.userProfile.findFirst({
-			where: {
-				email: {
-					equals: normalizedOwnerEmail,
-					mode: "insensitive"
-				}
-			}
-		});
+		const existingUser = (authOwner?.userId ? await tx.userProfile.findUnique({ where: { id: authOwner.userId } }) : null) || await tx.userProfile.findFirst({ where: { email: {
+			equals: normalizedOwnerEmail,
+			mode: "insensitive"
+		} } });
 		const user = existingUser ? await tx.userProfile.update({
 			where: { id: existingUser.id },
 			data: {
 				fullName: body.ownerName.trim(),
 				defaultTimezone: body.timezone
 			}
-		}) : await tx.userProfile.create({
-			data: {
-				id: authOwner?.userId || crypto.randomUUID(),
-				email: normalizedOwnerEmail,
-				fullName: body.ownerName.trim(),
-				defaultTimezone: body.timezone
-			}
-		});
-		const tenant = await tx.tenant.create({
-			data: {
-				name: body.name,
-				slug,
-				defaultTimezone: body.timezone,
-				defaultCurrency: body.currency,
-				planTier: "starter",
-				status: "active"
-			}
-		});
-		await tx.tenantSettings.create({
-			data: {
-				tenantId: tenant.id,
-				roundingRule: "none",
-				paidBreakAllowanceMinutes: 15,
-				weeklyCapMinutes: 2400
-			}
-		});
-		const policy = await tx.policyVersion.create({
-			data: {
-				tenantId: tenant.id,
-				versionCode: "v1.0-2026-11",
-				summaryMarkdown: "Privacy-first baseline policy.",
-				publishedBy: user.id
-			}
-		});
-		await tx.policyConsent.create({
-			data: {
-				tenantId: tenant.id,
-				userId: user.id,
-				policyVersionId: policy.id
-			}
-		});
-		const membership = await tx.membership.create({
-			data: {
-				tenantId: tenant.id,
-				userId: user.id,
-				status: "active",
-				joinedAt: /* @__PURE__ */ new Date()
-			}
-		});
-		await tx.roleGrant.create({
-			data: {
-				tenantId: tenant.id,
-				membershipId: membership.id,
-				role: "tenant_owner"
-			}
-		});
-		await tx.auditEntry.create({
-			data: {
-				tenantId: tenant.id,
-				actorUserId: user.id,
-				actionType: "TENANT_PROVISIONED",
-				targetEntity: `tenants:${tenant.slug}`,
-				targetId: tenant.id,
-				reason: `Provisioned new workspace ${tenant.name}`
-			}
-		});
+		}) : await tx.userProfile.create({ data: {
+			id: authOwner?.userId || crypto.randomUUID(),
+			email: normalizedOwnerEmail,
+			fullName: body.ownerName.trim(),
+			defaultTimezone: body.timezone
+		} });
+		const tenant = await tx.tenant.create({ data: {
+			name: body.name,
+			slug,
+			defaultTimezone: body.timezone,
+			defaultCurrency: body.currency,
+			planTier: "starter",
+			status: "active"
+		} });
+		await tx.tenantSettings.create({ data: {
+			tenantId: tenant.id,
+			roundingRule: "none",
+			paidBreakAllowanceMinutes: 15,
+			weeklyCapMinutes: 2400
+		} });
+		const policy = await tx.policyVersion.create({ data: {
+			tenantId: tenant.id,
+			versionCode: "v1.0-2026-11",
+			summaryMarkdown: "Privacy-first baseline policy.",
+			publishedBy: user.id
+		} });
+		await tx.policyConsent.create({ data: {
+			tenantId: tenant.id,
+			userId: user.id,
+			policyVersionId: policy.id
+		} });
+		const membership = await tx.membership.create({ data: {
+			tenantId: tenant.id,
+			userId: user.id,
+			status: "active",
+			joinedAt: /* @__PURE__ */ new Date()
+		} });
+		await tx.roleGrant.create({ data: {
+			tenantId: tenant.id,
+			membershipId: membership.id,
+			role: "tenant_owner"
+		} });
+		await tx.auditEntry.create({ data: {
+			tenantId: tenant.id,
+			actorUserId: user.id,
+			actionType: "TENANT_PROVISIONED",
+			targetEntity: `tenants:${tenant.slug}`,
+			targetId: tenant.id,
+			reason: `Provisioned new workspace ${tenant.name}`
+		} });
 		return {
 			tenant,
 			user
@@ -3293,44 +3191,38 @@ async function handleRecordSession(body) {
 				orderBy: { effectiveFrom: "desc" }
 			});
 			if (!policy) throw new Error("No active policy_version found for tenant.");
-			const session = await tx.workSession.create({
-				data: {
-					tenantId: body.tenantId,
-					userId: body.userId,
-					projectId: body.projectId,
-					taskId: body.taskId,
-					provenance: body.provenance,
-					lifecycleState: "completed",
-					currentWorkMode: body.workMode,
-					startedAtUtc: new Date(startIso),
-					endedAtUtc: new Date(endIso),
-					monotonicDurationMs: netMinutes * 6e4,
-					sessionNotes: body.developerNote,
-					manualReason: body.manualReason ?? null,
-					policyVersionId: policy.id
-				}
-			});
-			if (body.breakMinutes > 0) await tx.break.create({
-				data: {
-					tenantId: body.tenantId,
-					userId: body.userId,
-					sessionId: session.id,
-					breakType: "unpaid",
-					startedAtUtc: new Date(startIso),
-					endedAtUtc: new Date(new Date(startIso).getTime() + body.breakMinutes * 6e4)
-				}
-			});
+			const session = await tx.workSession.create({ data: {
+				tenantId: body.tenantId,
+				userId: body.userId,
+				projectId: body.projectId,
+				taskId: body.taskId,
+				provenance: body.provenance,
+				lifecycleState: "completed",
+				currentWorkMode: body.workMode,
+				startedAtUtc: new Date(startIso),
+				endedAtUtc: new Date(endIso),
+				monotonicDurationMs: netMinutes * 6e4,
+				sessionNotes: body.developerNote,
+				manualReason: body.manualReason ?? null,
+				policyVersionId: policy.id
+			} });
+			if (body.breakMinutes > 0) await tx.break.create({ data: {
+				tenantId: body.tenantId,
+				userId: body.userId,
+				sessionId: session.id,
+				breakType: "unpaid",
+				startedAtUtc: new Date(startIso),
+				endedAtUtc: new Date(new Date(startIso).getTime() + body.breakMinutes * 6e4)
+			} });
 			let contract = await tx.contract.findFirst({
 				where: {
 					tenantId: body.tenantId,
 					projectId: body.projectId
 				},
-				include: {
-					rateVersions: {
-						orderBy: { createdAt: "desc" },
-						take: 1
-					}
-				}
+				include: { rateVersions: {
+					orderBy: { createdAt: "desc" },
+					take: 1
+				} }
 			});
 			if (!contract) contract = await tx.contract.create({
 				data: {
@@ -3379,15 +3271,13 @@ async function handleRecordSession(body) {
 			const sunday = new Date(monday);
 			sunday.setUTCDate(monday.getUTCDate() + 6);
 			const timesheet = await tx.timesheet.upsert({
-				where: {
-					tenantId_userId_projectId_periodStart_periodEnd: {
-						tenantId: body.tenantId,
-						userId: body.userId,
-						projectId: body.projectId,
-						periodStart: monday,
-						periodEnd: sunday
-					}
-				},
+				where: { tenantId_userId_projectId_periodStart_periodEnd: {
+					tenantId: body.tenantId,
+					userId: body.userId,
+					projectId: body.projectId,
+					periodStart: monday,
+					periodEnd: sunday
+				} },
 				update: {},
 				create: {
 					tenantId: body.tenantId,
@@ -3399,36 +3289,32 @@ async function handleRecordSession(body) {
 					status: "draft"
 				}
 			});
-			const line = await tx.timesheetLine.create({
-				data: {
-					tenantId: body.tenantId,
-					timesheetId: timesheet.id,
-					segmentId,
-					taskId: body.taskId,
-					workDate: workDateObj,
-					workMode: body.workMode,
-					provenance: body.provenance,
-					elapsedMinutes: body.durationMinutes,
-					claimedMinutes: netMinutes,
-					observedMinutes: isDeepWork || body.provenance === "manual_entry" ? 0 : netMinutes,
-					supportedMinutes: netMinutes,
-					approvedBillableMinutes: 0,
-					appliedRateVersionId: rateVersionId,
-					snapshotHourlyRate: body.hourlyRate,
-					lineStatus: body.provenance === "manual_entry" ? "needs_clarification" : "pending_review",
-					developerNote: body.developerNote
-				}
-			});
-			await tx.auditEntry.create({
-				data: {
-					tenantId: body.tenantId,
-					actorUserId: body.userId,
-					actionType: body.provenance === "manual_entry" ? "MANUAL_TIME_ENTRY_ADDED" : "WORK_SESSION_RECORDED",
-					targetEntity: `timesheet_lines:${line.id}`,
-					targetId: line.id,
-					reason: body.manualReason ?? `Recorded ${netMinutes}m in ${body.workMode} mode`
-				}
-			});
+			const line = await tx.timesheetLine.create({ data: {
+				tenantId: body.tenantId,
+				timesheetId: timesheet.id,
+				segmentId,
+				taskId: body.taskId,
+				workDate: workDateObj,
+				workMode: body.workMode,
+				provenance: body.provenance,
+				elapsedMinutes: body.durationMinutes,
+				claimedMinutes: netMinutes,
+				observedMinutes: isDeepWork || body.provenance === "manual_entry" ? 0 : netMinutes,
+				supportedMinutes: netMinutes,
+				approvedBillableMinutes: 0,
+				appliedRateVersionId: rateVersionId,
+				snapshotHourlyRate: body.hourlyRate,
+				lineStatus: body.provenance === "manual_entry" ? "needs_clarification" : "pending_review",
+				developerNote: body.developerNote
+			} });
+			await tx.auditEntry.create({ data: {
+				tenantId: body.tenantId,
+				actorUserId: body.userId,
+				actionType: body.provenance === "manual_entry" ? "MANUAL_TIME_ENTRY_ADDED" : "WORK_SESSION_RECORDED",
+				targetEntity: `timesheet_lines:${line.id}`,
+				targetId: line.id,
+				reason: body.manualReason ?? `Recorded ${netMinutes}m in ${body.workMode} mode`
+			} });
 			return {
 				lineId: line.id,
 				timesheetId: timesheet.id
@@ -3444,23 +3330,19 @@ function getSupabaseAnonClient() {
 	const url = process.env.VITE_SUPABASE_URL || "";
 	const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 	if (!url || !key) return null;
-	return createClient(url, key, {
-		auth: {
-			autoRefreshToken: false,
-			persistSession: false
-		}
-	});
+	return createClient(url, key, { auth: {
+		autoRefreshToken: false,
+		persistSession: false
+	} });
 }
 function getSupabaseAdminClient() {
 	const url = process.env.VITE_SUPABASE_URL || "";
 	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 	if (!url || !serviceKey) return null;
-	return createClient(url, serviceKey, {
-		auth: {
-			autoRefreshToken: false,
-			persistSession: false
-		}
-	});
+	return createClient(url, serviceKey, { auth: {
+		autoRefreshToken: false,
+		persistSession: false
+	} });
 }
 async function resolveMembershipAndDevice(params) {
 	const memberships = await prisma.membership.findMany({
@@ -3506,18 +3388,16 @@ async function resolveMembershipAndDevice(params) {
 			lastSeenAt: /* @__PURE__ */ new Date()
 		}
 	})).id;
-	else deviceId = (await prisma.device.create({
-		data: {
-			tenantId: membership.tenantId,
-			userId: membership.userId,
-			deviceName,
-			osPlatform,
-			agentVersion,
-			deviceFingerprintHash: pairingToken,
-			updateChannel: "stable",
-			multiDisplayPolicy: "coarse_metadata_only"
-		}
-	})).id;
+	else deviceId = (await prisma.device.create({ data: {
+		tenantId: membership.tenantId,
+		userId: membership.userId,
+		deviceName,
+		osPlatform,
+		agentVersion,
+		deviceFingerprintHash: pairingToken,
+		updateChannel: "stable",
+		multiDisplayPolicy: "coarse_metadata_only"
+	} })).id;
 	return {
 		ok: true,
 		statusCode: 200,
@@ -3562,14 +3442,10 @@ async function handleDesktopAuth(body) {
 			statusCode: 401,
 			error: error?.message || "Invalid email or password."
 		};
-		const profile = await prisma.userProfile.findUnique({ where: { id: data.user.id } }) ?? await prisma.userProfile.findFirst({
-			where: {
-				email: {
-					equals: email,
-					mode: "insensitive"
-				}
-			}
-		});
+		const profile = await prisma.userProfile.findUnique({ where: { id: data.user.id } }) ?? await prisma.userProfile.findFirst({ where: { email: {
+			equals: email,
+			mode: "insensitive"
+		} } });
 		if (!profile) return {
 			ok: false,
 			statusCode: 403,
@@ -3693,27 +3569,23 @@ async function handleDesktopActivatePassword(body) {
 	}
 	await prisma.$transaction(async (tx) => {
 		await tx.membership.update({
-			where: {
-				tenantId_userId: {
-					tenantId: body.tenantId,
-					userId: body.userId
-				}
-			},
+			where: { tenantId_userId: {
+				tenantId: body.tenantId,
+				userId: body.userId
+			} },
 			data: {
 				status: "active",
 				joinedAt: /* @__PURE__ */ new Date()
 			}
 		});
-		await tx.auditEntry.create({
-			data: {
-				tenantId: body.tenantId,
-				actorUserId: body.userId,
-				actionType: "FIRST_LOGIN_PASSWORD_CHANGED",
-				targetEntity: `memberships:${body.userId}`,
-				targetId: body.userId,
-				reason: "Activated invited profile via Desktop Agent first-login password change."
-			}
-		});
+		await tx.auditEntry.create({ data: {
+			tenantId: body.tenantId,
+			actorUserId: body.userId,
+			actionType: "FIRST_LOGIN_PASSWORD_CHANGED",
+			targetEntity: `memberships:${body.userId}`,
+			targetId: body.userId,
+			reason: "Activated invited profile via Desktop Agent first-login password change."
+		} });
 	});
 	return {
 		ok: true,
@@ -3730,12 +3602,10 @@ async function handleDesktopFetchTasks(params) {
 		error: "Valid tenantId and userId are required."
 	};
 	const membership = await prisma.membership.findUnique({
-		where: {
-			tenantId_userId: {
-				tenantId: params.tenantId,
-				userId: params.userId
-			}
-		},
+		where: { tenantId_userId: {
+			tenantId: params.tenantId,
+			userId: params.userId
+		} },
 		include: { roleGrants: true }
 	});
 	if (!membership) return {
@@ -3757,16 +3627,12 @@ async function handleDesktopFetchTasks(params) {
 				tenantId: params.tenantId,
 				assignments: { some: { userId: params.userId } }
 			},
-			include: {
-				project: {
-					select: {
-						id: true,
-						code: true,
-						name: true,
-						status: true
-					}
-				}
-			},
+			include: { project: { select: {
+				id: true,
+				code: true,
+				name: true,
+				status: true
+			} } },
 			orderBy: [{ status: "asc" }, { updatedAt: "desc" }]
 		})).filter((t) => t.project.status !== "archived").map((t) => ({
 			id: t.id,
@@ -3790,12 +3656,10 @@ async function handleDesktopSubmitSession(body) {
 		error: "Valid tenantId, userId, projectId, and taskId are required."
 	};
 	const membership = await prisma.membership.findUnique({
-		where: {
-			tenantId_userId: {
-				tenantId: body.tenantId,
-				userId: body.userId
-			}
-		},
+		where: { tenantId_userId: {
+			tenantId: body.tenantId,
+			userId: body.userId
+		} },
 		include: { roleGrants: true }
 	});
 	if (!membership || membership.status !== "active") return {
@@ -3803,13 +3667,11 @@ async function handleDesktopSubmitSession(body) {
 		statusCode: 403,
 		error: "Only active workspace members can submit work sessions."
 	};
-	const assignment = await prisma.taskAssignment.findFirst({
-		where: {
-			tenantId: body.tenantId,
-			taskId: body.taskId,
-			userId: body.userId
-		}
-	});
+	const assignment = await prisma.taskAssignment.findFirst({ where: {
+		tenantId: body.tenantId,
+		taskId: body.taskId,
+		userId: body.userId
+	} });
 	const isOwner = membership.roleGrants.some((rg) => rg.role === "tenant_owner");
 	if (!assignment && !isOwner) return {
 		ok: false,
@@ -3857,7 +3719,7 @@ async function handleDesktopSubmitSession(body) {
 	if (body.deviceId && isValidUuid(body.deviceId)) await prisma.device.update({
 		where: { id: body.deviceId },
 		data: { lastSeenAt: /* @__PURE__ */ new Date() }
-	}).catch(() => { });
+	}).catch(() => {});
 	return {
 		ok: true,
 		statusCode: 201,
@@ -3933,7 +3795,7 @@ async function generateGeminiSummaryDraft(input) {
 			try {
 				const parsed = JSON.parse(errBody);
 				if (parsed.error?.message) errMsg = parsed.error.message;
-			} catch { }
+			} catch {}
 			return {
 				ok: false,
 				configured: true,
@@ -4080,13 +3942,11 @@ async function verifyExternalCredentials(provider, creds) {
 				ok: false,
 				error: "GitHub Personal Access Token is required."
 			};
-			const res = await fetchJsonWithTimeout("https://api.github.com/user", {
-				headers: {
-					Authorization: `Bearer ${token}`,
-					Accept: "application/vnd.github+json",
-					"User-Agent": "TikTrack-App"
-				}
-			});
+			const res = await fetchJsonWithTimeout("https://api.github.com/user", { headers: {
+				Authorization: `Bearer ${token}`,
+				Accept: "application/vnd.github+json",
+				"User-Agent": "TikTrack-App"
+			} });
 			if (!res.ok) return {
 				ok: false,
 				error: `GitHub rejected token (HTTP ${res.status}). Check token & scopes.`
@@ -4144,12 +4004,10 @@ async function verifyExternalCredentials(provider, creds) {
 				error: "Jira domain, email, and API token are required."
 			};
 			const basic = Buffer.from(`${email}:${apiToken}`).toString("base64");
-			const res = await fetchJsonWithTimeout(`${domain}/rest/api/3/myself`, {
-				headers: {
-					Authorization: `Basic ${basic}`,
-					Accept: "application/json"
-				}
-			});
+			const res = await fetchJsonWithTimeout(`${domain}/rest/api/3/myself`, { headers: {
+				Authorization: `Basic ${basic}`,
+				Accept: "application/json"
+			} });
 			if (!res.ok) return {
 				ok: false,
 				error: `Jira authentication failed (HTTP ${res.status}). Check domain, email & API token.`
@@ -4249,12 +4107,10 @@ async function verifyExternalCredentials(provider, creds) {
 				ok: false,
 				error: "Notion Internal Integration Token is required."
 			};
-			const res = await fetchJsonWithTimeout("https://api.notion.com/v1/users/me", {
-				headers: {
-					Authorization: `Bearer ${apiToken}`,
-					"Notion-Version": "2022-06-28"
-				}
-			});
+			const res = await fetchJsonWithTimeout("https://api.notion.com/v1/users/me", { headers: {
+				Authorization: `Bearer ${apiToken}`,
+				"Notion-Version": "2022-06-28"
+			} });
 			if (!res.ok) return {
 				ok: false,
 				error: `Notion rejected token (HTTP ${res.status}).`
@@ -4341,12 +4197,10 @@ async function handleConnectRealIntegration(body) {
 		encryptedCredentials: encryptCredentials(body.credentials)
 	};
 	const saved = await prisma.ecosystemConnector.upsert({
-		where: {
-			tenantId_provider: {
-				tenantId: body.tenantId,
-				provider: body.provider
-			}
-		},
+		where: { tenantId_provider: {
+			tenantId: body.tenantId,
+			provider: body.provider
+		} },
 		update: {
 			status: "connected",
 			displayName: meta.displayName,
@@ -4387,12 +4241,10 @@ async function handleDisconnectRealIntegration(body) {
 		ok: false,
 		error: "Invalid workspace ID."
 	};
-	await prisma.ecosystemConnector.deleteMany({
-		where: {
-			tenantId: body.tenantId,
-			provider: body.provider
-		}
-	});
+	await prisma.ecosystemConnector.deleteMany({ where: {
+		tenantId: body.tenantId,
+		provider: body.provider
+	} });
 	return {
 		ok: true,
 		message: `Disconnected ${PROVIDER_META[body.provider]?.displayName ?? body.provider}.`
@@ -4404,14 +4256,10 @@ async function handleFetchRealIntegrationItems(body) {
 		items: [],
 		error: "Invalid workspace ID."
 	};
-	const connector = await prisma.ecosystemConnector.findUnique({
-		where: {
-			tenantId_provider: {
-				tenantId: body.tenantId,
-				provider: body.provider
-			}
-		}
-	});
+	const connector = await prisma.ecosystemConnector.findUnique({ where: { tenantId_provider: {
+		tenantId: body.tenantId,
+		provider: body.provider
+	} } });
 	if (!connector || connector.status !== "connected") return {
 		ok: false,
 		items: [],
@@ -4427,13 +4275,11 @@ async function handleFetchRealIntegrationItems(body) {
 	let items = [];
 	switch (body.provider) {
 		case "github": {
-			const res = await fetchJsonWithTimeout("https://api.github.com/issues?filter=all&state=open&per_page=25", {
-				headers: {
-					Authorization: `Bearer ${creds.token}`,
-					Accept: "application/vnd.github+json",
-					"User-Agent": "TikTrack-App"
-				}
-			});
+			const res = await fetchJsonWithTimeout("https://api.github.com/issues?filter=all&state=open&per_page=25", { headers: {
+				Authorization: `Bearer ${creds.token}`,
+				Accept: "application/vnd.github+json",
+				"User-Agent": "TikTrack-App"
+			} });
 			if (!res.ok) return {
 				ok: false,
 				items: [],
@@ -4585,8 +4431,7 @@ async function handleFetchRealIntegrationItems(body) {
 					Authorization: creds.apiKey,
 					"Content-Type": "application/json"
 				},
-				body: JSON.stringify({
-					query: `{
+				body: JSON.stringify({ query: `{
             issues(first: 25, filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
               nodes { id identifier title estimate priority url state { name } team { name } }
             }
@@ -4740,7 +4585,7 @@ async function handleFetchRealIntegrationItems(body) {
 	prisma.ecosystemConnector.update({
 		where: { id: connector.id },
 		data: { lastSyncedAt: /* @__PURE__ */ new Date() }
-	}).catch(() => { });
+	}).catch(() => {});
 	return {
 		ok: true,
 		items
@@ -4774,19 +4619,17 @@ async function sendRealChatAlert(input) {
 			}] : []
 		]
 	};
-	else if (input.provider === "discord") body = {
-		embeds: [{
-			title: input.title,
-			description: input.message,
-			color: 7352291,
-			fields: (input.fields ?? []).map((f) => ({
-				name: f.label,
-				value: f.value,
-				inline: true
-			})),
-			timestamp: (/* @__PURE__ */ new Date()).toISOString()
-		}]
-	};
+	else if (input.provider === "discord") body = { embeds: [{
+		title: input.title,
+		description: input.message,
+		color: 7352291,
+		fields: (input.fields ?? []).map((f) => ({
+			name: f.label,
+			value: f.value,
+			inline: true
+		})),
+		timestamp: (/* @__PURE__ */ new Date()).toISOString()
+	}] };
 	else body = {
 		type: "message",
 		attachments: [{
@@ -4836,14 +4679,10 @@ async function handleSendChatTestAlert(body) {
 		ok: false,
 		error: "Invalid workspace ID."
 	};
-	const connector = await prisma.ecosystemConnector.findUnique({
-		where: {
-			tenantId_provider: {
-				tenantId: body.tenantId,
-				provider: body.provider
-			}
-		}
-	});
+	const connector = await prisma.ecosystemConnector.findUnique({ where: { tenantId_provider: {
+		tenantId: body.tenantId,
+		provider: body.provider
+	} } });
 	if (!connector || connector.status !== "connected") return {
 		ok: false,
 		error: `${PROVIDER_META[body.provider].displayName} is not connected.`
@@ -4895,21 +4734,19 @@ async function handleDispatchRealOutboundWebhook(body) {
 	}, 8e3);
 	const deliveryStatus = httpRes.ok ? "delivered" : "failed";
 	const snippet = httpRes.text.slice(0, 240) || (httpRes.ok ? `HTTP ${httpRes.status} OK` : `HTTP ${httpRes.status || "Network error"}`);
-	const created = await prisma.outboundWebhookDelivery.create({
-		data: {
-			tenantId: body.tenantId,
-			endpointId: endpoint.id,
-			eventType: body.eventType,
-			eventId,
-			payload: body.payload,
-			signatureHeader,
-			deliveryStatus,
-			httpStatus: httpRes.status || 0,
-			attemptCount: 1,
-			lastAttemptAt: /* @__PURE__ */ new Date(),
-			responseSnippet: snippet
-		}
-	});
+	const created = await prisma.outboundWebhookDelivery.create({ data: {
+		tenantId: body.tenantId,
+		endpointId: endpoint.id,
+		eventType: body.eventType,
+		eventId,
+		payload: body.payload,
+		signatureHeader,
+		deliveryStatus,
+		httpStatus: httpRes.status || 0,
+		attemptCount: 1,
+		lastAttemptAt: /* @__PURE__ */ new Date(),
+		responseSnippet: snippet
+	} });
 	return {
 		ok: httpRes.ok,
 		id: created.id,
@@ -4938,7 +4775,7 @@ function buildCalendarOAuthStartUrl(input) {
 		const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
 		if (!clientId || !clientSecret) return {
 			ok: false,
-			error: "Google Calendar OAuth is not configured on this server. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local."
+			error: "Google Calendar OAuth is not enabled on this server yet. Platform admin must configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
 		};
 		const redirectUri = process.env.GOOGLE_REDIRECT_URI?.trim() || `${input.origin}/api/prisma/oauth/google/callback`;
 		return {
@@ -4958,7 +4795,7 @@ function buildCalendarOAuthStartUrl(input) {
 	const clientSecret = process.env.MICROSOFT_CLIENT_SECRET?.trim();
 	if (!clientId || !clientSecret) return {
 		ok: false,
-		error: "Outlook Calendar OAuth is not configured on this server. Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env.local."
+		error: "Outlook Calendar OAuth is not enabled on this server yet. Platform admin must configure MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET."
 	};
 	const redirectUri = process.env.MICROSOFT_REDIRECT_URI?.trim() || `${input.origin}/api/prisma/oauth/microsoft/callback`;
 	return {
@@ -4971,6 +4808,72 @@ function buildCalendarOAuthStartUrl(input) {
 			state
 		}).toString()}`
 	};
+}
+async function fetchGoogleAccountEmail(accessToken) {
+	try {
+		const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) return "Google Calendar";
+		const data = await res.json();
+		return data.email || data.name || "Google Calendar";
+	} catch {
+		return "Google Calendar";
+	}
+}
+async function fetchMicrosoftAccountEmail(accessToken) {
+	try {
+		const res = await fetch("https://graph.microsoft.com/v1.0/me", { headers: { Authorization: `Bearer ${accessToken}` } });
+		if (!res.ok) return "Outlook Calendar";
+		const data = await res.json();
+		return data.mail || data.userPrincipalName || data.displayName || "Outlook Calendar";
+	} catch {
+		return "Outlook Calendar";
+	}
+}
+async function refreshCalendarAccessToken(input) {
+	if (!input.refreshToken) return { ok: false };
+	if (input.provider === "google_calendar") {
+		const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+		const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+		if (!clientId || !clientSecret) return { ok: false };
+		const res = await fetch("https://oauth2.googleapis.com/token", {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: new URLSearchParams({
+				client_id: clientId,
+				client_secret: clientSecret,
+				refresh_token: input.refreshToken,
+				grant_type: "refresh_token"
+			})
+		});
+		if (!res.ok) return { ok: false };
+		const data = await res.json();
+		return data.access_token ? {
+			ok: true,
+			accessToken: data.access_token,
+			refreshToken: data.refresh_token || input.refreshToken
+		} : { ok: false };
+	}
+	const clientId = process.env.MICROSOFT_CLIENT_ID?.trim();
+	const clientSecret = process.env.MICROSOFT_CLIENT_SECRET?.trim();
+	if (!clientId || !clientSecret) return { ok: false };
+	const res = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
+		method: "POST",
+		headers: { "Content-Type": "application/x-www-form-urlencoded" },
+		body: new URLSearchParams({
+			client_id: clientId,
+			client_secret: clientSecret,
+			refresh_token: input.refreshToken,
+			grant_type: "refresh_token",
+			scope: "offline_access Calendars.Read User.Read"
+		})
+	});
+	if (!res.ok) return { ok: false };
+	const data = await res.json();
+	return data.access_token ? {
+		ok: true,
+		accessToken: data.access_token,
+		refreshToken: data.refresh_token || input.refreshToken
+	} : { ok: false };
 }
 async function handleCalendarOAuthCallback(input) {
 	let decoded = {};
@@ -5010,19 +4913,18 @@ async function handleCalendarOAuthCallback(input) {
 			ok: false,
 			error: "Google did not return an access token."
 		};
+		const accountEmail = await fetchGoogleAccountEmail(tokens.access_token);
 		await prisma.ecosystemConnector.upsert({
-			where: {
-				tenantId_provider: {
-					tenantId: decoded.tenantId,
-					provider: "google_calendar"
-				}
-			},
+			where: { tenantId_provider: {
+				tenantId: decoded.tenantId,
+				provider: "google_calendar"
+			} },
 			update: {
 				status: "connected",
 				displayName: "Google Calendar",
 				category: "calendar",
 				syncConfig: {
-					accountLabel: "Google Calendar (OAuth)",
+					accountLabel: accountEmail,
 					maskedCredential: maskSecretValue(tokens.access_token),
 					encryptedCredentials: encryptCredentials({
 						accessToken: tokens.access_token,
@@ -5038,7 +4940,7 @@ async function handleCalendarOAuthCallback(input) {
 				displayName: "Google Calendar",
 				status: "connected",
 				syncConfig: {
-					accountLabel: "Google Calendar (OAuth)",
+					accountLabel: accountEmail,
 					maskedCredential: maskSecretValue(tokens.access_token),
 					encryptedCredentials: encryptCredentials({
 						accessToken: tokens.access_token,
@@ -5074,19 +4976,18 @@ async function handleCalendarOAuthCallback(input) {
 		ok: false,
 		error: "Microsoft did not return an access token."
 	};
+	const accountEmail = await fetchMicrosoftAccountEmail(tokens.access_token);
 	await prisma.ecosystemConnector.upsert({
-		where: {
-			tenantId_provider: {
-				tenantId: decoded.tenantId,
-				provider: "outlook_calendar"
-			}
-		},
+		where: { tenantId_provider: {
+			tenantId: decoded.tenantId,
+			provider: "outlook_calendar"
+		} },
 		update: {
 			status: "connected",
 			displayName: "Outlook Calendar",
 			category: "calendar",
 			syncConfig: {
-				accountLabel: "Microsoft Outlook (OAuth)",
+				accountLabel: accountEmail,
 				maskedCredential: maskSecretValue(tokens.access_token),
 				encryptedCredentials: encryptCredentials({
 					accessToken: tokens.access_token,
@@ -5102,7 +5003,7 @@ async function handleCalendarOAuthCallback(input) {
 			displayName: "Outlook Calendar",
 			status: "connected",
 			syncConfig: {
-				accountLabel: "Microsoft Outlook (OAuth)",
+				accountLabel: accountEmail,
 				maskedCredential: maskSecretValue(tokens.access_token),
 				encryptedCredentials: encryptCredentials({
 					accessToken: tokens.access_token,
@@ -5121,20 +5022,17 @@ async function handleFetchRealCalendarEvents(body) {
 		events: [],
 		error: "Invalid workspace ID."
 	};
-	const connector = await prisma.ecosystemConnector.findUnique({
-		where: {
-			tenantId_provider: {
-				tenantId: body.tenantId,
-				provider: body.provider
-			}
-		}
-	});
+	const connector = await prisma.ecosystemConnector.findUnique({ where: { tenantId_provider: {
+		tenantId: body.tenantId,
+		provider: body.provider
+	} } });
 	if (!connector || connector.status !== "connected") return {
 		ok: false,
 		events: [],
-		error: "Calendar is not connected."
+		error: "Calendar is not connected for this workspace."
 	};
-	const creds = decryptCredentials((connector.syncConfig ?? {}).encryptedCredentials);
+	const rawConfig = connector.syncConfig ?? {};
+	const creds = decryptCredentials(rawConfig.encryptedCredentials);
 	if (!creds?.accessToken) return {
 		ok: false,
 		events: [],
@@ -5142,33 +5040,52 @@ async function handleFetchRealCalendarEvents(body) {
 	};
 	const timeMin = (/* @__PURE__ */ new Date(Date.now() - 1728e5)).toISOString();
 	const timeMax = new Date(Date.now() + 6048e5).toISOString();
-	if (body.provider === "google_calendar") {
-		const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&maxResults=20`, { headers: { Authorization: `Bearer ${creds.accessToken}` } });
-		if (!res.ok) return {
-			ok: false,
-			events: [],
-			error: `Google Calendar API error (HTTP ${res.status}).`
-		};
-		return {
-			ok: true,
-			events: ((await res.json()).items ?? []).filter((ev) => ev.start?.dateTime && ev.end?.dateTime).map((ev) => {
-				const start = new Date(ev.start.dateTime);
-				const end = new Date(ev.end.dateTime);
-				return {
-					id: ev.id || crypto.randomUUID(),
-					title: ev.summary || "Calendar Meeting",
-					startedAtUtc: start.toISOString(),
-					endedAtUtc: end.toISOString(),
-					durationMinutes: Math.max(5, Math.round((end.getTime() - start.getTime()) / 6e4))
-				};
-			})
-		};
+	const requestEvents = (token) => {
+		if (body.provider === "google_calendar") return fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&maxResults=20`, { headers: { Authorization: `Bearer ${token}` } });
+		return fetch(`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(timeMin)}&endDateTime=${encodeURIComponent(timeMax)}&$top=20`, { headers: { Authorization: `Bearer ${token}` } });
+	};
+	let res = await requestEvents(creds.accessToken);
+	if (res.status === 401 && creds.refreshToken) {
+		const refreshed = await refreshCalendarAccessToken({
+			provider: body.provider,
+			refreshToken: creds.refreshToken
+		});
+		if (refreshed.ok && refreshed.accessToken) {
+			await prisma.ecosystemConnector.update({
+				where: { id: connector.id },
+				data: {
+					syncConfig: {
+						...rawConfig,
+						maskedCredential: maskSecretValue(refreshed.accessToken),
+						encryptedCredentials: encryptCredentials({
+							accessToken: refreshed.accessToken,
+							refreshToken: refreshed.refreshToken || creds.refreshToken
+						})
+					},
+					lastSyncedAt: /* @__PURE__ */ new Date()
+				}
+			});
+			res = await requestEvents(refreshed.accessToken);
+		}
 	}
-	const res = await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(timeMin)}&endDateTime=${encodeURIComponent(timeMax)}&$top=20`, { headers: { Authorization: `Bearer ${creds.accessToken}` } });
 	if (!res.ok) return {
 		ok: false,
 		events: [],
-		error: `Microsoft Graph API error (HTTP ${res.status}).`
+		error: res.status === 401 ? "Calendar authorization expired. Please disconnect and reconnect your account." : `Calendar API error (HTTP ${res.status}).`
+	};
+	if (body.provider === "google_calendar") return {
+		ok: true,
+		events: ((await res.json()).items ?? []).filter((ev) => ev.start?.dateTime && ev.end?.dateTime).map((ev) => {
+			const start = new Date(ev.start.dateTime);
+			const end = new Date(ev.end.dateTime);
+			return {
+				id: ev.id || crypto.randomUUID(),
+				title: ev.summary || "Calendar Meeting",
+				startedAtUtc: start.toISOString(),
+				endedAtUtc: end.toISOString(),
+				durationMinutes: Math.max(5, Math.round((end.getTime() - start.getTime()) / 6e4))
+			};
+		})
 	};
 	return {
 		ok: true,
@@ -5264,7 +5181,7 @@ async function handlePublicRestApiV1Request(input) {
 	prisma.apiKey.update({
 		where: { id: record.id },
 		data: { lastUsedAt: /* @__PURE__ */ new Date() }
-	}).catch(() => { });
+	}).catch(() => {});
 	const tenantId = record.tenantId;
 	let data = [];
 	if (input.resource === "projects") data = (await prisma.project.findMany({
@@ -5471,12 +5388,10 @@ async function handlePrismaApiRequest(req, res) {
 				message: "Invalid tenant or user ID"
 			});
 			const member = await prisma.membership.findUnique({
-				where: {
-					tenantId_userId: {
-						tenantId: body.tenantId,
-						userId: body.userId
-					}
-				},
+				where: { tenantId_userId: {
+					tenantId: body.tenantId,
+					userId: body.userId
+				} },
 				include: {
 					user: true,
 					tenant: true,
@@ -5497,14 +5412,12 @@ async function handlePrismaApiRequest(req, res) {
 				tenantName: member.tenant?.name,
 				temporaryPassword: freshTempPassword
 			});
-			await prisma.auditEntry.create({
-				data: {
-					tenantId: body.tenantId,
-					actionType: "INVITE_RESENT",
-					targetEntity: `memberships:${member.user.email}`,
-					reason: `Resent invitation email to ${member.user.email} via Resend`
-				}
-			});
+			await prisma.auditEntry.create({ data: {
+				tenantId: body.tenantId,
+				actionType: "INVITE_RESENT",
+				targetEntity: `memberships:${member.user.email}`,
+				reason: `Resent invitation email to ${member.user.email} via Resend`
+			} });
 			return sendJson(res, 200, {
 				ok: emailResult.ok,
 				emailSent: emailResult.ok,
@@ -5535,14 +5448,10 @@ async function handlePrismaApiRequest(req, res) {
 				});
 				let resolvedUserId = "";
 				await prisma.$transaction(async (tx) => {
-					const existingUser = (authProvision.userId ? await tx.userProfile.findUnique({ where: { id: authProvision.userId } }) : null) || await tx.userProfile.findFirst({
-						where: {
-							email: {
-								equals: normalizedEmail,
-								mode: "insensitive"
-							}
-						}
-					});
+					const existingUser = (authProvision.userId ? await tx.userProfile.findUnique({ where: { id: authProvision.userId } }) : null) || await tx.userProfile.findFirst({ where: { email: {
+						equals: normalizedEmail,
+						mode: "insensitive"
+					} } });
 					if (existingUser) {
 						resolvedUserId = existingUser.id;
 						if (body.name.trim() && existingUser.fullName !== body.name.trim()) await tx.userProfile.update({
@@ -5551,13 +5460,11 @@ async function handlePrismaApiRequest(req, res) {
 						});
 					} else {
 						resolvedUserId = authProvision.userId || crypto$1.randomUUID();
-						await tx.userProfile.create({
-							data: {
-								id: resolvedUserId,
-								email: normalizedEmail,
-								fullName: body.name.trim()
-							}
-						});
+						await tx.userProfile.create({ data: {
+							id: resolvedUserId,
+							email: normalizedEmail,
+							fullName: body.name.trim()
+						} });
 					}
 					const existingMem = await tx.membership.findFirst({
 						where: {
@@ -5576,38 +5483,30 @@ async function handlePrismaApiRequest(req, res) {
 								invitedEmail: normalizedEmail
 							}
 						});
-						await tx.roleGrant.deleteMany({
-							where: {
-								tenantId: body.tenantId,
-								membershipId: existingMem.id,
-								projectScopeId: null
-							}
-						});
-						await tx.roleGrant.create({
-							data: {
-								tenantId: body.tenantId,
-								membershipId: existingMem.id,
-								role: body.role
-							}
-						});
+						await tx.roleGrant.deleteMany({ where: {
+							tenantId: body.tenantId,
+							membershipId: existingMem.id,
+							projectScopeId: null
+						} });
+						await tx.roleGrant.create({ data: {
+							tenantId: body.tenantId,
+							membershipId: existingMem.id,
+							role: body.role
+						} });
 					} else {
-						const mem = await tx.membership.create({
-							data: {
-								tenantId: body.tenantId,
-								userId: resolvedUserId,
-								status: "invited",
-								invitedEmail: normalizedEmail,
-								joinedAt: /* @__PURE__ */ new Date()
-							}
-						});
+						const mem = await tx.membership.create({ data: {
+							tenantId: body.tenantId,
+							userId: resolvedUserId,
+							status: "invited",
+							invitedEmail: normalizedEmail,
+							joinedAt: /* @__PURE__ */ new Date()
+						} });
 						targetMembershipId = mem.id;
-						await tx.roleGrant.create({
-							data: {
-								tenantId: body.tenantId,
-								membershipId: mem.id,
-								role: body.role
-							}
-						});
+						await tx.roleGrant.create({ data: {
+							tenantId: body.tenantId,
+							membershipId: mem.id,
+							role: body.role
+						} });
 					}
 					if (Array.isArray(body.customPermissions) && body.customPermissions.length > 0 && targetMembershipId) {
 						const validPerms = await tx.permission.findMany({
@@ -5617,12 +5516,10 @@ async function handlePrismaApiRequest(req, res) {
 							},
 							select: { key: true }
 						});
-						await tx.memberPermissionGrant.deleteMany({
-							where: {
-								membershipId: targetMembershipId,
-								tenantId: body.tenantId
-							}
-						});
+						await tx.memberPermissionGrant.deleteMany({ where: {
+							membershipId: targetMembershipId,
+							tenantId: body.tenantId
+						} });
 						if (validPerms.length > 0) await tx.memberPermissionGrant.createMany({
 							data: validPerms.map((p) => ({
 								membershipId: targetMembershipId,
@@ -5632,14 +5529,12 @@ async function handlePrismaApiRequest(req, res) {
 							skipDuplicates: true
 						});
 					}
-					await tx.auditEntry.create({
-						data: {
-							tenantId: body.tenantId,
-							actionType: "MEMBER_INVITED",
-							targetEntity: `memberships:${normalizedEmail}`,
-							reason: `Invited ${body.name} with role ${body.role} (temporary password issued)`
-						}
-					});
+					await tx.auditEntry.create({ data: {
+						tenantId: body.tenantId,
+						actionType: "MEMBER_INVITED",
+						targetEntity: `memberships:${normalizedEmail}`,
+						reason: `Invited ${body.name} with role ${body.role} (temporary password issued)`
+					} });
 				});
 				const emailResult = await sendWorkspaceInviteEmail({
 					email: normalizedEmail,
@@ -5670,12 +5565,10 @@ async function handlePrismaApiRequest(req, res) {
 			const body = await readJsonBody(req);
 			if (!isValidUuid(body.tenantId) || !isValidUuid(body.userId)) return sendJson(res, 200, { ok: false });
 			await prisma.membership.update({
-				where: {
-					tenantId_userId: {
-						tenantId: body.tenantId,
-						userId: body.userId
-					}
-				},
+				where: { tenantId_userId: {
+					tenantId: body.tenantId,
+					userId: body.userId
+				} },
 				data: {
 					status: body.status,
 					...body.status === "active" ? { joinedAt: /* @__PURE__ */ new Date() } : {}
@@ -5691,107 +5584,75 @@ async function handlePrismaApiRequest(req, res) {
 			});
 			try {
 				await prisma.$transaction(async (tx) => {
-					await tx.taskAssignment.deleteMany({
-						where: {
-							userId: body.userId,
-							task: { tenantId: body.tenantId }
-						}
-					});
-					await tx.taskNote.deleteMany({
-						where: {
-							authorId: body.userId,
-							task: { tenantId: body.tenantId }
-						}
-					});
-					await tx.timeSegment.deleteMany({
-						where: {
-							userId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
-					await tx.workSession.deleteMany({
-						where: {
-							userId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
+					await tx.taskAssignment.deleteMany({ where: {
+						userId: body.userId,
+						task: { tenantId: body.tenantId }
+					} });
+					await tx.taskNote.deleteMany({ where: {
+						authorId: body.userId,
+						task: { tenantId: body.tenantId }
+					} });
+					await tx.timeSegment.deleteMany({ where: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} });
+					await tx.workSession.deleteMany({ where: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} });
 					await tx.disputeMessage.deleteMany({ where: { authorUserId: body.userId } });
-					await tx.dispute.deleteMany({
-						where: {
-							openedByUserId: body.userId,
-							timesheetLine: { tenantId: body.tenantId }
-						}
-					});
-					await tx.timesheetLine.deleteMany({
-						where: {
-							timesheet: {
-								userId: body.userId,
-								tenantId: body.tenantId
-							}
-						}
-					});
-					await tx.timesheet.deleteMany({
-						where: {
-							userId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
-					await tx.activityEvent.deleteMany({
-						where: {
-							userId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
-					await tx.activityEventBatch.deleteMany({
-						where: {
-							userId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
-					await tx.notification.deleteMany({
-						where: {
-							recipientUserId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
-					await tx.policyConsent.deleteMany({
-						where: {
-							userId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
-					await tx.ideWorkspaceMapping.deleteMany({
-						where: {
-							userId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
-					await tx.device.deleteMany({
-						where: {
-							userId: body.userId,
-							tenantId: body.tenantId
-						}
-					});
-					const mem = await tx.membership.findFirst({
-						where: {
-							tenantId: body.tenantId,
-							userId: body.userId
-						}
-					});
+					await tx.dispute.deleteMany({ where: {
+						openedByUserId: body.userId,
+						timesheetLine: { tenantId: body.tenantId }
+					} });
+					await tx.timesheetLine.deleteMany({ where: { timesheet: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} } });
+					await tx.timesheet.deleteMany({ where: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} });
+					await tx.activityEvent.deleteMany({ where: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} });
+					await tx.activityEventBatch.deleteMany({ where: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} });
+					await tx.notification.deleteMany({ where: {
+						recipientUserId: body.userId,
+						tenantId: body.tenantId
+					} });
+					await tx.policyConsent.deleteMany({ where: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} });
+					await tx.ideWorkspaceMapping.deleteMany({ where: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} });
+					await tx.device.deleteMany({ where: {
+						userId: body.userId,
+						tenantId: body.tenantId
+					} });
+					const mem = await tx.membership.findFirst({ where: {
+						tenantId: body.tenantId,
+						userId: body.userId
+					} });
 					if (mem) {
 						await tx.memberPermissionGrant.deleteMany({ where: { membershipId: mem.id } });
 						await tx.roleGrant.deleteMany({ where: { membershipId: mem.id } });
 						await tx.membership.delete({ where: { id: mem.id } });
 					}
 					if (await tx.membership.count({ where: { userId: body.userId } }) === 0) await tx.userProfile.deleteMany({ where: { id: body.userId } });
-					await tx.auditEntry.create({
-						data: {
-							tenantId: body.tenantId,
-							actionType: "MEMBER_CASCADE_DELETED",
-							targetEntity: `users:${body.userId}`,
-							reason: `Permanently removed member and cascade-deleted all associated timesheets, sessions, and activity events.`
-						}
-					});
+					await tx.auditEntry.create({ data: {
+						tenantId: body.tenantId,
+						actionType: "MEMBER_CASCADE_DELETED",
+						targetEntity: `users:${body.userId}`,
+						reason: `Permanently removed member and cascade-deleted all associated timesheets, sessions, and activity events.`
+					} });
 				});
 				return sendJson(res, 200, {
 					ok: true,
@@ -5813,27 +5674,23 @@ async function handlePrismaApiRequest(req, res) {
 				error: "Non-UUID tenant ID"
 			});
 			const created = await prisma.$transaction(async (tx) => {
-				const proj = await tx.project.create({
-					data: {
-						tenantId: body.tenantId,
-						code: body.code.toUpperCase(),
-						name: body.name,
-						clientName: body.clientName,
-						description: body.description,
-						status: "active",
-						createdBy: isValidUuid(body.actorUserId) ? body.actorUserId : null
-					}
-				});
-				await tx.auditEntry.create({
-					data: {
-						tenantId: body.tenantId,
-						actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-						actionType: "PROJECT_CREATED",
-						targetEntity: `projects:${proj.code}`,
-						targetId: proj.id,
-						reason: `Created project ${proj.name} via Prisma ORM`
-					}
-				});
+				const proj = await tx.project.create({ data: {
+					tenantId: body.tenantId,
+					code: body.code.toUpperCase(),
+					name: body.name,
+					clientName: body.clientName,
+					description: body.description,
+					status: "active",
+					createdBy: isValidUuid(body.actorUserId) ? body.actorUserId : null
+				} });
+				await tx.auditEntry.create({ data: {
+					tenantId: body.tenantId,
+					actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+					actionType: "PROJECT_CREATED",
+					targetEntity: `projects:${proj.code}`,
+					targetId: proj.id,
+					reason: `Created project ${proj.name} via Prisma ORM`
+				} });
 				return proj;
 			});
 			return sendJson(res, 201, {
@@ -5872,30 +5729,26 @@ async function handlePrismaApiRequest(req, res) {
 				});
 			}
 			const created = await prisma.$transaction(async (tx) => {
-				const tsk = await tx.task.create({
-					data: {
-						tenantId: body.tenantId,
-						projectId: body.projectId,
-						parentTaskId: isValidUuid(body.parentTaskId) ? body.parentTaskId : null,
-						code: body.code.toUpperCase(),
-						title: body.title,
-						acceptanceCriteria: body.acceptanceCriteria,
-						status: body.status,
-						priority: body.priority,
-						estimateMinutes: body.estimateMinutes,
-						isBillable: body.isBillable,
-						defaultWorkMode: body.defaultWorkMode,
-						dueDate: body.dueDate ? new Date(body.dueDate) : null
-					}
-				});
-				for (const userId of requestedAssignees) await tx.taskAssignment.create({
-					data: {
-						tenantId: body.tenantId,
-						projectId: body.projectId,
-						taskId: tsk.id,
-						userId
-					}
-				});
+				const tsk = await tx.task.create({ data: {
+					tenantId: body.tenantId,
+					projectId: body.projectId,
+					parentTaskId: isValidUuid(body.parentTaskId) ? body.parentTaskId : null,
+					code: body.code.toUpperCase(),
+					title: body.title,
+					acceptanceCriteria: body.acceptanceCriteria,
+					status: body.status,
+					priority: body.priority,
+					estimateMinutes: body.estimateMinutes,
+					isBillable: body.isBillable,
+					defaultWorkMode: body.defaultWorkMode,
+					dueDate: body.dueDate ? new Date(body.dueDate) : null
+				} });
+				for (const userId of requestedAssignees) await tx.taskAssignment.create({ data: {
+					tenantId: body.tenantId,
+					projectId: body.projectId,
+					taskId: tsk.id,
+					userId
+				} });
 				return tsk;
 			});
 			return sendJson(res, 201, {
@@ -5948,20 +5801,16 @@ async function handlePrismaApiRequest(req, res) {
 				});
 			}
 			await prisma.$transaction(async (tx) => {
-				await tx.taskAssignment.deleteMany({
-					where: {
-						tenantId: body.tenantId,
-						taskId: body.taskId
-					}
-				});
-				for (const userId of candidateAssignees) await tx.taskAssignment.create({
-					data: {
-						tenantId: body.tenantId,
-						projectId: body.projectId,
-						taskId: body.taskId,
-						userId
-					}
-				});
+				await tx.taskAssignment.deleteMany({ where: {
+					tenantId: body.tenantId,
+					taskId: body.taskId
+				} });
+				for (const userId of candidateAssignees) await tx.taskAssignment.create({ data: {
+					tenantId: body.tenantId,
+					projectId: body.projectId,
+					taskId: body.taskId,
+					userId
+				} });
 			});
 			return sendJson(res, 200, { ok: true });
 		}
@@ -5997,29 +5846,25 @@ async function handlePrismaApiRequest(req, res) {
 						isLocked: body.lockLine && (nextStatus === "approved" || nextStatus === "adjusted_approved")
 					}
 				});
-				await tx.reviewDecision.create({
-					data: {
-						tenantId: body.tenantId,
-						timesheetId: body.timesheetId,
-						timesheetLineId: body.lineId,
-						reviewerUserId: body.reviewerUserId,
-						decisionType: body.decision,
-						reason: body.reason,
-						previousApprovedMinutes: prevLine.approvedBillableMinutes,
-						newApprovedMinutes: body.approvedMinutes
-					}
-				});
-				await tx.notification.create({
-					data: {
-						tenantId: body.tenantId,
-						recipientUserId: prevLine.timesheet.userId,
-						notificationType: body.decision === "ask_clarification" ? "clarification_requested" : body.decision === "adjust_with_reason" ? "timesheet_adjusted" : "timesheet_approved",
-						title: `Timesheet review: ${body.decision.replace("_", " ")}`,
-						body: body.reason,
-						targetEntity: "timesheet_lines",
-						targetId: body.lineId
-					}
-				});
+				await tx.reviewDecision.create({ data: {
+					tenantId: body.tenantId,
+					timesheetId: body.timesheetId,
+					timesheetLineId: body.lineId,
+					reviewerUserId: body.reviewerUserId,
+					decisionType: body.decision,
+					reason: body.reason,
+					previousApprovedMinutes: prevLine.approvedBillableMinutes,
+					newApprovedMinutes: body.approvedMinutes
+				} });
+				await tx.notification.create({ data: {
+					tenantId: body.tenantId,
+					recipientUserId: prevLine.timesheet.userId,
+					notificationType: body.decision === "ask_clarification" ? "clarification_requested" : body.decision === "adjust_with_reason" ? "timesheet_adjusted" : "timesheet_approved",
+					title: `Timesheet review: ${body.decision.replace("_", " ")}`,
+					body: body.reason,
+					targetEntity: "timesheet_lines",
+					targetId: body.lineId
+				} });
 			});
 			return sendJson(res, 200, { ok: true });
 		}
@@ -6053,15 +5898,13 @@ async function handlePrismaApiRequest(req, res) {
 		if (req.method === "POST" && url.startsWith("/api/prisma/audit")) {
 			const body = await readJsonBody(req);
 			if (!isValidUuid(body.tenantId)) return sendJson(res, 200, { ok: false });
-			await prisma.auditEntry.create({
-				data: {
-					tenantId: body.tenantId,
-					actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
-					actionType: body.actionType,
-					targetEntity: body.targetEntity,
-					reason: body.reason
-				}
-			});
+			await prisma.auditEntry.create({ data: {
+				tenantId: body.tenantId,
+				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+				actionType: body.actionType,
+				targetEntity: body.targetEntity,
+				reason: body.reason
+			} });
 			return sendJson(res, 201, { ok: true });
 		}
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase2/webhook")) return sendJson(res, 202, await handleIngestWebhookPrisma(await readJsonBody(req)));

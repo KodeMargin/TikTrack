@@ -50,7 +50,9 @@ export function RealIntegrationsHub({
 }: {
   onFeedback?: (msg: { ok: boolean; text: string }) => void
 }) {
-  const { activeTenant, activeUser, projects, tasks, createTask } = usePhase1Store()
+  const { activeTenant, activeUser, isSuperAdminSession, projects, tasks, createTask } =
+    usePhase1Store()
+  const isPlatformAdmin = activeUser.role === 'super_admin' || isSuperAdminSession
   const {
     connectors,
     upsertRealConnectorState,
@@ -585,7 +587,9 @@ export function RealIntegrationsHub({
                     {connected
                       ? 'Connected'
                       : spec.isOAuthCalendar && !oauthReady
-                        ? 'Needs OAuth Keys'
+                        ? isPlatformAdmin
+                          ? 'Platform Setup'
+                          : 'Not Enabled'
                         : 'Not Connected'}
                   </span>
                 </div>
@@ -746,14 +750,16 @@ export function RealIntegrationsHub({
                     <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                       Step-by-Step Setup Guide
                     </span>
-                    <a
-                      href={activeGuideSpec.portalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:ring-[#702fe3]/40 text-xs font-semibold text-[#581eae] dark:text-[#c5a8f0] transition"
-                    >
-                      {activeGuideSpec.portalButtonLabel} ↗
-                    </a>
+                    {!activeGuideSpec.isOAuthCalendar && (
+                      <a
+                        href={activeGuideSpec.portalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:ring-[#702fe3]/40 text-xs font-semibold text-[#581eae] dark:text-[#c5a8f0] transition"
+                      >
+                        {activeGuideSpec.portalButtonLabel} ↗
+                      </a>
+                    )}
                   </div>
 
                   {/* Numbered Timeline Steps */}
@@ -803,66 +809,113 @@ export function RealIntegrationsHub({
                         )}`
 
                       return (
-                        <div className="space-y-4">
-                          <div className="text-xs font-bold text-zinc-900 dark:text-white">
-                            Server OAuth Configuration
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className={LABEL_CLS}>Authorized Redirect URI</span>
-                              <button
-                                type="button"
-                                onClick={() => copyValue('redirect-uri', redirectUri)}
-                                className="text-[11px] font-semibold text-[#6d25da] dark:text-[#c5a8f0] hover:underline cursor-pointer"
-                              >
-                                {copiedKey === 'redirect-uri' ? 'Copied ✓' : 'Copy'}
-                              </button>
+                        <div className="space-y-4 flex-1 flex flex-col justify-between">
+                          <div className="space-y-4">
+                            <div className="space-y-1">
+                              <div className="text-xs font-bold text-zinc-900 dark:text-white">
+                                Connect to {activeTenant.name}
+                              </div>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                                One-click read-only authorization scoped privately to your workspace.
+                              </p>
                             </div>
-                            <code className="block rounded-xl bg-zinc-50 dark:bg-zinc-950 ring-1 ring-zinc-200 dark:ring-zinc-800 px-3 py-2 font-mono text-[11px] text-zinc-800 dark:text-zinc-200 break-all">
-                              {redirectUri}
-                            </code>
-                          </div>
 
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className={LABEL_CLS}>Add to .env.local</span>
-                              <button
-                                type="button"
-                                onClick={() => copyValue('env-snippet', envSnippet)}
-                                className="text-[11px] font-semibold text-[#6d25da] dark:text-[#c5a8f0] hover:underline cursor-pointer"
-                              >
-                                {copiedKey === 'env-snippet' ? 'Copied ✓' : 'Copy'}
-                              </button>
+                            <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] px-3.5 py-3 space-y-1.5 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-zinc-500 dark:text-zinc-400">Workspace</span>
+                                <span className="font-semibold text-zinc-900 dark:text-white">
+                                  {activeTenant.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-zinc-500 dark:text-zinc-400">Access Level</span>
+                                <span className="font-semibold text-zinc-900 dark:text-white">
+                                  Read-only meetings
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-zinc-500 dark:text-zinc-400">Data Isolation</span>
+                                <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                                  Private to this tenant
+                                </span>
+                              </div>
                             </div>
-                            <pre className="rounded-xl bg-zinc-50 dark:bg-zinc-950 ring-1 ring-zinc-200 dark:ring-zinc-800 px-3 py-2 font-mono text-[11px] text-zinc-700 dark:text-zinc-300 overflow-x-auto">
-                              {envSnippet}
-                            </pre>
+
+                            {!isConfigured && !isPlatformAdmin && (
+                              <div className="rounded-xl px-3.5 py-3 text-xs font-medium bg-amber-50/80 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 ring-1 ring-amber-500/25 leading-relaxed">
+                                {isGoogle ? 'Google Calendar' : 'Outlook Calendar'} 1-click sign-in is not enabled on this platform yet. Please contact your platform administrator.
+                              </div>
+                            )}
+
+                            {/* Platform OAuth Setup — visible ONLY to Super Admin */}
+                            {isPlatformAdmin && !isConfigured && (
+                              <details className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 ring-1 ring-amber-500/25 p-3 text-xs space-y-3" open>
+                                <summary className="font-semibold text-amber-900 dark:text-amber-200 cursor-pointer">
+                                  Platform OAuth Setup (Super Admin Only — 1-time for all tenants)
+                                </summary>
+                                <div className="space-y-3 pt-2">
+                                  <a
+                                    href={activeGuideSpec.portalUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 font-semibold text-[#581eae] dark:text-[#c5a8f0] hover:underline"
+                                  >
+                                    {activeGuideSpec.portalButtonLabel} ↗
+                                  </a>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                                        Authorized Redirect URI
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => copyValue('redirect-uri', redirectUri)}
+                                        className="text-[11px] font-semibold text-[#6d25da] dark:text-[#c5a8f0] hover:underline cursor-pointer"
+                                      >
+                                        {copiedKey === 'redirect-uri' ? 'Copied ✓' : 'Copy'}
+                                      </button>
+                                    </div>
+                                    <code className="block rounded-lg bg-white dark:bg-zinc-950 ring-1 ring-zinc-200 dark:ring-zinc-800 px-2.5 py-1.5 font-mono text-[10.5px] text-zinc-800 dark:text-zinc-200 break-all">
+                                      {redirectUri}
+                                    </code>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                                        Server Environment Variables
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => copyValue('env-snippet', envSnippet)}
+                                        className="text-[11px] font-semibold text-[#6d25da] dark:text-[#c5a8f0] hover:underline cursor-pointer"
+                                      >
+                                        {copiedKey === 'env-snippet' ? 'Copied ✓' : 'Copy'}
+                                      </button>
+                                    </div>
+                                    <pre className="rounded-lg bg-white dark:bg-zinc-950 ring-1 ring-zinc-200 dark:ring-zinc-800 px-2.5 py-1.5 font-mono text-[10.5px] text-zinc-700 dark:text-zinc-300 overflow-x-auto">
+                                      {envSnippet}
+                                    </pre>
+                                  </div>
+                                </div>
+                              </details>
+                            )}
                           </div>
 
-                          <div
-                            className={`rounded-xl px-3.5 py-2.5 text-xs font-medium ring-1 ${isConfigured
-                                ? 'bg-emerald-50/80 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
-                                : 'bg-amber-50/80 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 ring-amber-500/25'
+                          <div className="space-y-2.5 pt-2">
+                            <a
+                              href={isConfigured ? startHref : undefined}
+                              onClick={(e) => {
+                                if (!isConfigured) e.preventDefault()
+                              }}
+                              className={`block w-full text-center py-2.5 rounded-xl text-xs font-semibold transition ${
+                                isConfigured
+                                  ? 'bg-[#702fe3] hover:bg-[#5f21cc] text-white cursor-pointer shadow-xs'
+                                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
                               }`}
-                          >
-                            {isConfigured
-                              ? 'OAuth keys detected on server. Click below to sign in.'
-                              : 'Waiting for OAuth keys in .env.local (restart dev server after adding).'}
+                            >
+                              Connect {isGoogle ? 'Google Calendar' : 'Outlook Calendar'} →
+                            </a>
                           </div>
-
-                          <a
-                            href={isConfigured ? startHref : undefined}
-                            onClick={(e) => {
-                              if (!isConfigured) e.preventDefault()
-                            }}
-                            className={`block w-full text-center py-2.5 rounded-xl text-xs font-semibold transition ${isConfigured
-                                ? 'bg-[#702fe3] hover:bg-[#5f21cc] text-white cursor-pointer'
-                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                              }`}
-                          >
-                            Continue with {isGoogle ? 'Google' : 'Microsoft'} →
-                          </a>
                         </div>
                       )
                     })()

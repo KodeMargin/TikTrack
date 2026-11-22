@@ -634,39 +634,35 @@ export const INTEGRATION_PROVIDERS: ProviderGuideSpec[] = [
   },
 
   // ============================================================================
-  // CALENDARS (OAUTH 2.0)
+  // CALENDARS (1-CLICK PER-TENANT OAUTH 2.0)
   // ============================================================================
   {
     id: 'google_calendar',
     name: 'Google Calendar',
     category: 'calendar',
     badge: 'GC',
-    shortSummary: 'Pull real Google Calendar meetings & log time to projects.',
-    setupTime: '~3 min',
+    shortSummary: 'Connect your workspace Google Calendar with 1-click sign-in.',
+    setupTime: '~30 sec',
     docsUrl: 'https://developers.google.com/workspace/calendar/api/quickstart/js',
     portalUrl: 'https://console.cloud.google.com/apis/credentials',
     portalButtonLabel: 'Open Google Cloud Console',
-    requiredScopes: ['calendar.readonly', 'openid', 'email'],
+    requiredScopes: ['calendar.readonly'],
     isOAuthCalendar: true,
     steps: [
       {
-        title: 'Enable Google Calendar API',
-        detail: 'In Google Cloud Console, select/create a project → APIs & Services → Library → search "Google Calendar API" → Enable.',
+        title: 'Click "Connect Google Calendar"',
+        detail: 'Opens Google\'s official permission screen. Your TikTrack account login session stays unchanged.',
       },
       {
-        title: 'Create OAuth 2.0 Client ID',
-        detail: 'Go to APIs & Services → Credentials → + Create Credentials → OAuth client ID → Application type: Web application.',
+        title: 'Choose your workspace Google account',
+        detail: 'Pick the Google account you want to sync and click Allow for read-only calendar access.',
       },
       {
-        title: 'Add Authorized Redirect URI',
-        detail: 'Copy the exact Redirect URI shown on the right and paste it under Authorized redirect URIs, then click Create.',
-      },
-      {
-        title: 'Save keys to .env.local & restart',
-        detail: 'Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your server .env.local file, restart the app, and click Connect with Google.',
+        title: 'Sync meetings privately to this workspace',
+        detail: 'Tokens are encrypted and isolated strictly to this workspace — other tenants can never view your calendar.',
       },
     ],
-    tip: 'During development/internal team use, add your team emails under "Test users" in Google OAuth Consent Screen for instant free access.',
+    tip: 'You can connect both Google Calendar and Outlook Calendar side-by-side in the same workspace.',
     fields: [],
   },
   {
@@ -674,32 +670,28 @@ export const INTEGRATION_PROVIDERS: ProviderGuideSpec[] = [
     name: 'Outlook / Teams Calendar',
     category: 'calendar',
     badge: 'MS',
-    shortSummary: 'Sync Microsoft 365 / Teams meetings via Microsoft Graph.',
-    setupTime: '~3 min',
+    shortSummary: 'Connect Microsoft 365 / Teams meetings with 1-click sign-in.',
+    setupTime: '~30 sec',
     docsUrl: 'https://learn.microsoft.com/en-us/graph/api/user-list-calendarview',
     portalUrl: 'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade',
     portalButtonLabel: 'Open Microsoft Entra Portal',
-    requiredScopes: ['Calendars.Read', 'User.Read', 'offline_access'],
+    requiredScopes: ['Calendars.Read'],
     isOAuthCalendar: true,
     steps: [
       {
-        title: 'Register an App in Microsoft Entra ID',
-        detail: 'Open Microsoft Entra / Azure App Registrations → click + New registration → name it "TikTrack Calendar".',
+        title: 'Click "Connect Outlook Calendar"',
+        detail: 'Opens Microsoft\'s official permission screen. Your TikTrack account login session stays unchanged.',
       },
       {
-        title: 'Configure Redirect URI',
-        detail: 'Choose Web platform and paste the exact Redirect URI shown on the right, then click Register.',
+        title: 'Sign in with your Microsoft 365 account',
+        detail: 'Approve read-only calendar permission for the Microsoft account linked to your team.',
       },
       {
-        title: 'Create a Client Secret & grant permissions',
-        detail: 'Copy the Application (client) ID, create a secret under Certificates & secrets, and add Microsoft Graph Delegated permission: Calendars.Read.',
-      },
-      {
-        title: 'Save keys to .env.local & restart',
-        detail: 'Add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET to .env.local, restart the app, and click Connect with Microsoft.',
+        title: 'Sync meetings privately to this workspace',
+        detail: 'Meetings stay isolated strictly to this workspace and stay connected automatically via refresh tokens.',
       },
     ],
-    tip: 'Microsoft Entra App Registration is 100% free - no paid Azure subscription is required.',
+    tip: 'You can connect both Outlook Calendar and Google Calendar at the same time without logging out of TikTrack.',
     fields: [],
   },
 ]
