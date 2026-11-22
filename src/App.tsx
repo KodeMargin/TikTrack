@@ -20,7 +20,6 @@ import { PrivacyAuditView } from '@/features/timeline-evidence/PrivacyAuditView'
 import { IntegrationsAndDevicesView } from '@/features/integrations/IntegrationsAndDevicesView'
 import { VerificationAndAiView } from '@/features/verification-ai/VerificationAndAiView'
 import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
-import { ClientPortalView } from '@/features/client-portal/ClientPortalView'
 import { SaasBillingAndEcosystemView } from '@/features/saas-ecosystem/SaasBillingAndEcosystemView'
 import { PricingPlansView } from '@/features/saas-ecosystem/PricingPlansView'
 import { EnterpriseComplianceView } from '@/features/enterprise-compliance/EnterpriseComplianceView'
@@ -39,7 +38,6 @@ type NavSection =
   | 'privacy-audit'
   | 'billing-admin'
   | 'pricing-plans'
-  | 'client-portal'
   | 'saas-ecosystem'
   | 'enterprise-compliance'
   | 'auth-privacy'
@@ -182,15 +180,6 @@ const NAV_ITEMS: NavItem[] = [
     group: 'finance',
     allowedRoles: ['super_admin', 'tenant_owner', 'finance'],
     icon: <NavIcon path="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3Z" />,
-  },
-  {
-    id: 'client-portal',
-    path: '/portal',
-    label: 'Client Portal',
-    description: 'Read-only approved hours & deliverables',
-    group: 'finance',
-    allowedRoles: ['super_admin', 'tenant_owner', 'finance', 'client_reviewer'],
-    icon: <NavIcon path="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 0c-2.5 4.5-6 6-9 6s-6.5-1.5-9-6c2.5-4.5 6-6 9-6s6.5 1.5 9 6Z" />,
   },
   {
     id: 'pricing-plans',
@@ -475,7 +464,7 @@ function DevProofShell() {
       return requiredPerms.some((perm) => hasPermission(perm))
     }
 
-    // Fallback for sections without granular permission keys (e.g. pricing-plans, client-portal, saas-ecosystem)
+    // Fallback for sections without granular permission keys (e.g. pricing-plans, saas-ecosystem)
     return item.allowedRoles.includes(activeUser.role)
   }
 
@@ -1331,7 +1320,6 @@ function DevProofShell() {
               {activeSection === 'privacy-audit' && <PrivacyAuditView />}
               {activeSection === 'billing-admin' && <BillingAndAdminView />}
               {activeSection === 'pricing-plans' && <PricingPlansView />}
-              {activeSection === 'client-portal' && <ClientPortalView />}
               {activeSection === 'saas-ecosystem' && <SaasBillingAndEcosystemView />}
               {activeSection === 'enterprise-compliance' && <EnterpriseComplianceView />}
               {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}

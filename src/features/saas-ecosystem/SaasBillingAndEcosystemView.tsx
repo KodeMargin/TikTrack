@@ -359,7 +359,7 @@ export function SaasBillingAndEcosystemView() {
                       <ul className="text-[11px] text-zinc-700 dark:text-zinc-300 space-y-1 pt-2">
                         <li>• Up to {spec.maxSeats} seats / {spec.maxActiveProjects} projects</li>
                         <li>• {(spec.monthlyEventQuota / 1000).toLocaleString()}k events/mo</li>
-                        <li>• {spec.clientPortalEnabled ? 'Client Portal + White-Label' : 'Internal Review Only'}</li>
+                        <li>• {spec.clientPortalEnabled ? 'White-Label Branding' : 'Standard Branding'}</li>
                         <li>• {spec.accountingConnectorsEnabled ? 'Xero & QuickBooks Exports' : 'CSV Invoice Export'}</li>
                       </ul>
                     </div>
