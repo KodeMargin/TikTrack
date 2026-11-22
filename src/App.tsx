@@ -3,7 +3,6 @@ import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
 import { Phase2StoreProvider } from '@/context/Phase2Store'
 import { Phase3StoreProvider } from '@/context/Phase3Store'
 import { Phase4StoreProvider } from '@/context/Phase4Store'
-import { Phase5StoreProvider } from '@/context/Phase5Store'
 import { ThemeProvider, useTheme } from '@/context/ThemeContext'
 import type { UserRole } from '@/types/domain.types'
 import { AuthAndOnboardingView } from '@/features/auth-tenancy/AuthAndOnboardingView'
@@ -21,7 +20,6 @@ import { IntegrationsAndDevicesView } from '@/features/integrations/Integrations
 import { VerificationAndAiView } from '@/features/verification-ai/VerificationAndAiView'
 import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
 import { PricingPlansView } from '@/features/saas-ecosystem/PricingPlansView'
-import { EnterpriseComplianceView } from '@/features/enterprise-compliance/EnterpriseComplianceView'
 import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
 import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaInspector'
 
@@ -37,7 +35,6 @@ type NavSection =
   | 'privacy-audit'
   | 'billing-admin'
   | 'pricing-plans'
-  | 'enterprise-compliance'
   | 'auth-privacy'
   | 'phase0-simulator'
 
@@ -189,7 +186,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: <NavIcon path="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />,
   },
 
-  // 4. ORGANIZATION (Access & Config -> Enterprise -> Lab)
+  // 4. ORGANIZATION (Access & Config -> Lab)
   {
     id: 'auth-privacy',
     path: '/auth-privacy',
@@ -198,15 +195,6 @@ const NAV_ITEMS: NavItem[] = [
     group: 'admin',
     allowedRoles: ['super_admin', 'tenant_owner'],
     icon: <NavIcon path="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-1.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />,
-  },
-  {
-    id: 'enterprise-compliance',
-    path: '/enterprise',
-    label: 'Enterprise & Scale',
-    description: 'SSO, SCIM, 2-person governance, holds, SIEM & DR',
-    group: 'admin',
-    allowedRoles: ['super_admin'],
-    icon: <NavIcon path="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-5 4v4h4v-4" />,
   },
   {
     id: 'phase0-simulator',
@@ -1309,7 +1297,6 @@ function DevProofShell() {
               {activeSection === 'privacy-audit' && <PrivacyAuditView />}
               {activeSection === 'billing-admin' && <BillingAndAdminView />}
               {activeSection === 'pricing-plans' && <PricingPlansView />}
-              {activeSection === 'enterprise-compliance' && <EnterpriseComplianceView />}
               {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
               {activeSection === 'phase0-simulator' && (
                 <div className="space-y-8">
@@ -1332,9 +1319,7 @@ export function App() {
         <Phase2StoreProvider>
           <Phase3StoreProvider>
             <Phase4StoreProvider>
-              <Phase5StoreProvider>
-                <DevProofShell />
-              </Phase5StoreProvider>
+              <DevProofShell />
             </Phase4StoreProvider>
           </Phase3StoreProvider>
         </Phase2StoreProvider>
