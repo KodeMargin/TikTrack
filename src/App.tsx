@@ -20,8 +20,6 @@ import { IntegrationsAndDevicesView } from '@/features/integrations/Integrations
 import { VerificationAndAiView } from '@/features/verification-ai/VerificationAndAiView'
 import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
 import { PricingPlansView } from '@/features/saas-ecosystem/PricingPlansView'
-import { GroundTruthSimulator } from '@/features/phase0-workbench/GroundTruthSimulator'
-import { PrivacyDpiaInspector } from '@/features/phase0-workbench/PrivacyDpiaInspector'
 
 type NavSection =
   | 'timesheets-review'
@@ -36,7 +34,6 @@ type NavSection =
   | 'billing-admin'
   | 'pricing-plans'
   | 'auth-privacy'
-  | 'phase0-simulator'
 
 interface NavItem {
   id: NavSection
@@ -186,7 +183,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: <NavIcon path="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />,
   },
 
-  // 4. ORGANIZATION (Access & Config -> Lab)
+  // 4. ORGANIZATION
   {
     id: 'auth-privacy',
     path: '/auth-privacy',
@@ -195,15 +192,6 @@ const NAV_ITEMS: NavItem[] = [
     group: 'admin',
     allowedRoles: ['super_admin', 'tenant_owner'],
     icon: <NavIcon path="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-1.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />,
-  },
-  {
-    id: 'phase0-simulator',
-    path: '/simulator',
-    label: 'Verification Lab',
-    description: 'Ground-truth scenarios & schema tester',
-    group: 'admin',
-    allowedRoles: ['super_admin'],
-    icon: <NavIcon path="M9 3h6m-5 0v5l-4.5 7.5A2 2 0 0 0 7.2 18h9.6a2 2 0 0 0 1.7-2.5L14 8V3" />,
   },
 ]
 
@@ -1298,12 +1286,6 @@ function DevProofShell() {
               {activeSection === 'billing-admin' && <BillingAndAdminView />}
               {activeSection === 'pricing-plans' && <PricingPlansView />}
               {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
-              {activeSection === 'phase0-simulator' && (
-                <div className="space-y-8">
-                  <GroundTruthSimulator />
-                  <PrivacyDpiaInspector />
-                </div>
-              )}
             </div>
           )}
         </main>
