@@ -11,7 +11,6 @@ import { ensureSupabaseAuthUser } from './emailService.ts'
 import { handleBootstrapPhase2Data } from './prismaPhase2Handlers.ts'
 import { handleBootstrapPhase3Data } from './prismaPhase3Handlers.ts'
 import { handleBootstrapPhase4Data } from './prismaPhase4Handlers.ts'
-import { handleBootstrapPhase5Data } from './prismaPhase5Handlers.ts'
 import { handleBootstrapRbacData } from './prismaRbacHandlers.ts'
 
 const UUID_REGEX =
@@ -57,7 +56,6 @@ export async function handleBootstrap() {
     phase2,
     phase3,
     phase4,
-    phase5,
   ] = await Promise.all([
     prisma.tenant.findMany({
       include: {
@@ -124,7 +122,6 @@ export async function handleBootstrap() {
     handleBootstrapPhase2Data(),
     handleBootstrapPhase3Data(),
     handleBootstrapPhase4Data(),
-    handleBootstrapPhase5Data(),
   ])
 
   const taskById = new Map(dbTasks.map((t) => [t.id, t]))
@@ -342,7 +339,6 @@ export async function handleBootstrap() {
     phase2,
     phase3,
     phase4,
-    phase5,
     rbac,
   }
 }

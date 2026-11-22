@@ -462,7 +462,7 @@ export function AuthLoginScreen() {
       </main>
 
       <footer className="text-center text-[11px] text-slate-400 dark:text-slate-500 pt-6">
-        DevProof • Secure Multi-Tenant Continuous Verification Engine
+        TikTrack • Verified Time &amp; Work Tracking
       </footer>
     </div>
   )

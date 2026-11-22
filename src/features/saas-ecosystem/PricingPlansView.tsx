@@ -35,11 +35,11 @@ const TIER_HIGHLIGHTS: Record<SaasPlanTier, { label: string; highlight?: boolean
   ],
   enterprise: [
     { label: 'Everything in Agency, plus:', highlight: true },
-    { label: 'SAML 2.0 / Okta / Azure AD SSO' },
-    { label: 'SCIM Automated User Provisioning' },
-    { label: '2-Person Rule Policy Governance' },
-    { label: 'SIEM Log Streams & 7-Year Legal Holds' },
-    { label: '99.99% SLA + Dedicated CSM' },
+    { label: 'Unlimited Projects & 10,000+ Seats' },
+    { label: 'Custom Granular Roles & Permissions' },
+    { label: 'Dedicated API Rate Limits & Webhooks' },
+    { label: 'Extended 7-Year Activity Retention' },
+    { label: '99.99% SLA + Dedicated Support' },
   ],
 }
 
@@ -141,15 +141,15 @@ const COMPARISON_FEATURES: FeatureRow[] = [
   // Verification & AI
   {
     category: 'Verification & AI',
-    name: 'Automated Policy Guard',
+    name: 'Automated Verification Rules',
     starter: 'Basic',
     team: 'Full Automated',
     agency: 'Full Automated',
-    enterprise: 'Custom Rules + 2-Person',
+    enterprise: 'Custom Rule Profiles',
   },
   {
     category: 'Verification & AI',
-    name: 'AI Timesheet Draft Summaries',
+    name: 'AI Timesheet Draft Summaries (Gemini)',
     starter: false,
     team: '150k tokens/mo',
     agency: '750k tokens/mo',
@@ -157,8 +157,8 @@ const COMPARISON_FEATURES: FeatureRow[] = [
   },
   {
     category: 'Verification & AI',
-    name: 'AI Policy Simulator & DP Inspection',
-    starter: false,
+    name: 'Developer Payout & Bank Tracking',
+    starter: true,
     team: true,
     agency: true,
     enterprise: true,
@@ -190,46 +190,38 @@ const COMPARISON_FEATURES: FeatureRow[] = [
     enterprise: true,
   },
 
-  // Security & Compliance
+  // Security & Support
   {
-    category: 'Security & Enterprise',
-    name: 'Two-Factor Authentication (MFA)',
+    category: 'Access & Support',
+    name: 'Custom RBAC Roles & Permissions',
+    starter: false,
+    team: true,
+    agency: true,
+    enterprise: true,
+  },
+  {
+    category: 'Access & Support',
+    name: 'Public API Keys & Rate Limits',
+    starter: false,
+    team: '120 req/min',
+    agency: '600 req/min',
+    enterprise: 'Custom',
+  },
+  {
+    category: 'Access & Support',
+    name: 'Workspace Privacy & Audit Log',
     starter: true,
     team: true,
     agency: true,
     enterprise: true,
   },
   {
-    category: 'Security & Enterprise',
-    name: 'SAML 2.0 / Okta / Azure AD SSO',
-    starter: false,
-    team: false,
-    agency: false,
-    enterprise: true,
-  },
-  {
-    category: 'Security & Enterprise',
-    name: 'SCIM Automated Team Sync',
-    starter: false,
-    team: false,
-    agency: false,
-    enterprise: true,
-  },
-  {
-    category: 'Security & Enterprise',
-    name: 'SIEM Export & Legal Holds',
-    starter: false,
-    team: false,
-    agency: false,
-    enterprise: true,
-  },
-  {
-    category: 'Security & Enterprise',
-    name: 'Dedicated SLA & Account Manager',
-    starter: false,
-    team: false,
+    category: 'Access & Support',
+    name: 'Dedicated SLA & Support',
+    starter: 'Email',
+    team: 'Standard',
     agency: 'Priority Email',
-    enterprise: '99.99% SLA + Dedicated CSM',
+    enterprise: '99.99% SLA + Dedicated Manager',
   },
 ]
 
@@ -252,7 +244,7 @@ const FAQS = [
   },
   {
     q: 'Do you offer custom Enterprise agreements?',
-    a: 'Yes. For enterprises requiring custom Master Services Agreements (MSA), SOC2 Type II reports, custom SLA terms, or on-premise SIEM log streams, our enterprise sales team can configure a tailored package.',
+    a: 'Yes. For large organizations requiring custom seat limits, tailored invoicing terms, or dedicated support SLAs, our team can configure a custom plan.',
   },
 ]
 

@@ -64,25 +64,6 @@ import {
   handleUpsertConnectorPrisma,
 } from './prismaPhase4Handlers.ts'
 import {
-  handleApprovePolicyChangeSecondPrisma,
-  handleCreateLegalHoldPrisma,
-  handleCreatePrivacyRequestPrisma,
-  handleCreateSiemDestinationPrisma,
-  handleCreateWarehouseExportPrisma,
-  handleProposePolicyChangePrisma,
-  handlePublishFleetReleasePrisma,
-  handleRecordDrExercisePrisma,
-  handleRecordRetentionJobPrisma,
-  handleRecordScimEventPrisma,
-  handleRecordSiemBatchPrisma,
-  handleReleaseLegalHoldPrisma,
-  handleUpdateAccessibilityConfigPrisma,
-  handleUpsertResidencyConfigPrisma,
-  handleUpsertRetentionPolicyPrisma,
-  handleUpsertSecurityAssessmentPrisma,
-  handleUpsertSsoProviderPrisma,
-} from './prismaPhase5Handlers.ts'
-import {
   handleCreateCustomRolePrisma,
   handleDeleteCustomRolePrisma,
   handleRegisterPermissionPrisma,
@@ -1079,91 +1060,6 @@ export async function handlePrismaApiRequest(
             if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/portable-reports')) {
               const body = await readJsonBody<Parameters<typeof handleCreatePortableReportPrisma>[0]>(req)
               return sendJson(res, 201, await handleCreatePortableReportPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/sso')) {
-              const body = await readJsonBody<Parameters<typeof handleUpsertSsoProviderPrisma>[0]>(req)
-              return sendJson(res, 200, await handleUpsertSsoProviderPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/scim')) {
-              const body = await readJsonBody<Parameters<typeof handleRecordScimEventPrisma>[0]>(req)
-              return sendJson(res, 201, await handleRecordScimEventPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/policy-changes/decide')) {
-              const body = await readJsonBody<Parameters<typeof handleApprovePolicyChangeSecondPrisma>[0]>(req)
-              return sendJson(res, 200, await handleApprovePolicyChangeSecondPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/policy-changes')) {
-              const body = await readJsonBody<Parameters<typeof handleProposePolicyChangePrisma>[0]>(req)
-              return sendJson(res, 201, await handleProposePolicyChangePrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/legal-holds/release')) {
-              const body = await readJsonBody<Parameters<typeof handleReleaseLegalHoldPrisma>[0]>(req)
-              return sendJson(res, 200, await handleReleaseLegalHoldPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/legal-holds')) {
-              const body = await readJsonBody<Parameters<typeof handleCreateLegalHoldPrisma>[0]>(req)
-              return sendJson(res, 201, await handleCreateLegalHoldPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/retention-policies')) {
-              const body = await readJsonBody<Parameters<typeof handleUpsertRetentionPolicyPrisma>[0]>(req)
-              return sendJson(res, 200, await handleUpsertRetentionPolicyPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/retention-jobs')) {
-              const body = await readJsonBody<Parameters<typeof handleRecordRetentionJobPrisma>[0]>(req)
-              return sendJson(res, 201, await handleRecordRetentionJobPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/privacy-requests')) {
-              const body = await readJsonBody<Parameters<typeof handleCreatePrivacyRequestPrisma>[0]>(req)
-              return sendJson(res, 201, await handleCreatePrivacyRequestPrisma(body))
-            }
-
-            if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase5/residency')) {
-              const body = await readJsonBody<Parameters<typeof handleUpsertResidencyConfigPrisma>[0]>(req)
-              return sendJson(res, 200, await handleUpsertResidencyConfigPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/siem/export')) {
-              const body = await readJsonBody<Parameters<typeof handleRecordSiemBatchPrisma>[0]>(req)
-              return sendJson(res, 201, await handleRecordSiemBatchPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/siem')) {
-              const body = await readJsonBody<Parameters<typeof handleCreateSiemDestinationPrisma>[0]>(req)
-              return sendJson(res, 201, await handleCreateSiemDestinationPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/fleet-releases')) {
-              const body = await readJsonBody<Parameters<typeof handlePublishFleetReleasePrisma>[0]>(req)
-              return sendJson(res, 201, await handlePublishFleetReleasePrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/warehouse-exports')) {
-              const body = await readJsonBody<Parameters<typeof handleCreateWarehouseExportPrisma>[0]>(req)
-              return sendJson(res, 201, await handleCreateWarehouseExportPrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/dr-exercises')) {
-              const body = await readJsonBody<Parameters<typeof handleRecordDrExercisePrisma>[0]>(req)
-              return sendJson(res, 201, await handleRecordDrExercisePrisma(body))
-            }
-
-            if (req.method === 'POST' && url.startsWith('/api/prisma/phase5/security-assessments')) {
-              const body = await readJsonBody<Parameters<typeof handleUpsertSecurityAssessmentPrisma>[0]>(req)
-              return sendJson(res, 201, await handleUpsertSecurityAssessmentPrisma(body))
-            }
-
-            if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase5/accessibility')) {
-              const body = await readJsonBody<Parameters<typeof handleUpdateAccessibilityConfigPrisma>[0]>(req)
-              return sendJson(res, 200, await handleUpdateAccessibilityConfigPrisma(body))
             }
 
             // --- Granular RBAC (Permissions Seed, Roles, Member Grants & Tenant Owner Policy) ---

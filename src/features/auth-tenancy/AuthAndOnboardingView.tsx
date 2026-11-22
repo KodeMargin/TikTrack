@@ -467,7 +467,7 @@ export function AuthAndOnboardingView() {
             </div>
           </div>
 
-          {activeUser.role === 'tenant_owner' && (
+          {(activeUser.role === 'tenant_owner' || isSuperAdminSession) && (
             <div className="lg:col-span-6 space-y-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/70 p-4">
               <div className="font-semibold text-zinc-700 dark:text-white">
                 Publish Policy Version

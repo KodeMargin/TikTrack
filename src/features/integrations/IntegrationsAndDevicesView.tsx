@@ -6,46 +6,43 @@ import {
   PublicApiAndWebhooksPanel,
 } from '@/features/integrations/EcosystemToolsAndApiPanels'
 
-const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/KodeMargin/TikTrack-Release/releases/latest'
+const GITHUB_LATEST_RELEASE_API =
+  'https://api.github.com/repos/KodeMargin/TikTrack-Release/releases/latest'
 
 const DEFAULT_DESKTOP_RELEASE = {
   version: 'v0.2.0',
   links: {
-    macArm: 'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_aarch64.dmg',
-    macIntel: 'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_x64.dmg',
-    winExe: 'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_x64-setup.exe',
-    linuxDeb: 'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_amd64.deb',
+    macArm:
+      'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_aarch64.dmg',
+    macIntel:
+      'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_x64.dmg',
+    winExe:
+      'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_x64-setup.exe',
+    linuxDeb:
+      'https://github.com/KodeMargin/TikTrack-Release/releases/download/v0.2.0/TikTrack_0.2.0_amd64.deb',
   },
 }
+
+const CARD_CLS =
+  'rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] shadow-sm p-5'
 
 export function IntegrationsAndDevicesView() {
   const { tasks, activeUser } = usePhase1Store()
   const {
     ideMappings,
     confirmOrOverrideIdeMapping,
-    emitSimulatedIdeTelemetry,
     integrations,
     toggleIntegrationConnection,
     webhookReceipts,
-    simulateWebhookDelivery,
     devices,
     updateDeviceChannel,
-    simulateDeviceClockAnomaly,
     toggleDeviceRevocation,
   } = usePhase2Store()
 
-  const [activeTab, setActiveTab] = useState<'apps-git' | 'calendar-pm' | 'api-webhooks'>('apps-git')
+  const [activeTab, setActiveTab] = useState<'apps-git' | 'calendar-pm' | 'api-webhooks'>(
+    'apps-git'
+  )
   const [selectedTaskByMapping, setSelectedTaskByMapping] = useState<Record<string, string>>({})
-  const [simTaskId, setSimTaskId] = useState<string>(() => tasks[0]?.id ?? '')
-  const [whProvider, setWhProvider] = useState<'github' | 'gitlab'>('github')
-  const [whDeliveryId, setWhDeliveryId] = useState('gh-del-replay-demo-001')
-  const [whEventType, setWhEventType] = useState<
-    'push' | 'pull_request' | 'pull_request_review' | 'check_suite'
-  >('pull_request')
-  const [whExternalId, setWhExternalId] = useState('pr-209')
-  const [whSummary, setWhSummary] = useState('PR #209: fix(DEV-102): harden webhook retry backoff')
-  const [whRetrospective, setWhRetrospective] = useState(true)
-  const [whTamperSig, setWhTamperSig] = useState(false)
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null)
   const [copiedToken, setCopiedToken] = useState(false)
   const [copiedMacFix, setCopiedMacFix] = useState(false)
@@ -55,22 +52,29 @@ export function IntegrationsAndDevicesView() {
     let active = true
     fetch(GITHUB_LATEST_RELEASE_API, { headers: { Accept: 'application/vnd.github+json' } })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { tag_name?: string; assets?: Array<{ name: string; browser_download_url: string }> } | null) => {
-        if (!active || !data?.assets?.length) return
-        const findAsset = (suffix: string) =>
-          data.assets!.find((a) => a.name.toLowerCase().endsWith(suffix))?.browser_download_url
-        setDesktopRelease((prev) => ({
-          version: data.tag_name || prev.version,
-          links: {
-            macArm: findAsset('aarch64.dmg') ?? prev.links.macArm,
-            macIntel: findAsset('x64.dmg') ?? prev.links.macIntel,
-            winExe: findAsset('-setup.exe') ?? prev.links.winExe,
-            linuxDeb: findAsset('.deb') ?? prev.links.linuxDeb,
-          },
-        }))
-      })
+      .then(
+        (
+          data: {
+            tag_name?: string
+            assets?: Array<{ name: string; browser_download_url: string }>
+          } | null
+        ) => {
+          if (!active || !data?.assets?.length) return
+          const findAsset = (suffix: string) =>
+            data.assets!.find((a) => a.name.toLowerCase().endsWith(suffix))?.browser_download_url
+          setDesktopRelease((prev) => ({
+            version: data.tag_name || prev.version,
+            links: {
+              macArm: findAsset('aarch64.dmg') ?? prev.links.macArm,
+              macIntel: findAsset('x64.dmg') ?? prev.links.macIntel,
+              winExe: findAsset('-setup.exe') ?? prev.links.winExe,
+              linuxDeb: findAsset('.deb') ?? prev.links.linuxDeb,
+            },
+          }))
+        }
+      )
       .catch(() => {
-        // Keep fallback URLs if GitHub API is unreachable or rate-limited
+        // Keep fallback release URLs if GitHub API is unreachable
       })
     return () => {
       active = false
@@ -83,47 +87,22 @@ export function IntegrationsAndDevicesView() {
     activeUser.role === 'super_admin' ||
     activeUser.role === 'tenant_owner' ||
     activeUser.role === 'project_manager'
-  const effectiveTab =
-    activeTab === 'api-webhooks' && !canManageApi ? 'apps-git' : activeTab
+  const effectiveTab = activeTab === 'api-webhooks' && !canManageApi ? 'apps-git' : activeTab
 
   if (isFinanceOrClient) {
     return (
-      <div className="rounded-2xl border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-6 space-y-2">
-        <div className="text-xs font-mono uppercase tracking-wider text-amber-700 dark:text-amber-300 font-bold">
-          Access Restricted
-        </div>
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-          Integrations & Device Controls Restricted
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/20 p-6 space-y-2">
+        <h2 className="text-base font-bold text-zinc-900 dark:text-white">
+          Restricted Area
         </h2>
-        <p className="text-xs text-zinc-700 dark:text-zinc-300 max-w-2xl">
-          Finance and Client Reviewer roles cannot access developer workstation enrollments,
-          IDE branch mappings, or webhook logs.
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-xl">
+          Your role does not have access to developer apps, IDE mappings, or API integrations.
         </p>
       </div>
     )
   }
 
-  function handleEmitTelemetry(
-    kind: 'vscode_debug' | 'vscode_test' | 'terminal_category' | 'concurrent_ide_desktop'
-  ) {
-    const res = emitSimulatedIdeTelemetry(kind, simTaskId || tasks[0]?.id || '')
-    setFeedback({ ok: res.ok, text: res.message })
-  }
-
-  function handleSimulateWebhook(e: React.FormEvent) {
-    e.preventDefault()
-    const res = simulateWebhookDelivery({
-      provider: whProvider,
-      deliveryId: whDeliveryId,
-      eventType: whEventType,
-      taskId: simTaskId || tasks[0]?.id || '',
-      externalId: whExternalId,
-      summaryTitle: whSummary,
-      isRetrospective: whRetrospective,
-      tamperSignature: whTamperSig,
-    })
-    setFeedback({ ok: res.accepted, text: res.message })
-  }
+  const syncToken = `tt_live_${activeUser.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}_sync`
 
   return (
     <div className="space-y-6">
@@ -133,61 +112,43 @@ export function IntegrationsAndDevicesView() {
           Integrations &amp; API
         </h2>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {effectiveTab === 'apps-git' && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold">Target Task:</label>
-              <select
-                value={simTaskId}
-                onChange={(e) => setSimTaskId(e.target.value)}
-                className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-1.5 text-xs text-zinc-900 dark:text-white"
+        <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-zinc-200/70 dark:bg-zinc-900/90 p-1">
+          {[
+            { id: 'apps-git' as const, label: 'Apps & Git', show: true },
+            { id: 'calendar-pm' as const, label: 'Calendar & PM', show: true },
+            { id: 'api-webhooks' as const, label: 'API & Webhooks', show: canManageApi },
+          ]
+            .filter((t) => t.show)
+            .map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  effectiveTab === t.id
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                }`}
               >
-                {tasks.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.code} - {t.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-zinc-200/70 dark:bg-zinc-900/90 p-1">
-            {[
-              { id: 'apps-git' as const, label: 'Apps & Git', show: true },
-              { id: 'calendar-pm' as const, label: 'Calendar & PM', show: true },
-              { id: 'api-webhooks' as const, label: 'API & Webhooks', show: canManageApi },
-            ]
-              .filter((t) => t.show)
-              .map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setActiveTab(t.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    effectiveTab === t.id
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-          </div>
+                {t.label}
+              </button>
+            ))}
         </div>
       </div>
 
       {feedback && (
         <div
-          className={`rounded-xl border px-3.5 py-2.5 text-xs flex items-center justify-between ${feedback.ok
-              ? 'border-emerald-500/40 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200'
-              : 'border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200'
-            }`}
+          className={`rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
+            feedback.ok
+              ? 'bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-emerald-500/25'
+              : 'bg-rose-50/90 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-rose-500/25'
+          }`}
         >
           <span>{feedback.text}</span>
           <button
             type="button"
             onClick={() => setFeedback(null)}
-            className="font-semibold hover:underline cursor-pointer ml-4"
+            className="font-semibold underline cursor-pointer ml-4 shrink-0"
           >
             Dismiss
           </button>
@@ -200,566 +161,430 @@ export function IntegrationsAndDevicesView() {
         <PublicApiAndWebhooksPanel onFeedback={setFeedback} />
       ) : (
         <div className="space-y-6">
-
-      {/* Developer Apps Download & Connection Center */}
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 p-5 space-y-4">
-        <div>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-[#702fe3] dark:text-[#a87ce9] font-bold">
-            Companion Apps & Developer Tools
-          </span>
-          <h3 className="text-base font-bold text-zinc-900 dark:text-white mt-0.5">
-            Download Desktop App or Connect VS Code Extension
-          </h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-2xl">
-            Choose your preferred companion tool to track focus time, sync Git commits, and verify engineering effort automatically.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Card 1: VS Code Extension */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/70 p-4 flex flex-col justify-between space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold">
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.94-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zM18 17.818l-7.391-5.818L18 6.182v11.636z" />
-                  </svg>
-                  VS Code Extension (Recommended)
-                </span>
-                <span className="text-[10px] text-zinc-400 font-mono">v0.2.0</span>
-              </div>
-              <p className="text-xs text-zinc-600 dark:text-zinc-300">
-                Track code edits, Git branch switches, and test runs directly inside VS Code or Cursor with 0 manual effort.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <a
-                href="vscode:extension/kodemargin.devproof-vscode-telemetry"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white transition shadow-sm"
-              >
-                ⚡ Install in VS Code (1-Click)
-              </a>
-              <a
-                href="https://marketplace.visualstudio.com/items?itemName=kodemargin.devproof-vscode-telemetry"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
-              >
-                View on Marketplace
-              </a>
-            </div>
-          </div>
-
-          {/* Card 2: Desktop Tray App */}
-          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/70 p-4 flex flex-col justify-between space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-semibold">
-                  🖥️ Desktop Tray App
-                </span>
-                <span className="text-[10px] text-zinc-400 font-mono">{desktopRelease.version}</span>
-              </div>
-              <p className="text-xs text-zinc-600 dark:text-zinc-300">
-                Lightweight system tray timer for macOS, Windows, and Linux. Transparently displays your active focus mode and idle reconciliation.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <a
-                href={desktopRelease.links.macArm}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold transition shadow-sm"
-              >
-                🍏 Mac (Apple Silicon)
-              </a>
-              <a
-                href={desktopRelease.links.macIntel}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
-              >
-                🍏 Mac (Intel)
-              </a>
-              <a
-                href={desktopRelease.links.winExe}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold transition shadow-sm"
-              >
-                🪟 Windows (.exe)
-              </a>
-              <a
-                href={desktopRelease.links.linuxDeb}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
-              >
-                🐧 Linux (.deb)
-              </a>
-            </div>
-
-            {/* macOS Gatekeeper notice */}
-            <div className="rounded-lg border border-amber-300/70 dark:border-amber-500/30 bg-amber-50/80 dark:bg-amber-950/25 p-2.5 space-y-1.5 text-[11px] text-amber-900 dark:text-amber-200">
-              <p className="leading-snug">
-                <strong>macOS note:</strong> If macOS says &ldquo;TikTrack is damaged and can&apos;t be opened&rdquo;, move it to <code className="font-mono">Applications</code> and run once in Terminal:
-              </p>
-              <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 dark:border-amber-500/25 bg-white dark:bg-zinc-950/90 px-2.5 py-1.5 font-mono text-[10.5px] text-zinc-800 dark:text-amber-100">
-                <code className="truncate">xattr -cr /Applications/TikTrack.app</code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard.writeText('xattr -cr /Applications/TikTrack.app')
-                    setCopiedMacFix(true)
-                    setTimeout(() => setCopiedMacFix(false), 2000)
-                  }}
-                  className="px-2 py-0.5 rounded bg-amber-100 dark:bg-zinc-800 hover:bg-amber-200 dark:hover:bg-zinc-700 font-sans font-semibold text-[10px] text-amber-900 dark:text-zinc-200 shrink-0 transition"
-                >
-                  {copiedMacFix ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sync Token helper */}
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/60 dark:bg-zinc-900/50 p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-zinc-700 dark:text-zinc-300">Your Developer Sync Token:</span>
-            <code className="px-2 py-0.5 rounded bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
-              dp_live_{activeUser.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}_sync
-            </code>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const token = `dp_live_${activeUser.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}_sync`
-              void navigator.clipboard.writeText(token)
-              setCopiedToken(true)
-              setTimeout(() => setCopiedToken(false), 2000)
-            }}
-            className="px-2.5 py-1 rounded-md bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium cursor-pointer transition"
-          >
-            {copiedToken ? '✓ Copied Token!' : '📋 Copy Token'}
-          </button>
-        </div>
-      </div>
-
-      {/* Connected Integrations (F2-015, F2-016, F2-020, F2-025, F2-026) */}
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 p-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-            Connected Integrations
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => handleEmitTelemetry('vscode_debug')}
-              className="px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-bold text-white cursor-pointer"
-            >
-              + Emit Debug Event
-            </button>
-            <button
-              type="button"
-              onClick={() => handleEmitTelemetry('vscode_test')}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white cursor-pointer"
-            >
-              + Emit Test Run
-            </button>
-            <button
-              type="button"
-              onClick={() => handleEmitTelemetry('terminal_category')}
-              className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-800 dark:text-zinc-200 cursor-pointer"
-            >
-              + Emit Terminal Event
-            </button>
-            <button
-              type="button"
-              onClick={() => handleEmitTelemetry('concurrent_ide_desktop')}
-              className="px-3 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-xs font-bold text-white cursor-pointer"
-            >
-              Test IDE + Desktop Merge
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {integrations.map((int) => (
-            <div
-              key={int.id}
-              className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80 p-3.5 flex flex-col justify-between gap-3"
-            >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[#6d25da] dark:text-[#c5a8f0] font-bold">
-                    {int.provider}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${int.status === 'connected'
-                        ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border-emerald-600/50'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
-                      }`}
-                  >
-                    {int.status.toUpperCase()}
-                  </span>
-                </div>
-                <div className="text-xs font-bold text-zinc-900 dark:text-white">{int.displayName}</div>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">{int.scopeSummary}</p>
-                <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
-                  Scope: {int.reposOrWorkspaces.join(', ')} • Retention: {int.retentionDays}d
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-zinc-200 dark:border-zinc-800/80">
-                <span className="text-[10px] text-slate-500 font-mono">
-                  ID: {int.installationId}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    toggleIntegrationConnection(int.id)
-                    setFeedback({
-                      ok: true,
-                      text: `${int.displayName} is now ${int.status === 'connected' ? 'disconnected' : 'connected'
-                        }.`,
-                    })
-                  }}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${int.status === 'connected'
-                      ? 'bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700/60 hover:bg-rose-100 dark:hover:bg-rose-900/70'
-                      : 'bg-emerald-700 text-white hover:bg-emerald-600'
-                    }`}
-                >
-                  {int.status === 'connected' ? 'Disconnect' : 'Connect'}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 p-5 space-y-3">
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-          IDE & Branch Mappings
-        </h3>
-
-        <div className="space-y-2">
-          {ideMappings.map((mapping) => {
-            const selectedTask = selectedTaskByMapping[mapping.id] ?? mapping.taskId
-            return (
-              <div
-                key={mapping.id}
-                className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80 p-3 flex flex-wrap items-center justify-between gap-3"
-              >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-mono font-bold px-1.5 py-0.5 rounded bg-[#f0e9fb] dark:bg-[#6d25da]/15 text-[#6d25da] dark:text-[#c5a8f0] border border-[#c5a8f0] dark:border-[#6d25da]/50">
-                      {mapping.ideType.toUpperCase()}
-                    </span>
-                    <span className="font-mono text-zinc-900 dark:text-white font-semibold">
-                      {mapping.workspaceIdentifier}
-                    </span>
-                    <span className="text-zinc-500 dark:text-zinc-400">•</span>
-                    <span className="font-mono text-zinc-800 dark:text-zinc-200">{mapping.branchName}</span>
-                  </div>
-                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    Repo: {mapping.repoFullName} • Mapped Task:{' '}
-                    <strong className="text-zinc-800 dark:text-zinc-200 font-mono">{mapping.taskCode}</strong> (
-                    {Math.round(mapping.confidenceScore * 100)}% confidence)
-                    {mapping.overriddenByUser && ' • Overridden by developer'}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <select
-                    value={selectedTask}
-                    onChange={(e) =>
-                      setSelectedTaskByMapping((prev) => ({
-                        ...prev,
-                        [mapping.id]: e.target.value,
-                      }))
-                    }
-                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white"
-                  >
-                    {tasks.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.code} - {t.title}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      confirmOrOverrideIdeMapping(mapping.id, selectedTask)
-                      setFeedback({
-                        ok: true,
-                        text: `Confirmed workspace mapping "${mapping.branchName}" -> ${tasks.find((t) => t.id === selectedTask)?.code ?? selectedTask
-                          }.`,
-                      })
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-bold text-white cursor-pointer"
-                  >
-                    {mapping.confirmedByUser ? 'Update Mapping' : 'Confirm Mapping'}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* GitHub/GitLab Webhook Ingestion & Replay Deduplication Tester (F2-021, Sec 5.5) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <form
-          onSubmit={handleSimulateWebhook}
-          className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 p-5 space-y-3"
-        >
-          <div className="flex items-center justify-between">
+          {/* Companion Apps Download & Setup */}
+          <div className={`${CARD_CLS} space-y-4`}>
             <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-              Webhook Delivery Simulator
+              Desktop App &amp; IDE Extension
             </h3>
-            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">HMAC-SHA256</span>
-          </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label className="block text-[11px] text-zinc-700 dark:text-zinc-300 mb-1">Provider</label>
-              <select
-                value={whProvider}
-                onChange={(e) => setWhProvider(e.target.value as 'github' | 'gitlab')}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-zinc-900 dark:text-white"
-              >
-                <option value="github">GitHub App</option>
-                <option value="gitlab">GitLab Webhook</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] text-zinc-700 dark:text-zinc-300 mb-1">Event Type</label>
-              <select
-                value={whEventType}
-                onChange={(e) =>
-                  setWhEventType(
-                    e.target.value as
-                    | 'push'
-                    | 'pull_request'
-                    | 'pull_request_review'
-                    | 'check_suite'
-                  )
-                }
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-zinc-900 dark:text-white"
-              >
-                <option value="push">push (Commit)</option>
-                <option value="pull_request">pull_request (PR/MR)</option>
-                <option value="pull_request_review">pull_request_review</option>
-                <option value="check_suite">check_suite (CI Status)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label className="block text-[11px] text-zinc-700 dark:text-zinc-300 mb-1">
-                X-GitHub-Delivery ID
-              </label>
-              <input
-                type="text"
-                value={whDeliveryId}
-                onChange={(e) => setWhDeliveryId(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-2 text-xs font-mono text-zinc-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-zinc-700 dark:text-zinc-300 mb-1">
-                External Artifact ID
-              </label>
-              <input
-                type="text"
-                value={whExternalId}
-                onChange={(e) => setWhExternalId(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-2 text-xs font-mono text-zinc-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] text-zinc-700 dark:text-zinc-300 mb-1">Outcome Summary</label>
-            <input
-              type="text"
-              value={whSummary}
-              onChange={(e) => setWhSummary(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-zinc-900 dark:text-white"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-700 dark:text-zinc-300 pt-1">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={whRetrospective}
-                onChange={(e) => setWhRetrospective(e.target.checked)}
-              />
-              <span>Retrospective Outcome</span>
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer text-rose-700 dark:text-rose-300">
-              <input
-                type="checkbox"
-                checked={whTamperSig}
-                onChange={(e) => setWhTamperSig(e.target.checked)}
-              />
-              <span>Invalid HMAC Signature</span>
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            className="w-full py-2 px-3 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-bold text-white cursor-pointer"
-          >
-            Deliver Webhook Event
-          </button>
-        </form>
-
-        {/* Webhook Receipts Ledger */}
-        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-              Webhook Receipts ({webhookReceipts.length})
-            </h3>
-          </div>
-
-          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-            {webhookReceipts.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/85 p-3 space-y-1"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">
-                    {r.provider.toUpperCase()} • {r.deliveryId}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${r.status === 'processed'
-                        ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
-                        : r.status === 'duplicate_ignored'
-                          ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50'
-                          : 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700/50'
-                      }`}
-                  >
-                    {r.status.toUpperCase()} ({r.deliveryAttemptCount}x)
-                  </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* VS Code Extension */}
+              <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] p-4 flex flex-col justify-between space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold">
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.94-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zM18 17.818l-7.391-5.818L18 6.182v11.636z" />
+                      </svg>
+                      VS Code Extension
+                    </span>
+                    <span className="text-[11px] text-zinc-400 font-mono">v0.2.0</span>
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                    Automatically links code edits, Git branches, and test runs inside VS Code or Cursor.
+                  </p>
                 </div>
-                <div className="text-xs text-zinc-900 dark:text-white">{r.summary}</div>
-                <div className="text-[10px] font-mono text-slate-500">
-                  HMAC Verified: {String(r.signatureVerified)} • Event: {r.eventType}
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <a
+                    href="vscode:extension/kodemargin.devproof-vscode-telemetry"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white transition"
+                  >
+                    Install in VS Code
+                  </a>
+                  <a
+                    href="https://marketplace.visualstudio.com/items?itemName=kodemargin.devproof-vscode-telemetry"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
+                  >
+                    View on Marketplace
+                  </a>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 p-5 space-y-3">
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-          Enrolled Devices
-        </h3>
+              {/* Desktop Tray App */}
+              <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] p-4 flex flex-col justify-between space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#6d25da]/10 text-[#581eae] dark:text-[#c5a8f0] text-xs font-semibold">
+                      Desktop Tray App
+                    </span>
+                    <span className="text-[11px] text-zinc-400 font-mono">
+                      {desktopRelease.version}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                    Lightweight system tray timer for macOS, Windows, and Linux with focus modes and idle detection.
+                  </p>
+                </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {devices.map((dev) => (
-            <div
-              key={dev.id}
-              className={`rounded-xl border p-4 space-y-2.5 ${dev.revokedAt
-                  ? 'border-rose-200 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/20'
-                  : dev.clockAnomalyDetected
-                    ? 'border-amber-500/50 bg-amber-50 dark:bg-amber-950/15'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80'
-                }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-xs font-bold text-zinc-900 dark:text-white">{dev.deviceName}</div>
-                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    Owner: {dev.userName} • OS: {dev.osPlatform} • Agent v{dev.agentVersion}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <a
+                    href={desktopRelease.links.macArm}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold transition"
+                  >
+                    Mac (Apple Silicon)
+                  </a>
+                  <a
+                    href={desktopRelease.links.macIntel}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
+                  >
+                    Mac (Intel)
+                  </a>
+                  <a
+                    href={desktopRelease.links.winExe}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold transition"
+                  >
+                    Windows (.exe)
+                  </a>
+                  <a
+                    href={desktopRelease.links.linuxDeb}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-xs font-medium text-zinc-800 dark:text-zinc-200 transition"
+                  >
+                    Linux (.deb)
+                  </a>
+                </div>
+
+                <div className="rounded-lg border border-amber-300/60 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/20 p-2.5 space-y-1.5 text-[11px] text-amber-900 dark:text-amber-200">
+                  <p className="leading-snug">
+                    <strong>macOS note:</strong> If macOS blocks opening the app, move it to{' '}
+                    <code className="font-mono">Applications</code> and run once in Terminal:
+                  </p>
+                  <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 dark:border-amber-500/25 bg-white dark:bg-zinc-950/90 px-2.5 py-1.5 font-mono text-[10.5px] text-zinc-800 dark:text-amber-100">
+                    <code className="truncate">xattr -cr /Applications/TikTrack.app</code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText('xattr -cr /Applications/TikTrack.app')
+                        setCopiedMacFix(true)
+                        setTimeout(() => setCopiedMacFix(false), 2000)
+                      }}
+                      className="px-2 py-0.5 rounded bg-amber-100 dark:bg-zinc-800 hover:bg-amber-200 dark:hover:bg-zinc-700 font-sans font-semibold text-[10px] text-amber-900 dark:text-zinc-200 shrink-0 cursor-pointer transition"
+                    >
+                      {copiedMacFix ? 'Copied ✓' : 'Copy'}
+                    </button>
                   </div>
                 </div>
-                <span
-                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${dev.revokedAt
-                      ? 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700'
-                      : 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800'
-                    }`}
-                >
-                  {dev.revokedAt ? 'REVOKED' : 'ACTIVE'}
-                </span>
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-white dark:bg-zinc-900 rounded-lg p-2">
-                  <div className="text-zinc-500 dark:text-zinc-400">Clock Drift</div>
+            {/* Developer Sync Token */}
+            <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                  Personal Sync Token:
+                </span>
+                <code className="px-2.5 py-0.5 rounded-lg bg-white dark:bg-zinc-950 ring-1 ring-zinc-200 dark:ring-zinc-800 font-mono text-[11px] text-[#581eae] dark:text-[#c5a8f0]">
+                  {syncToken}
+                </code>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(syncToken)
+                  setCopiedToken(true)
+                  setTimeout(() => setCopiedToken(false), 2000)
+                }}
+                className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 ring-1 ring-zinc-200 dark:ring-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold cursor-pointer transition"
+              >
+                {copiedToken ? 'Copied ✓' : 'Copy Token'}
+              </button>
+            </div>
+          </div>
+
+          {/* Connected Git & IDE Services */}
+          <div className={`${CARD_CLS} space-y-4`}>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+              Connected Services
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {integrations.map((int) => {
+                const connected = int.status === 'connected'
+                return (
                   <div
-                    className={`font-mono font-bold ${dev.clockAnomalyDetected ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-800 dark:text-zinc-200'
-                      }`}
+                    key={int.id}
+                    className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] p-4 flex flex-col justify-between gap-3"
                   >
-                    {dev.lastClockDriftSeconds}s{' '}
-                    {dev.clockAnomalyDetected ? '(Drift Anomaly)' : '(Synchronized)'}
-                  </div>
-                </div>
-                <div className="bg-white dark:bg-zinc-900 rounded-lg p-2">
-                  <div className="text-zinc-500 dark:text-zinc-400">Display Policy</div>
-                  <div className="font-mono font-semibold text-[#6d25da] dark:text-[#c5a8f0]">
-                    {dev.multiDisplayPolicy}
-                  </div>
-                </div>
-              </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-[#6d25da]/10 dark:bg-[#6d25da]/20 text-[#581eae] dark:text-[#c5a8f0] font-bold">
+                          {int.provider}
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            connected
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              connected ? 'bg-emerald-500' : 'bg-zinc-400'
+                            }`}
+                          />
+                          {connected ? 'Connected' : 'Disconnected'}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-zinc-900 dark:text-white">
+                        {int.displayName}
+                      </div>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">
+                        {int.scopeSummary}
+                      </p>
+                      <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+                        {int.reposOrWorkspaces.join(', ')} · {int.retentionDays}d retention
+                      </div>
+                    </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-zinc-500 dark:text-zinc-400 text-[11px]">Channel:</span>
-                  <select
-                    value={dev.updateChannel}
-                    onChange={(e) =>
-                      updateDeviceChannel(
-                        dev.id,
-                        e.target.value as EnrolledDeviceRecord['updateChannel']
-                      )
-                    }
-                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-900 dark:text-white"
-                  >
-                    <option value="stable">stable</option>
-                    <option value="beta">beta</option>
-                    <option value="enterprise_pinned">enterprise_pinned</option>
-                  </select>
-                </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-200/70 dark:border-zinc-800">
+                      <span className="text-[10px] text-zinc-400 font-mono">
+                        {int.installationId}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toggleIntegrationConnection(int.id)
+                          setFeedback({
+                            ok: true,
+                            text: `${int.displayName} is now ${
+                              connected ? 'disconnected' : 'connected'
+                            }.`,
+                          })
+                        }}
+                        className={`px-3 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition ${
+                          connected
+                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60'
+                            : 'bg-[#702fe3] hover:bg-[#5f21cc] text-white'
+                        }`}
+                      >
+                        {connected ? 'Disconnect' : 'Connect'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      simulateDeviceClockAnomaly(
-                        dev.id,
-                        dev.clockAnomalyDetected ? 2 : 185
-                      )
-                    }
-                    className="px-2.5 py-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-[11px] text-amber-800 dark:text-amber-200 cursor-pointer"
-                  >
-                    {dev.clockAnomalyDetected ? 'Reset Clock Sync' : 'Simulate +185s Drift'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleDeviceRevocation(dev.id)}
-                    className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer ${dev.revokedAt
-                        ? 'bg-emerald-700 text-white'
-                        : 'bg-rose-50 dark:bg-rose-950/90 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-700/60'
-                      }`}
-                  >
-                    {dev.revokedAt ? 'Restore Device' : 'Revoke Token'}
-                  </button>
-                </div>
+          {/* IDE & Branch Mappings */}
+          {ideMappings.length > 0 && (
+            <div className={`${CARD_CLS} space-y-3`}>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+                Branch to Task Mappings
+              </h3>
+
+              <div className="space-y-2">
+                {ideMappings.map((mapping) => {
+                  const selectedTask = selectedTaskByMapping[mapping.id] ?? mapping.taskId
+                  return (
+                    <div
+                      key={mapping.id}
+                      className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] p-3.5 flex flex-wrap items-center justify-between gap-3"
+                    >
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="font-mono font-bold px-2 py-0.5 rounded-md bg-[#6d25da]/10 dark:bg-[#6d25da]/20 text-[#581eae] dark:text-[#c5a8f0]">
+                            {mapping.ideType.toUpperCase()}
+                          </span>
+                          <span className="font-mono text-zinc-900 dark:text-white font-semibold">
+                            {mapping.workspaceIdentifier}
+                          </span>
+                          <span className="text-zinc-400">·</span>
+                          <span className="font-mono text-zinc-700 dark:text-zinc-300">
+                            {mapping.branchName}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                          {mapping.repoFullName} · Linked to{' '}
+                          <strong className="text-zinc-800 dark:text-zinc-200 font-mono">
+                            {mapping.taskCode}
+                          </strong>{' '}
+                          ({Math.round(mapping.confidenceScore * 100)}% match)
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedTask}
+                          onChange={(e) =>
+                            setSelectedTaskByMapping((prev) => ({
+                              ...prev,
+                              [mapping.id]: e.target.value,
+                            }))
+                          }
+                          className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white"
+                        >
+                          {tasks.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.code} — {t.title}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            confirmOrOverrideIdeMapping(mapping.id, selectedTask)
+                            setFeedback({
+                              ok: true,
+                              text: `Linked branch "${mapping.branchName}" to ${
+                                tasks.find((t) => t.id === selectedTask)?.code ?? selectedTask
+                              }.`,
+                            })
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white cursor-pointer transition"
+                        >
+                          {mapping.confirmedByUser ? 'Update' : 'Confirm'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          )}
+
+          {/* Enrolled Devices + Incoming Git Activity Log */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className={`lg:col-span-7 ${CARD_CLS} space-y-4`}>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+                Connected Devices ({devices.length})
+              </h3>
+
+              {devices.length === 0 ? (
+                <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 p-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                  No devices enrolled yet. Sign in from the Desktop App or VS Code extension to connect a device.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {devices.map((dev) => (
+                    <div
+                      key={dev.id}
+                      className={`rounded-xl p-4 space-y-3 ring-1 ${
+                        dev.revokedAt
+                          ? 'bg-rose-50/60 dark:bg-rose-950/20 ring-rose-500/25'
+                          : 'bg-zinc-50 dark:bg-zinc-900/60 ring-zinc-950/[0.04] dark:ring-white/[0.06]'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-bold text-zinc-900 dark:text-white">
+                            {dev.deviceName}
+                          </div>
+                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                            {dev.userName} · {dev.osPlatform} · App v{dev.agentVersion} · Clock{' '}
+                            {dev.clockAnomalyDetected
+                              ? `drift ${dev.lastClockDriftSeconds}s`
+                              : 'in sync'}
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${
+                            dev.revokedAt
+                              ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
+                              : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                          }`}
+                        >
+                          {dev.revokedAt ? 'Revoked' : 'Active'}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-200/70 dark:border-zinc-800">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-zinc-500 dark:text-zinc-400 text-[11px]">
+                            Release Channel:
+                          </span>
+                          <select
+                            value={dev.updateChannel}
+                            onChange={(e) =>
+                              updateDeviceChannel(
+                                dev.id,
+                                e.target.value as EnrolledDeviceRecord['updateChannel']
+                              )
+                            }
+                            className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-900 dark:text-white"
+                          >
+                            <option value="stable">Stable</option>
+                            <option value="beta">Beta</option>
+                            <option value="enterprise_pinned">Pinned</option>
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleDeviceRevocation(dev.id)}
+                          className={`px-3 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition ${
+                            dev.revokedAt
+                              ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                              : 'bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60'
+                          }`}
+                        >
+                          {dev.revokedAt ? 'Restore Device' : 'Revoke Access'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className={`lg:col-span-5 ${CARD_CLS} space-y-4`}>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+                Incoming Git Webhook Activity ({webhookReceipts.length})
+              </h3>
+
+              {webhookReceipts.length === 0 ? (
+                <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 p-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                  No incoming GitHub or GitLab events received yet.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  {webhookReceipts.map((r) => (
+                    <div
+                      key={r.id}
+                      className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] p-3 space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="font-mono font-semibold text-[#581eae] dark:text-[#c5a8f0] truncate">
+                          {r.provider.toUpperCase()} · {r.eventType}
+                        </span>
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                            r.status === 'processed'
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                              : r.status === 'duplicate_ignored'
+                                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                                : 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
+                          }`}
+                        >
+                          {r.status === 'processed'
+                            ? 'Processed'
+                            : r.status === 'duplicate_ignored'
+                              ? 'Duplicate'
+                              : 'Rejected'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-zinc-800 dark:text-zinc-200">{r.summary}</div>
+                      <div className="text-[10px] font-mono text-zinc-400">
+                        Delivery: {r.deliveryId}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
   )
 }
-

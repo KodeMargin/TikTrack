@@ -27,32 +27,6 @@ import type {
   UsageRecordSnapshot,
   VerificationRuleSetRecord,
   WhiteLabelBrandingConfig,
-  SsoProviderRecord,
-  SsoProviderType,
-  ScimProvisioningEventRecord,
-  PolicyChangeRequestRecord,
-  SensitiveAccessLogRecord,
-  LegalHoldRecord,
-  RetentionPolicyRecord,
-  RetentionJobRecord,
-  PrivacyRequestRecord,
-  TenantResidencyConfigRecord,
-  ResidencyRegion,
-  FailoverRegion,
-  IsolationTier,
-  SiemDestinationRecord,
-  SiemExportBatchRecord,
-  SiemProvider,
-  SiemFormat,
-  FleetReleaseRecord,
-  FleetPlatform,
-  FleetChannel,
-  AnalyticsWarehouseExportRecord,
-  WarehouseSink,
-  DrExerciseRecord,
-  SecurityAssessmentRecord,
-  TenantAccessibilityConfigRecord,
-  SupportedLocale,
   CustomRole,
   GranularPermissionDef,
   PermissionModule,
@@ -118,25 +92,6 @@ export interface PrismaPhase4BootstrapPayload {
   portableReports: PortableWorkReportRecord[]
 }
 
-export interface PrismaPhase5BootstrapPayload {
-  ssoProviders: SsoProviderRecord[]
-  scimEvents: ScimProvisioningEventRecord[]
-  policyChangeRequests: PolicyChangeRequestRecord[]
-  sensitiveAccessLogs: SensitiveAccessLogRecord[]
-  legalHolds: LegalHoldRecord[]
-  retentionPolicies: RetentionPolicyRecord[]
-  retentionJobs: RetentionJobRecord[]
-  privacyRequests: PrivacyRequestRecord[]
-  residencyConfigs: TenantResidencyConfigRecord[]
-  siemDestinations: SiemDestinationRecord[]
-  siemBatches: SiemExportBatchRecord[]
-  fleetReleases: FleetReleaseRecord[]
-  warehouseExports: AnalyticsWarehouseExportRecord[]
-  drExercises: DrExerciseRecord[]
-  securityAssessments: SecurityAssessmentRecord[]
-  accessibilityConfigs: TenantAccessibilityConfigRecord[]
-}
-
 export interface PrismaRbacBootstrapPayload {
   seedStatus: {
     seeded: boolean
@@ -167,7 +122,6 @@ export interface PrismaBootstrapPayload {
   phase2?: PrismaPhase2BootstrapPayload
   phase3?: PrismaPhase3BootstrapPayload
   phase4?: PrismaPhase4BootstrapPayload
-  phase5?: PrismaPhase5BootstrapPayload
   rbac?: PrismaRbacBootstrapPayload
 }
 
@@ -613,202 +567,6 @@ export const createPortableReportViaPrisma = (input: {
   signatureHmacSha256: string
   reportPayload: Record<string, unknown>
 }) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase4/portable-reports', input)
-
-
-export const upsertSsoProviderViaPrisma = (input: {
-  tenantId: string
-  providerType: SsoProviderType
-  displayName: string
-  domain: string
-  entityIdOrIssuer: string
-  ssoUrl: string
-  certificateFingerprint?: string
-  clientId?: string
-  enforceSso: boolean
-  jitDefaultRole: string
-  scimEnabled: boolean
-  scimTokenPrefix?: string
-  scimTokenHashSha256?: string
-  createdBy?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/sso', input)
-
-export const recordScimEventViaPrisma = (input: {
-  tenantId: string
-  providerId?: string
-  action: 'user_create' | 'user_update' | 'user_deactivate' | 'group_sync'
-  externalUserId: string
-  email: string
-  targetRole: string
-  correlationId: string
-  detailMessage?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/scim', input)
-
-export const proposePolicyChangeViaPrisma = (input: {
-  tenantId: string
-  proposedVersionCode: string
-  changeSummary: string
-  scopeDiff: Record<string, boolean | string | number>
-  expandsCollectionScope: boolean
-  proposedBy: string
-  effectiveFrom: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/policy-changes', input)
-
-export const decidePolicyChangeSecondViaPrisma = (input: {
-  tenantId: string
-  requestId: string
-  secondApproverId: string
-  decision: 'approve' | 'reject'
-  rejectionReason?: string
-}) =>
-  postJson<{ ok: boolean; activatedPolicyVersionId?: string; error?: string }>(
-    '/api/prisma/phase5/policy-changes/decide',
-    input
-  )
-
-export const createLegalHoldViaPrisma = (input: {
-  tenantId: string
-  scopeType: 'timesheet' | 'dispute' | 'project' | 'user' | 'tenant'
-  targetId: string
-  reason: string
-  placedBy?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/legal-holds', input)
-
-export const releaseLegalHoldViaPrisma = (input: {
-  tenantId: string
-  holdId: string
-  releasedBy?: string
-}) => postJson<{ ok: boolean }>('/api/prisma/phase5/legal-holds/release', input)
-
-export const upsertRetentionPolicyViaPrisma = (input: {
-  tenantId: string
-  name: string
-  rawActivityDays: number
-  rollupDays: number
-  evidenceArtifactDays: number
-  auditLogDays: number
-  archiveStorageTier: 'supabase_cold' | 'cold_s3' | 'gcs_archive'
-  createdBy?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/retention-policies', input)
-
-export const recordRetentionJobViaPrisma = (input: {
-  tenantId: string
-  policyId?: string
-  jobType: 'purge_raw_events' | 'archive_rollups' | 'dsar_export' | 'dsar_erasure'
-  status: 'completed' | 'partial_legal_hold'
-  scannedCount: number
-  purgedCount: number
-  skippedLegalHoldCount: number
-  archivedBundleUri?: string
-  executedBy?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/retention-jobs', input)
-
-export const createPrivacyRequestViaPrisma = (input: {
-  tenantId: string
-  requesterUserId: string
-  requestType: 'export' | 'correction' | 'erasure'
-  status: 'pending' | 'completed' | 'blocked_legal_hold'
-  legalHoldBlocked: boolean
-  exportDigestSha256?: string
-  resolutionNote?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/privacy-requests', input)
-
-export const upsertResidencyConfigViaPrisma = (input: {
-  tenantId: string
-  primaryRegion: ResidencyRegion
-  failoverRegion: FailoverRegion
-  dataResidencyLocked: boolean
-  isolationTier: IsolationTier
-  encryptionKeyMode: 'platform_kms' | 'byok_kms'
-  kmsKeyArnMasked?: string
-  dedicatedWorkerPool: boolean
-  egressAllowlistCidrs: string[]
-  updatedBy?: string
-}) => postJson<{ ok: boolean }>('/api/prisma/phase5/residency', input, 'PATCH')
-
-export const createSiemDestinationViaPrisma = (input: {
-  tenantId: string
-  name: string
-  provider: SiemProvider
-  endpointUrl: string
-  authHeaderPrefix: string
-  authTokenHashSha256: string
-  format: SiemFormat
-  includeCategories: string[]
-  createdBy?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/siem', input)
-
-export const recordSiemBatchViaPrisma = (input: {
-  tenantId: string
-  destinationId: string
-  eventCount: number
-  payloadFormat: SiemFormat
-  payloadDigestSha256: string
-  sanitizedPreview: Record<string, unknown>
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/siem/export', input)
-
-export const publishFleetReleaseViaPrisma = (input: {
-  tenantId: string
-  version: string
-  platform: FleetPlatform
-  channel: FleetChannel
-  installerSha256: string
-  codeSigningThumbprint: string
-  notarizationStatus: 'notarized' | 'signed' | 'pending'
-  minOsVersion: string
-  rolloutPercentage: number
-  releaseNotes: string
-  publishedBy?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/fleet-releases', input)
-
-export const createWarehouseExportViaPrisma = (input: {
-  tenantId: string
-  targetSink: WarehouseSink
-  periodStart: string
-  periodEnd: string
-  rowCount: number
-  compressedBytes: number
-  objectPathUri: string
-  checksumSha256: string
-  triggeredBy?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/warehouse-exports', input)
-
-export const recordDrExerciseViaPrisma = (input: {
-  tenantId: string
-  exerciseType:
-  | 'backup_restore_drill'
-  | 'region_failover_tabletop'
-  | 'load_test_1000_devs'
-  | 'pen_test_remediation'
-  targetRpoMinutes: number
-  measuredRpoMinutes: number
-  targetRtoMinutes: number
-  measuredRtoMinutes: number
-  p95CrudMs: number
-  simulatedConcurrentDevs: number
-  passed: boolean
-  findingsSummary: string
-  conductedBy?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/dr-exercises', input)
-
-export const upsertSecurityAssessmentViaPrisma = (input: {
-  tenantId: string
-  assessmentName: string
-  assessorFirm: string
-  assessmentType: 'penetration_test' | 'rls_isolation_audit' | 'sdlc_review' | 'soc2_readiness'
-  status: 'scheduled' | 'in_progress' | 'remediating' | 'signed_off'
-  criticalFindings: number
-  highFindings: number
-  remediatedFindings: number
-  reportSha256?: string
-}) => postJson<{ ok: boolean; id?: string }>('/api/prisma/phase5/security-assessments', input)
-
-export const updateAccessibilityConfigViaPrisma = (input: {
-  tenantId: string
-  defaultLocale: SupportedLocale
-  highContrastMode: boolean
-  keyboardShortcutsEnabled: boolean
-  wcagTargetLevel: 'AA' | 'AAA'
-}) => postJson<{ ok: boolean }>('/api/prisma/phase5/accessibility', input, 'PATCH')
 
 // -----------------------------------------------------------------------------
 // Granular RBAC (Permissions Seed, Custom Roles, Member Grants & Owner Policy)

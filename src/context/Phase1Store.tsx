@@ -57,7 +57,6 @@ import {
   type PrismaPhase2BootstrapPayload,
   type PrismaPhase3BootstrapPayload,
   type PrismaPhase4BootstrapPayload,
-  type PrismaPhase5BootstrapPayload,
   type PrismaRbacBootstrapPayload,
 } from '@/lib/prismaApiClient'
 
@@ -529,7 +528,6 @@ interface Phase1StoreContextValue {
   phase2Bootstrap: PrismaPhase2BootstrapPayload | null
   phase3Bootstrap: PrismaPhase3BootstrapPayload | null
   phase4Bootstrap: PrismaPhase4BootstrapPayload | null
-  phase5Bootstrap: PrismaPhase5BootstrapPayload | null
   setTenantPlanTierState: (tenantId: string, planTier: TenantWorkspace['planTier']) => void
   setTenantBrandingState: (tenantId: string, brandingConfig: Record<string, unknown>) => void
   refreshPrismaConnection: () => Promise<void>
@@ -709,8 +707,6 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     useState<PrismaPhase3BootstrapPayload | null>(null)
   const [phase4Bootstrap, setPhase4Bootstrap] =
     useState<PrismaPhase4BootstrapPayload | null>(null)
-  const [phase5Bootstrap, setPhase5Bootstrap] =
-    useState<PrismaPhase5BootstrapPayload | null>(null)
   const [bootstrapLoaded, setBootstrapLoaded] = useState(false)
   const [prismaStatus, setPrismaStatus] = useState<PrismaConnectionStatus>({
     connected: false,
@@ -870,7 +866,6 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       setPhase2Bootstrap(payload.phase2 ?? null)
       setPhase3Bootstrap(payload.phase3 ?? null)
       setPhase4Bootstrap(payload.phase4 ?? null)
-      setPhase5Bootstrap(payload.phase5 ?? null)
       if (payload.rbac) {
         setRbacSeedStatus(payload.rbac.seedStatus)
         if (payload.rbac.permissions.length > 0) {
@@ -923,7 +918,6 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       setPhase2Bootstrap(null)
       setPhase3Bootstrap(null)
       setPhase4Bootstrap(null)
-      setPhase5Bootstrap(null)
     }
 
     setBootstrapLoaded(true)
@@ -3572,7 +3566,6 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         phase2Bootstrap,
         phase3Bootstrap,
         phase4Bootstrap,
-        phase5Bootstrap,
         setTenantPlanTierState: (tenantId, planTier) => {
           setTenants((prev) =>
             prev.map((t) => (t.id === tenantId ? { ...t, planTier } : t))
