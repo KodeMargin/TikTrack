@@ -1,11 +1,20 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import type { RoundingRule } from '@/types/domain.types'
-import { InfoTooltip } from '@/components/InfoTooltip'
+
+function formatDuration(minutes: number): string {
+  const safe = Math.max(0, Math.round(minutes))
+  const h = Math.floor(safe / 60)
+  const m = safe % 60
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
 
 export function BillingAndAdminView() {
   const {
     activeTenant,
+    activeUser,
     updateTenantSettings,
     projects,
     contractPolicy,
@@ -14,8 +23,15 @@ export function BillingAndAdminView() {
     generateInvoiceFromApproved,
     lockInvoice,
     issueCreditAdjustmentInvoice,
-    auditLogs,
+    hasPermission,
   } = usePhase1Store()
+
+  const isSuperOrOwner =
+    activeUser.role === 'super_admin' || activeUser.role === 'tenant_owner'
+  const canManageRates = isSuperOrOwner || hasPermission('billing:manage_rates')
+  const canCreateInvoice = isSuperOrOwner || hasPermission('invoice:create_draft')
+  const canLockInvoice = isSuperOrOwner || hasPermission('invoice:lock_finalize')
+  const canIssueCredit = isSuperOrOwner || hasPermission('invoice:credit_adjust')
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
     projects[0]?.id ?? ''
@@ -25,10 +41,25 @@ export function BillingAndAdminView() {
   const [rateEffectiveFrom, setRateEffectiveFrom] = useState('2026-11-16')
   const [rateEffectiveTo, setRateEffectiveTo] = useState('')
   const [rateHourly, setRateHourly] = useState<number>(155)
+  const [showAddRateForm, setShowAddRateForm] = useState(false)
   const [creditInvoiceId, setCreditInvoiceId] = useState<string | null>(null)
   const [creditAmount, setCreditAmount] = useState<number>(125)
   const [creditReason, setCreditReason] = useState('')
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const summary = useMemo(() => {
+    const latestRate =
+      contractPolicy.rateVersions[contractPolicy.rateVersions.length - 1] ?? null
+    let totalInvoiced = 0
+    let draftCount = 0
+    let lockedCount = 0
+    for (const inv of invoices) {
+      totalInvoiced += inv.totalAmount
+      if (inv.status === 'draft') draftCount += 1
+      if (inv.status === 'finalized_locked') lockedCount += 1
+    }
+    return { latestRate, totalInvoiced, draftCount, lockedCount }
+  }, [contractPolicy.rateVersions, invoices])
 
   function handleGenerateInvoice() {
     const projId = selectedProjectId || projects[0]?.id
@@ -41,7 +72,8 @@ export function BillingAndAdminView() {
     const inv = invoices.find((i) => i.id === invoiceId)
     if (!inv) return
 
-    const header = 'WorkDate,TaskCode,Description,ApprovedMinutes,HourlyRate,LineAmount\n'
+    const header =
+      'Date,Task,Description,ApprovedMinutes,HourlyRate,Amount\n'
     const rows = inv.lines
       .map(
         (l) =>
@@ -71,6 +103,7 @@ export function BillingAndAdminView() {
     if (res.ok) {
       setRateLabel('')
       setRateEffectiveTo('')
+      setShowAddRateForm(false)
     }
     setBanner({ ok: res.ok, text: res.message })
   }
@@ -90,398 +123,457 @@ export function BillingAndAdminView() {
 
   return (
     <div className="space-y-6">
+      {/* Feedback Toast */}
       {banner && (
         <div
-          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${banner.ok
-              ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
-              : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200'
-            }`}
+          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
+            banner.ok
+              ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
+              : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
+          }`}
         >
           <span>{banner.text}</span>
           <button
             type="button"
             onClick={() => setBanner(null)}
-            className="underline ml-4 cursor-pointer"
+            className="underline font-semibold ml-4 cursor-pointer"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Top Row: Effective-Dated Contracts & Invoice Draft Generator (F1-044..F1-047) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
-              <span>Contract Terms &amp; Rate Versions</span>
-              <InfoTooltip
-                align="left"
-                text="Invoices automatically apply the historical rate active on each segment's work date."
-              />
-            </span>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mt-0.5">
-              {contractPolicy.clientName} - Master Services Rate Card
-            </h3>
-          </div>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
+          Client Billing &amp; Invoices
+        </h2>
+        <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300">
+          {contractPolicy.clientName} · {activeTenant.currency}
+        </span>
+      </div>
 
-          <div className="space-y-2">
-            {contractPolicy.rateVersions.map((rv) => (
-              <div
-                key={rv.id}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 p-3 flex items-center justify-between text-xs font-mono"
+      {/* First-Sight 4-Card Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        <div className="rounded-2xl bg-[#6d25da]/[0.06] dark:bg-[#6d25da]/15 ring-1 ring-[#6d25da]/20 dark:ring-[#8b51e1]/30 p-4 space-y-1">
+          <div className="text-xs font-semibold text-[#581eae] dark:text-[#c5a8f0]">
+            Active Client Rate
+          </div>
+          <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-white">
+            {summary.latestRate
+              ? `$${summary.latestRate.hourlyRate}/hr`
+              : 'Not set'}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-4 space-y-1">
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Total Billed
+          </div>
+          <div className="text-2xl font-bold font-mono text-zinc-900 dark:text-white">
+            ${summary.totalInvoiced.toFixed(2)}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-4 space-y-1">
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Draft Invoices
+          </div>
+          <div className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400">
+            {summary.draftCount}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-4 space-y-1">
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Locked Invoices
+          </div>
+          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+            {summary.lockedCount}
+          </div>
+        </div>
+      </div>
+
+      {/* Main 2-Column Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (5 cols): Client Rates + Rounding Rules */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Client Rate Cards */}
+          <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+                Client Rate Cards
+              </h3>
+              {canManageRates && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddRateForm((v) => !v)}
+                  className="px-3 py-1 rounded-lg bg-[#6d25da]/10 hover:bg-[#6d25da]/15 text-[#581eae] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] text-xs font-semibold transition cursor-pointer"
+                >
+                  {showAddRateForm ? 'Close' : '+ New Rate'}
+                </button>
+              )}
+            </div>
+
+            {showAddRateForm && canManageRates && (
+              <form
+                onSubmit={handleAddRateVersion}
+                className="dp-view-enter rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-3.5 space-y-2.5 text-xs"
               >
-                <div>
-                  <div className="text-zinc-900 dark:text-white font-semibold">{rv.label}</div>
-                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    Effective: {rv.effectiveFrom} → {rv.effectiveTo ?? 'Open-Ended'}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                      Rate Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Q1 2027 Rate"
+                      value={rateLabel}
+                      onChange={(e) => setRateLabel(e.target.value)}
+                      className="w-full rounded-xl px-3 py-2"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                      Hourly Rate ({activeTenant.currency})
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={rateHourly}
+                      onChange={(e) => setRateHourly(Number(e.target.value))}
+                      className="w-full rounded-xl px-3 py-2 font-mono"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={rateEffectiveFrom}
+                      onChange={(e) => setRateEffectiveFrom(e.target.value)}
+                      className="w-full rounded-xl px-3 py-2 font-mono"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                      End Date (Optional)
+                    </label>
+                    <input
+                      type="date"
+                      value={rateEffectiveTo}
+                      onChange={(e) => setRateEffectiveTo(e.target.value)}
+                      className="w-full rounded-xl px-3 py-2 font-mono"
+                    />
                   </div>
                 </div>
-                <span className="text-sm font-bold text-[#6d25da] dark:text-[#a87ce9]">
-                  ${rv.hourlyRate}/hr {rv.currency}
-                </span>
-              </div>
-            ))}
-          </div>
+                <button
+                  type="submit"
+                  className="w-full py-2 rounded-xl bg-[#702fe3] hover:bg-[#5f21cc] text-white font-semibold cursor-pointer transition shadow-xs"
+                >
+                  Save Rate
+                </button>
+              </form>
+            )}
 
-          <form
-            onSubmit={handleAddRateVersion}
-            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-3 space-y-2 text-xs"
-          >
-            <div className="font-semibold text-zinc-800 dark:text-zinc-200">
-              + Add Rate Version
+            <div className="space-y-2">
+              {contractPolicy.rateVersions.length === 0 ? (
+                <p className="text-xs text-zinc-400 py-2">No client rates added yet.</p>
+              ) : (
+                contractPolicy.rateVersions.map((rv) => (
+                  <div
+                    key={rv.id}
+                    className="rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] px-3.5 py-3 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold text-zinc-900 dark:text-white truncate">
+                        {rv.label}
+                      </div>
+                      <div className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+                        {rv.effectiveFrom} → {rv.effectiveTo ?? 'Ongoing'}
+                      </div>
+                    </div>
+                    <span className="text-sm font-bold font-mono text-[#6d25da] dark:text-[#c5a8f0] shrink-0">
+                      ${rv.hourlyRate}/hr
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Label"
-                value={rateLabel}
-                onChange={(e) => setRateLabel(e.target.value)}
-                className="rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white"
-                required
-              />
-              <input
-                type="number"
-                min={1}
-                placeholder="Hourly Rate"
-                value={rateHourly}
-                onChange={(e) => setRateHourly(Number(e.target.value))}
-                className="rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
-                required
-              />
-              <input
-                type="date"
-                value={rateEffectiveFrom}
-                onChange={(e) => setRateEffectiveFrom(e.target.value)}
-                className="rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
-                required
-              />
-              <input
-                type="date"
-                placeholder="End date"
-                value={rateEffectiveTo}
-                onChange={(e) => setRateEffectiveTo(e.target.value)}
-                className="rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white font-semibold cursor-pointer shadow-xs transition"
-            >
-              Add Rate Version
-            </button>
-          </form>
+          </section>
 
-          <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-2.5 text-xs">
-            <div className="font-semibold text-zinc-700 dark:text-zinc-300">
-              Invoice & Rounding Settings
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          {/* Billing Rules */}
+          <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-3.5 text-xs">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+              Rounding &amp; Break Rules
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">
-                  Time Rounding Rule
+                <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                  Time Rounding
                 </label>
                 <select
                   value={activeTenant.roundingRule}
+                  disabled={!canManageRates}
                   onChange={(e) =>
                     updateTenantSettings({
                       roundingRule: e.target.value as RoundingRule,
                     })
                   }
-                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1.5 text-zinc-900 dark:text-white"
+                  className="w-full rounded-xl px-3 py-2"
                 >
-                  <option value="none">Exact Minutes (none)</option>
-                  <option value="nearest_5m">Nearest 5 Minutes</option>
-                  <option value="nearest_6m">Nearest 6 Minutes (0.1h)</option>
-                  <option value="nearest_15m">Nearest 15 Minutes (0.25h)</option>
+                  <option value="none">Exact Minutes</option>
+                  <option value="nearest_5m">Nearest 5 mins</option>
+                  <option value="nearest_6m">Nearest 6 mins (0.1h)</option>
+                  <option value="nearest_15m">Nearest 15 mins</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">
-                  Paid Break / Day (Mins)
+                <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                  Paid Break / Day (mins)
                 </label>
                 <input
                   type="number"
                   min={0}
                   max={60}
+                  disabled={!canManageRates}
                   value={activeTenant.paidBreakMinutesPerDay}
                   onChange={(e) =>
                     updateTenantSettings({
                       paidBreakMinutesPerDay: Number(e.target.value),
                     })
                   }
-                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
+                  className="w-full rounded-xl px-3 py-2 font-mono"
                 />
               </div>
             </div>
-          </div>
+          </section>
         </div>
 
-        <div className="lg:col-span-7 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#6d25da] dark:text-[#a87ce9]">
-                Invoices & Export
-              </span>
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-white mt-0.5">
-                Invoice Ledger
-              </h3>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-3.5 text-xs">
-            <div className="flex-1 min-w-48">
-              <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">
-                Project
-              </label>
-              <select
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code} - {p.name} ({p.clientName})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="w-28">
-              <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">
-                Tax (%)
-              </label>
-              <input
-                type="number"
-                step={0.5}
-                min={0}
-                max={30}
-                value={taxPercent}
-                onChange={(e) => setTaxPercent(Number(e.target.value))}
-                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white font-mono"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleGenerateInvoice}
-              className="px-4 py-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] font-semibold text-white cursor-pointer shadow-xs transition"
-            >
-              + Generate Invoice Draft
-            </button>
-          </div>
-
-          {invoices.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 p-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
-              No invoice drafts generated yet.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {invoices.map((inv) => (
-                <div
-                  key={inv.id}
-                  className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/90 p-4 space-y-3 text-xs"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0] mr-2">
-                        {inv.invoiceNumber}
-                      </span>
-                      <span className="font-semibold text-zinc-900 dark:text-white">
-                        {inv.clientName} - {inv.projectName}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${inv.status === 'finalized_locked'
-                            ? 'bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
-                            : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700'
-                          }`}
-                      >
-                        {inv.status === 'finalized_locked'
-                          ? '🔒 Finalized & Period Locked'
-                          : 'Draft Invoice'}
-                      </span>
-                      {inv.status === 'draft' && (
-                        <button
-                          type="button"
-                          onClick={() => lockInvoice(inv.id)}
-                          className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold cursor-pointer"
-                        >
-                          Finalize & Lock
-                        </button>
-                      )}
-                      {inv.status === 'finalized_locked' && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCreditInvoiceId(
-                              creditInvoiceId === inv.id ? null : inv.id
-                            )
-                          }
-                          className="px-2.5 py-1 rounded border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-semibold cursor-pointer"
-                        >
-                          Credit / Rebill
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => window.print()}
-                        className="px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-medium cursor-pointer"
-                      >
-                        🖨 Print / PDF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleExportCsv(inv.id)}
-                        className="px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-medium cursor-pointer"
-                      >
-                        ⬇ Export CSV
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="divide-y divide-zinc-200 dark:divide-zinc-800/70 border-t border-b border-zinc-200 dark:border-zinc-800 py-1 font-mono text-[11px]">
-                    {inv.lines.map((line) => (
-                      <div
-                        key={line.lineId}
-                        className="py-1.5 flex items-center justify-between text-zinc-700 dark:text-zinc-300"
-                      >
-                        <span>
-                          {line.workDate} • {line.taskCode}: {line.description}
-                        </span>
-                        <span>
-                          {line.approvedMinutes}m @ ${line.hourlyRate}/hr ={' '}
-                          <strong className="text-zinc-900 dark:text-white">
-                            ${line.amount.toFixed(2)}
-                          </strong>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between font-mono text-xs pt-1">
-                    <span className="text-zinc-500 dark:text-zinc-400">
-                      Total Approved: {inv.totalApprovedMinutes} mins
-                    </span>
-                    <div className="space-x-4">
-                      <span className="text-zinc-500 dark:text-zinc-400">
-                        Subtotal: ${inv.subtotalAmount.toFixed(2)}
-                      </span>
-                      <span className="text-zinc-500 dark:text-zinc-400">
-                        Tax ({inv.taxPercent}%): ${inv.taxAmount.toFixed(2)}
-                      </span>
-                      <span className="text-zinc-800 dark:text-zinc-200 font-bold text-sm">
-                        Total: ${inv.totalAmount.toFixed(2)} {inv.currency}
-                      </span>
-                    </div>
-                  </div>
-
-                  {creditInvoiceId === inv.id && (
-                    <div className="rounded-lg border border-amber-200 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/25 p-3 space-y-2 text-xs">
-                      <div className="font-semibold text-amber-800 dark:text-amber-200">
-                        Issue Credit Note
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={creditAmount}
-                          onChange={(e) => setCreditAmount(Number(e.target.value))}
-                          placeholder="Amount"
-                          className="rounded border border-amber-200 dark:border-amber-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white font-mono"
-                        />
-                        <input
-                          type="text"
-                          value={creditReason}
-                          onChange={(e) => setCreditReason(e.target.value)}
-                          placeholder="Reason"
-                          className="sm:col-span-2 rounded border border-amber-200 dark:border-amber-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-zinc-900 dark:text-white"
-                        />
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCreditInvoiceId(null)}
-                          className="px-3 py-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleIssueCredit(inv.id)}
-                          className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold cursor-pointer"
-                        >
-                          Confirm Credit Adjustment
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6">
-
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                Audit Log
-              </span>
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-white mt-0.5">
-                Security & Governance Audit Log
-              </h3>
-            </div>
-            <span className="font-mono text-xs px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-              {auditLogs.length} entries
+        {/* Right Column (7 cols): Create Invoice + Invoice List */}
+        <section className="lg:col-span-7 rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-5">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+              Client Invoices
+            </h3>
+            <span className="text-xs font-mono text-zinc-400">
+              {invoices.length} {invoices.length === 1 ? 'invoice' : 'invoices'}
             </span>
           </div>
 
-          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-            {auditLogs.map((entry) => (
-              <div
-                key={entry.id}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/90 p-3 text-xs space-y-1"
-              >
-                <div className="flex items-center justify-between font-mono text-[11px]">
-                  <span className="font-bold text-[#6d25da] dark:text-[#c5a8f0]">
-                    {entry.actionType}
-                  </span>
-                  <span className="text-slate-500">{entry.timestamp}</span>
-                </div>
-                <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
-                  Actor: <span className="text-zinc-800 dark:text-zinc-200">{entry.actorName}</span> ({entry.actorRole}) • Target:{' '}
-                  <span className="text-zinc-800 dark:text-zinc-200">{entry.targetEntity}</span>
-                </div>
-                <p className="text-zinc-700 dark:text-zinc-300 text-xs">{entry.reason}</p>
+          {canCreateInvoice && (
+            <div className="flex flex-wrap items-end gap-3 rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] p-4 text-xs">
+              <div className="flex-1 min-w-44">
+                <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                  Project
+                </label>
+                <select
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="w-full rounded-xl px-3 py-2"
+                >
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.code} · {p.name} ({p.clientName})
+                    </option>
+                  ))}
+                </select>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="w-24">
+                <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
+                  Tax (%)
+                </label>
+                <input
+                  type="number"
+                  step={0.5}
+                  min={0}
+                  max={30}
+                  value={taxPercent}
+                  onChange={(e) => setTaxPercent(Number(e.target.value))}
+                  className="w-full rounded-xl px-3 py-2 font-mono"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateInvoice}
+                className="px-4 py-2 rounded-xl bg-[#702fe3] hover:bg-[#5f21cc] font-semibold text-white cursor-pointer shadow-xs transition shrink-0"
+              >
+                + Create Invoice
+              </button>
+            </div>
+          )}
+
+          {invoices.length === 0 ? (
+            <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-8 text-center text-xs text-zinc-500 dark:text-zinc-400">
+              No client invoices created yet.
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {invoices.map((inv) => {
+                const statusBadge =
+                  inv.status === 'finalized_locked'
+                    ? {
+                        label: '🔒 Locked',
+                        cls: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
+                      }
+                    : inv.status === 'credited_adjusted'
+                      ? {
+                          label: 'Credit Note',
+                          cls: 'bg-sky-500/12 text-sky-700 dark:text-sky-300',
+                        }
+                      : {
+                          label: 'Draft',
+                          cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+                        }
+
+                return (
+                  <article
+                    key={inv.id}
+                    className="rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] p-4 space-y-3 text-xs"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">
+                          {inv.invoiceNumber}
+                        </span>
+                        <span className="font-bold text-zinc-900 dark:text-white">
+                          {inv.clientName} · {inv.projectName}
+                        </span>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${statusBadge.cls}`}
+                        >
+                          {statusBadge.label}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {inv.status === 'draft' && canLockInvoice && (
+                          <button
+                            type="button"
+                            onClick={() => lockInvoice(inv.id)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold cursor-pointer transition"
+                          >
+                            Finalize &amp; Lock
+                          </button>
+                        )}
+                        {inv.status === 'finalized_locked' && canIssueCredit && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCreditInvoiceId(
+                                creditInvoiceId === inv.id ? null : inv.id
+                              )
+                            }
+                            className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-200 font-semibold cursor-pointer transition"
+                          >
+                            Issue Credit
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => window.print()}
+                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-white/[0.07] hover:bg-zinc-100 dark:hover:bg-white/[0.12] text-zinc-700 dark:text-zinc-200 font-medium cursor-pointer transition"
+                        >
+                          Print / PDF
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportCsv(inv.id)}
+                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-white/[0.07] hover:bg-zinc-100 dark:hover:bg-white/[0.12] text-zinc-700 dark:text-zinc-200 font-medium cursor-pointer transition"
+                        >
+                          CSV
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-zinc-200/70 dark:divide-white/[0.06] border-t border-b border-zinc-200/70 dark:border-white/[0.06] py-1 font-mono text-[11px]">
+                      {inv.lines.map((line) => (
+                        <div
+                          key={line.lineId}
+                          className="py-1.5 flex items-center justify-between gap-2 text-zinc-700 dark:text-zinc-300"
+                        >
+                          <span className="truncate">
+                            {line.workDate} · {line.taskCode}: {line.description}
+                          </span>
+                          <span className="shrink-0">
+                            {formatDuration(line.approvedMinutes)} @ ${line.hourlyRate}/hr ={' '}
+                            <strong className="text-zinc-900 dark:text-white">
+                              ${line.amount.toFixed(2)}
+                            </strong>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
+                      <span className="text-zinc-500 dark:text-zinc-400">
+                        Approved: {formatDuration(inv.totalApprovedMinutes)}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-zinc-500 dark:text-zinc-400">
+                          Subtotal: ${inv.subtotalAmount.toFixed(2)}
+                        </span>
+                        <span className="text-zinc-500 dark:text-zinc-400">
+                          Tax ({inv.taxPercent}%): ${inv.taxAmount.toFixed(2)}
+                        </span>
+                        <span className="font-bold text-sm text-zinc-900 dark:text-white">
+                          ${inv.totalAmount.toFixed(2)} {inv.currency}
+                        </span>
+                      </div>
+                    </div>
+
+                    {creditInvoiceId === inv.id && (
+                      <div className="dp-view-enter rounded-xl bg-amber-500/10 ring-1 ring-amber-500/25 p-3.5 space-y-2.5 text-xs">
+                        <div className="font-bold text-amber-800 dark:text-amber-200">
+                          Issue Credit Note
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={creditAmount}
+                            onChange={(e) => setCreditAmount(Number(e.target.value))}
+                            placeholder="Amount"
+                            className="rounded-xl px-3 py-2 font-mono"
+                          />
+                          <input
+                            type="text"
+                            value={creditReason}
+                            onChange={(e) => setCreditReason(e.target.value)}
+                            placeholder="Reason for credit adjustment"
+                            className="sm:col-span-2 rounded-xl px-3 py-2"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCreditInvoiceId(null)}
+                            className="px-3 py-1.5 rounded-lg bg-white dark:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 font-semibold cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleIssueCredit(inv.id)}
+                            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold cursor-pointer"
+                          >
+                            Confirm Credit
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )
 }
-

@@ -27,7 +27,7 @@ const QUICK_SUGGESTIONS: {
 ]
 
 export function PrivacyAuditView() {
-  const { activeTenant, activeUser } = usePhase1Store()
+  const { activeTenant, activeUser, auditLogs } = usePhase1Store()
   const {
     privacyExclusions,
     privacyPauseActive,
@@ -37,6 +37,8 @@ export function PrivacyAuditView() {
     privacyAuditBatches,
   } = usePhase2Store()
 
+  const [activeTab, setActiveTab] = useState<'privacy' | 'audit'>('privacy')
+  const [auditSearch, setAuditSearch] = useState('')
   const [pattern, setPattern] = useState('')
   const [exclusionType, setExclusionType] =
     useState<LocalPrivacyExclusionItem['exclusionType']>('app_identifier')
@@ -71,6 +73,18 @@ export function PrivacyAuditView() {
     () => new Set(privacyExclusions.map((e) => e.pattern.toLowerCase())),
     [privacyExclusions]
   )
+
+  const filteredAuditLogs = useMemo(() => {
+    const q = auditSearch.trim().toLowerCase()
+    if (!q) return auditLogs
+    return auditLogs.filter(
+      (entry) =>
+        entry.actionType.toLowerCase().includes(q) ||
+        entry.actorName.toLowerCase().includes(q) ||
+        entry.targetEntity.toLowerCase().includes(q) ||
+        entry.reason.toLowerCase().includes(q)
+    )
+  }, [auditLogs, auditSearch])
 
   function handleAddExclusion(e: React.FormEvent) {
     e.preventDefault()
@@ -124,10 +138,34 @@ export function PrivacyAuditView() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 flex flex-wrap items-center gap-3">
           <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">
-            Privacy Controls &amp; Data Log
+            Privacy &amp; Audit
           </h2>
+          <div className="inline-flex rounded-xl bg-zinc-100 dark:bg-white/[0.05] p-1 text-xs gap-0.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('privacy')}
+              className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                activeTab === 'privacy'
+                  ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              Privacy &amp; Sync
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('audit')}
+              className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
+                activeTab === 'audit'
+                  ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              Audit Log ({auditLogs.length})
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs shrink-0">
@@ -216,7 +254,59 @@ export function PrivacyAuditView() {
         </div>
       </div>
 
-      {/* Main Split: Never-Track List (5 cols) + Sent Data Log (7 cols) */}
+      {/* Main Split: Privacy Controls & Sync History OR Workspace Audit Log */}
+      {activeTab === 'audit' ? (
+        <section className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+              Workspace Audit Log ({filteredAuditLogs.length})
+            </h3>
+            <input
+              type="text"
+              placeholder="Search action, person, details..."
+              value={auditSearch}
+              onChange={(e) => setAuditSearch(e.target.value)}
+              className="w-64 rounded-xl px-3 py-1.5 text-xs"
+            />
+          </div>
+
+          {filteredAuditLogs.length === 0 ? (
+            <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-8 text-center text-xs text-zinc-500 dark:text-zinc-400">
+              No audit entries found.
+            </div>
+          ) : (
+            <div className="space-y-2.5 max-h-[540px] overflow-y-auto pr-1">
+              {filteredAuditLogs.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-xl bg-zinc-50/90 dark:bg-white/[0.03] px-4 py-3 text-xs space-y-1"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-[#581eae] dark:text-[#c5a8f0] capitalize">
+                        {entry.actionType.toLowerCase().replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[11px] font-mono text-zinc-400">
+                        {entry.targetEntity}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[11px] text-zinc-400">
+                      {entry.timestamp}
+                    </span>
+                  </div>
+                  <div className="text-zinc-700 dark:text-zinc-300">
+                    {entry.reason}
+                  </div>
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    By <strong className="text-zinc-800 dark:text-zinc-200">{entry.actorName}</strong> (
+                    {entry.actorRole.replace(/_/g, ' ')})
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left: Never-Track List */}
         <section className="lg:col-span-5 rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] p-5 space-y-4">
@@ -429,6 +519,7 @@ export function PrivacyAuditView() {
           )}
         </section>
       </div>
+      )}
     </div>
   )
 }
