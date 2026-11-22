@@ -61,13 +61,13 @@ import {
 } from '@/lib/prismaApiClient'
 
 export const DEFAULT_WHITE_LABEL_BRANDING: WhiteLabelBrandingConfig = {
-  agencyBrandName: 'DevProof Client Portal',
-  logoText: 'DP',
-  accentColorHex: '#4f46e5',
-  customDomain: 'portal.agency-example.dev',
-  supportEmail: 'delivery@agency-example.dev',
+  agencyBrandName: 'TikTrack Workspace',
+  logoText: 'TT',
+  accentColorHex: '#702fe3',
+  customDomain: 'workspace.agency-example.dev',
+  supportEmail: 'support@agency-example.dev',
   portalWelcomeMessage:
-    'Read-only view of approved project hours, verified deliverables, and finalized client invoices.',
+    'Verified project hours, deliverables, and approved work summaries.',
   hideDevProofWatermark: false,
 }
 
@@ -334,8 +334,8 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     const raw = (activeTenant.brandingConfig ?? {}) as Partial<WhiteLabelBrandingConfig>
     return {
       ...DEFAULT_WHITE_LABEL_BRANDING,
-      agencyBrandName: raw.agencyBrandName || `${activeTenant.name || 'DevProof'} Client Portal`,
-      logoText: raw.logoText || (activeTenant.name ? activeTenant.name.slice(0, 2).toUpperCase() : 'DP'),
+      agencyBrandName: raw.agencyBrandName || `${activeTenant.name || 'TikTrack'} Workspace`,
+      logoText: raw.logoText || (activeTenant.name ? activeTenant.name.slice(0, 2).toUpperCase() : 'TT'),
       accentColorHex: raw.accentColorHex || DEFAULT_WHITE_LABEL_BRANDING.accentColorHex,
       customDomain: raw.customDomain || DEFAULT_WHITE_LABEL_BRANDING.customDomain,
       supportEmail: raw.supportEmail || DEFAULT_WHITE_LABEL_BRANDING.supportEmail,
@@ -410,7 +410,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
 
     return {
       ok: true,
-      message: `Subscription synced to ${input.planTier.toUpperCase()} (${input.billingCycle}) via ${input.billingProvider}. Issued SaaS invoice ${saasInvoice.invoiceNumber} (separate from client work invoices).`,
+      message: `Switched plan to ${input.planTier.toUpperCase()} (${input.billingCycle}) via ${input.billingProvider}. Receipt ${saasInvoice.invoiceNumber} issued.`,
     }
   }
 
@@ -422,7 +422,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     if (!spec.whiteLabelEnabled) {
       return {
         ok: false,
-        message: `White-label agency branding requires Agency or Enterprise plan (currently ${subscription.planTier}).`,
+        message: `Custom workspace branding requires the Agency or Enterprise plan (currently on ${subscription.planTier}).`,
       }
     }
     setTenantBrandingState(activeTenant.id, config as unknown as Record<string, unknown>)
@@ -435,7 +435,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     }
     return {
       ok: true,
-      message: `Saved agency portal branding for "${config.agencyBrandName}" (strict client_reviewer read-only boundary preserved).`,
+      message: `Workspace branding saved for "${config.agencyBrandName}".`,
     }
   }
 
@@ -472,7 +472,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     return {
       ok: true,
       plaintextKey,
-      message: `Created scoped API key "${record.name}" (${record.keyPrefix}...). Copy the secret now-only its SHA-256 hash is stored.`,
+      message: `API key "${record.name}" created (${record.keyPrefix}...). Copy the key now — it will not be shown again.`,
     }
   }
 
@@ -605,7 +605,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     return {
       ok: true,
       signingSecret: secret,
-      message: `Registered outbound webhook "${endpoint.name}" with HMAC-SHA256 signing secret (${prefix}...).`,
+      message: `Webhook "${endpoint.name}" added. Copy the signing secret now.`,
     }
   }
 
@@ -647,7 +647,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     return {
       ok: true,
       signatureHeader: signed.signatureHeader,
-      message: `Dispatched signed ${input.eventType} event to ${endpoint.targetUrl}.`,
+      message: `Test event (${input.eventType}) delivered to ${endpoint.targetUrl}.`,
     }
   }
 
@@ -735,13 +735,19 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
 
     return {
       ok: true,
-      message: `Associated calendar meeting "${sanitized.meetingTitleSanitized}" (${sanitized.durationMinutes}m) with permission scope ${sanitized.syncPermissionScope}.`,
+      message: `Logged calendar meeting "${sanitized.meetingTitleSanitized}" (${sanitized.durationMinutes} min).`,
     }
   }
 
   function importExternalPmIssue(
     issue: ExternalPmTicketDraft & { projectId: string }
   ): { ok: boolean; message: string } {
+    if (!issue.projectId) {
+      return {
+        ok: false,
+        message: 'Create a project in Projects & Tasks before importing external tasks.',
+      }
+    }
     const mapped = mapExternalPmIssueToTaskDraft(issue)
     createTask({
       projectId: issue.projectId,
@@ -758,7 +764,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     })
     return {
       ok: true,
-      message: `Imported ${issue.provider.toUpperCase()} issue ${mapped.code} into DevProof tasks.`,
+      message: `Imported ${issue.provider.toUpperCase()} task ${mapped.code} into Projects & Tasks.`,
     }
   }
 
@@ -805,7 +811,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     return {
       ok: true,
       report,
-      message: `Generated signed portable work report (${report.payloadDigestSha256.slice(0, 12)}...) scoped strictly to your approved sessions.`,
+      message: `Signed work report generated (${report.payloadDigestSha256.slice(0, 12)}...).`,
     }
   }
 
