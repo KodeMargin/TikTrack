@@ -82,9 +82,9 @@ Choose either method:
   3. Set **Use workflow from** to `main`.
   4. Enter **Release version tag** (e.g., `v0.2.1`).
   5. Choose **Platforms to build**:
-     - `windows-linux` *(default, recommended)* — builds Windows + Linux only (~25–30 billed min instead of ~300 min).
-     - `all` — builds macOS (ARM64 + Intel), Windows, and Linux on GitHub runners.
-     - `macos-arm64`, `macos-all`, `windows`, or `linux` — build specific platforms only.
+     - `windows-linux` *(default, recommended)* - builds Windows + Linux only (~25–30 billed min instead of ~300 min).
+     - `all` - builds macOS (ARM64 + Intel), Windows, and Linux on GitHub runners.
+     - `macos-arm64`, `macos-all`, `windows`, or `linux` - build specific platforms only.
   6. Click **Run workflow**.
 
 - **Option B - Push a Git Tag (runs `windows-linux` by default):**
@@ -94,7 +94,7 @@ Choose either method:
   ```
 
 ### Step 4: Build, Sign & Publish macOS Locally (0 GitHub Actions Minutes)
-Once the `windows-linux` workflow creates the release on `KodeMargin/TikTrack-Release` (or even before it runs), build and upload macOS directly from your Mac using `scripts/release-macos-local.sh` — **no `gh` CLI required**.
+Once the `windows-linux` workflow creates the release on `KodeMargin/TikTrack-Release` (or even before it runs), build and upload macOS directly from your Mac using `scripts/release-macos-local.sh` - **no `gh` CLI required**.
 
 #### One-Time Mac Setup
 1. **Install Rust** (if `cargo` is not installed yet):
@@ -115,7 +115,7 @@ Once the `windows-linux` workflow creates the release on `KodeMargin/TikTrack-Re
 ```bash
 cd TikTrack
 
-# Both Apple Silicon (ARM64) and Intel (x86_64) — default, version auto-read from tauri.conf.json
+# Both Apple Silicon (ARM64) and Intel (x86_64) - default, version auto-read from tauri.conf.json
 npm run release:macos
 
 # Explicit tag + both architectures
@@ -138,7 +138,7 @@ What `npm run release:macos` does automatically:
 Once both GitHub Actions (`windows-linux`) and local macOS publish finish:
 1. Open `https://github.com/KodeMargin/TikTrack-Release/releases`.
 2. Confirm the release contains installers for all platforms (`.dmg`, `.exe`/`.msi`, `.AppImage`/`.deb`) **and** `latest.json` with all platform entries.
-3. Open an already-installed TikTrack Desktop Agent (or click the download icon in the header) — an **Update v0.2.1 available** banner with **Update & Restart** will appear automatically.
+3. Open an already-installed TikTrack Desktop Agent (or click the download icon in the header) - an **Update v0.2.1 available** banner with **Update & Restart** will appear automatically.
 
 ---
 

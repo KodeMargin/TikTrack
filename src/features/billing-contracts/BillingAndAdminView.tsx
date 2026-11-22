@@ -178,7 +178,7 @@ export function BillingAndAdminView() {
       </div>
 
       {billingTab === 'accounting' ? (
-        <BudgetAndAccountingPanel onFeedback={setBanner} />
+        <BudgetAndAccountingPanel />
       ) : (
         <div className="space-y-6">
       {/* First-Sight 4-Card Summary */}

@@ -205,13 +205,13 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
           id: a.id,
           sourceType:
             a.sourceType === 'github_commit' ||
-            a.sourceType === 'github_pr' ||
-            a.sourceType === 'github_review' ||
-            a.sourceType === 'github_ci' ||
-            a.sourceType === 'vscode_debug' ||
-            a.sourceType === 'vscode_test' ||
-            a.sourceType === 'vscode_workspace' ||
-            a.sourceType === 'session_note'
+              a.sourceType === 'github_pr' ||
+              a.sourceType === 'github_review' ||
+              a.sourceType === 'github_ci' ||
+              a.sourceType === 'vscode_debug' ||
+              a.sourceType === 'vscode_test' ||
+              a.sourceType === 'vscode_workspace' ||
+              a.sourceType === 'session_note'
               ? a.sourceType
               : ('session_note' as const),
           externalId: a.externalId,
@@ -500,12 +500,12 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
           tokensUsed: 0,
         }
         statusMessage = geminiRes?.configured === false
-          ? 'GEMINI_API_KEY not found in .env yet — generated using built-in template (0 tokens). Add GEMINI_API_KEY to .env and restart server to enable live Gemini.'
-          : `Gemini unavailable (${geminiRes?.error ?? 'network error'}) — fell back to built-in template.`
+          ? 'GEMINI_API_KEY not found in .env yet - generated using built-in template (0 tokens). Add GEMINI_API_KEY to .env and restart server to enable live Gemini.'
+          : `Gemini unavailable (${geminiRes?.error ?? 'network error'}) - fell back to built-in template.`
       }
     } else {
       statusMessage =
-        'AI Assistant is OFF — generated using built-in template (0 tokens).'
+        'AI Assistant is OFF - generated using built-in template (0 tokens).'
     }
 
     setAllAiGenerations((prev) => [generation, ...prev])
@@ -539,12 +539,12 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
       prev.map((g) =>
         g.id === id
           ? {
-              ...g,
-              status: 'edited_approved',
-              humanApprovedMarkdown: editedMarkdown,
-              approvedByName: activeUser.name,
-              approvedAt: new Date().toISOString(),
-            }
+            ...g,
+            status: 'edited_approved',
+            humanApprovedMarkdown: editedMarkdown,
+            approvedByName: activeUser.name,
+            approvedAt: new Date().toISOString(),
+          }
           : g
       )
     )
@@ -674,22 +674,22 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
       prev.map((d) =>
         d.id === input.disputeId
           ? {
-              ...d,
-              status: d.status === 'escalated' ? 'escalated' : nextStatus,
-              messages: [
-                ...d.messages,
-                {
-                  id: `dmsg-${Date.now()}`,
-                  authorUserId: activeUser.id,
-                  authorName: activeUser.name,
-                  authorRole: activeUser.role,
-                  messageType: isDeveloperReply ? 'developer_appeal' : 'reviewer_note',
-                  messageMarkdown: input.messageMarkdown.trim(),
-                  attachedArtifactIds: input.attachedArtifactIds ?? [],
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-            }
+            ...d,
+            status: d.status === 'escalated' ? 'escalated' : nextStatus,
+            messages: [
+              ...d.messages,
+              {
+                id: `dmsg-${Date.now()}`,
+                authorUserId: activeUser.id,
+                authorName: activeUser.name,
+                authorRole: activeUser.role,
+                messageType: isDeveloperReply ? 'developer_appeal' : 'reviewer_note',
+                messageMarkdown: input.messageMarkdown.trim(),
+                attachedArtifactIds: input.attachedArtifactIds ?? [],
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          }
           : d
       )
     )
@@ -738,25 +738,25 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
       prev.map((d) =>
         d.id === input.disputeId
           ? {
-              ...d,
-              status: 'escalated',
-              escalatedReviewerId: input.escalatedReviewerId,
-              escalatedReviewerName: secondReviewer?.name ?? 'Second Reviewer',
-              escalationReason: input.reason.trim(),
-              messages: [
-                ...d.messages,
-                {
-                  id: `dmsg-${Date.now()}`,
-                  authorUserId: activeUser.id,
-                  authorName: activeUser.name,
-                  authorRole: activeUser.role,
-                  messageType: 'escalation',
-                  messageMarkdown: `Escalated to independent second reviewer (${secondReviewer?.name ?? 'Reviewer'}): ${input.reason.trim()}`,
-                  attachedArtifactIds: [],
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-            }
+            ...d,
+            status: 'escalated',
+            escalatedReviewerId: input.escalatedReviewerId,
+            escalatedReviewerName: secondReviewer?.name ?? 'Second Reviewer',
+            escalationReason: input.reason.trim(),
+            messages: [
+              ...d.messages,
+              {
+                id: `dmsg-${Date.now()}`,
+                authorUserId: activeUser.id,
+                authorName: activeUser.name,
+                authorRole: activeUser.role,
+                messageType: 'escalation',
+                messageMarkdown: `Escalated to independent second reviewer (${secondReviewer?.name ?? 'Reviewer'}): ${input.reason.trim()}`,
+                attachedArtifactIds: [],
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          }
           : d
       )
     )
@@ -800,28 +800,28 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
       prev.map((d) =>
         d.id === input.disputeId
           ? {
-              ...d,
-              status: input.resolutionStatus,
-              adjustedApprovedMinutes: input.adjustedApprovedMinutes,
-              resolutionSummary: input.resolutionSummary.trim(),
-              creditInvoiceId: lineAdjustRes.createdCreditInvoiceId,
-              resolvedAt: new Date().toISOString(),
-              messages: [
-                ...d.messages,
-                {
-                  id: `dmsg-${Date.now()}`,
-                  authorUserId: activeUser.id,
-                  authorName: activeUser.name,
-                  authorRole: activeUser.role,
-                  messageType: 'resolution',
-                  messageMarkdown: `${input.resolutionStatus.toUpperCase()}: ${input.resolutionSummary.trim()}`,
-                  attachedArtifactIds: [],
-                  beforeMinutes: d.disputedMinutes,
-                  afterMinutes: input.adjustedApprovedMinutes,
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-            }
+            ...d,
+            status: input.resolutionStatus,
+            adjustedApprovedMinutes: input.adjustedApprovedMinutes,
+            resolutionSummary: input.resolutionSummary.trim(),
+            creditInvoiceId: lineAdjustRes.createdCreditInvoiceId,
+            resolvedAt: new Date().toISOString(),
+            messages: [
+              ...d.messages,
+              {
+                id: `dmsg-${Date.now()}`,
+                authorUserId: activeUser.id,
+                authorName: activeUser.name,
+                authorRole: activeUser.role,
+                messageType: 'resolution',
+                messageMarkdown: `${input.resolutionStatus.toUpperCase()}: ${input.resolutionSummary.trim()}`,
+                attachedArtifactIds: [],
+                beforeMinutes: d.disputedMinutes,
+                afterMinutes: input.adjustedApprovedMinutes,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          }
           : d
       )
     )

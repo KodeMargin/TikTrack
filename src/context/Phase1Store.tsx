@@ -1091,8 +1091,8 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     if (isSuperAdminSession) {
       const ownTenantMember = sessionUserEmail
         ? tenantMembers.find(
-            (m) => m.email.toLowerCase().trim() === sessionUserEmail
-          )
+          (m) => m.email.toLowerCase().trim() === sessionUserEmail
+        )
         : undefined
       return (
         ownTenantMember ??
@@ -1594,7 +1594,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       ok: true,
       emailSent: false,
       temporaryPassword,
-      message: `Invited ${name} (${role}) locally (database offline — email not dispatched).`,
+      message: `Invited ${name} (${role}) locally (database offline - email not dispatched).`,
     }
   }
 
@@ -3088,24 +3088,24 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     const cleanedBank: DeveloperBankDetails | undefined =
       input.payoutMethod === 'bank_transfer' && input.bankDetails
         ? {
-            bankName: input.bankDetails.bankName.trim(),
-            branchName: input.bankDetails.branchName?.trim() || undefined,
-            accountHolderName: input.bankDetails.accountHolderName.trim(),
-            accountNumber: input.bankDetails.accountNumber.trim(),
-            swiftOrRoutingCode: input.bankDetails.swiftOrRoutingCode?.trim() || undefined,
-          }
+          bankName: input.bankDetails.bankName.trim(),
+          branchName: input.bankDetails.branchName?.trim() || undefined,
+          accountHolderName: input.bankDetails.accountHolderName.trim(),
+          accountNumber: input.bankDetails.accountNumber.trim(),
+          swiftOrRoutingCode: input.bankDetails.swiftOrRoutingCode?.trim() || undefined,
+        }
         : undefined
 
     const derivedSummary = cleanedBank
       ? [
-          cleanedBank.bankName,
-          cleanedBank.branchName,
-          cleanedBank.accountNumber
-            ? `****${cleanedBank.accountNumber.slice(-4)}`
-            : '',
-        ]
-          .filter(Boolean)
-          .join(' · ')
+        cleanedBank.bankName,
+        cleanedBank.branchName,
+        cleanedBank.accountNumber
+          ? `****${cleanedBank.accountNumber.slice(-4)}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
       : input.accountSummary.trim()
 
     const nowIso = new Date().toISOString()
@@ -3269,10 +3269,10 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       prev.map((p) =>
         p.id === payoutId
           ? {
-              ...p,
-              status,
-              paidAt: status === 'paid' ? nowIso : p.paidAt,
-            }
+            ...p,
+            status,
+            paidAt: status === 'paid' ? nowIso : p.paidAt,
+          }
           : p
       )
     )

@@ -12,6 +12,7 @@
 
 import { prisma } from '../lib/prisma.ts'
 import { isValidUuid } from './prismaPhase1Handlers.ts'
+import { sanitizeSyncConfigForClient } from './integrations/integrationSecrets.ts'
 import type {
   BillingProvider,
   EcosystemConnectorCategory,
@@ -155,7 +156,7 @@ export async function handleBootstrapPhase4Data() {
         provider: c.provider as EcosystemConnectorProvider,
         displayName: c.displayName,
         status: c.status as 'connected' | 'paused' | 'disconnected',
-        syncConfig: (c.syncConfig ?? {}) as Record<string, string | number | boolean>,
+        syncConfig: sanitizeSyncConfigForClient(c.syncConfig),
         lastSyncedAt: c.lastSyncedAt ? c.lastSyncedAt.toISOString() : undefined,
         createdAt: c.createdAt.toISOString(),
       })),

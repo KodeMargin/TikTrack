@@ -49,11 +49,12 @@ import {
 import { computeProjectForecasts } from '@/lib/phase4/forecasting'
 import { generateSignedPortableWorkReport } from '@/lib/phase4/portableReport'
 import {
+  callRealPublicApiV1,
   checkoutSubscriptionViaPrisma,
   createApiKeyViaPrisma,
   createPortableReportViaPrisma,
   createWebhookEndpointViaPrisma,
-  dispatchWebhookDeliveryViaPrisma,
+  dispatchRealOutboundWebhookViaPrisma,
   revokeApiKeyViaPrisma,
   syncCalendarMeetingViaPrisma,
   updateBrandingViaPrisma,
@@ -122,6 +123,8 @@ interface Phase4StoreContextValue {
     displayName: string
     syncConfig?: Record<string, string | number | boolean>
   }) => { ok: boolean; message: string }
+  upsertRealConnectorState: (connector: EcosystemConnectorRecord) => void
+  removeRealConnectorState: (provider: string) => void
   syncCalendarMeeting: (input: {
     projectId: string
     taskId?: string
@@ -170,6 +173,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
   const [localEndpointSecrets, setLocalEndpointSecrets] = useState<Record<string, string>>({})
   const [localDeliveries, setLocalDeliveries] = useState<OutboundWebhookDeliveryRecord[]>([])
   const [localConnectors, setLocalConnectors] = useState<EcosystemConnectorRecord[]>([])
+  const [removedConnectorProviders, setRemovedConnectorProviders] = useState<string[]>([])
   const [localMeetings, setLocalMeetings] = useState<CalendarMeetingEventRecord[]>([])
   const [localPortableReports, setLocalPortableReports] = useState<PortableWorkReportRecord[]>([])
   const [apiCallBump, setApiCallBump] = useState(0)
@@ -250,13 +254,17 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
   const connectors = useMemo(() => {
     const map = new Map<string, EcosystemConnectorRecord>()
     for (const c of phase4Bootstrap?.connectors ?? []) {
-      if (c.tenantId === activeTenant.id) map.set(c.provider, c)
+      if (c.tenantId === activeTenant.id && !removedConnectorProviders.includes(c.provider)) {
+        map.set(c.provider, c)
+      }
     }
     for (const c of localConnectors) {
-      if (c.tenantId === activeTenant.id) map.set(c.provider, c)
+      if (c.tenantId === activeTenant.id && !removedConnectorProviders.includes(c.provider)) {
+        map.set(c.provider, c)
+      }
     }
     return Array.from(map.values())
-  }, [phase4Bootstrap, localConnectors, activeTenant.id])
+  }, [phase4Bootstrap, localConnectors, removedConnectorProviders, activeTenant.id])
 
   const calendarMeetings = useMemo(() => {
     const map = new Map<string, CalendarMeetingEventRecord>()
@@ -472,7 +480,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     return {
       ok: true,
       plaintextKey,
-      message: `API key "${record.name}" created (${record.keyPrefix}...). Copy the key now — it will not be shown again.`,
+      message: `API key "${record.name}" created (${record.keyPrefix}...). Copy the key now - it will not be shown again.`,
     }
   }
 
@@ -487,6 +495,12 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     bearerKey: string
     resource: 'projects' | 'tasks' | 'timesheets' | 'invoices'
   }) {
+    if (prismaStatus.connected) {
+      const liveRes = await callRealPublicApiV1(input)
+      if (liveRes.ok) setApiCallBump((n) => n + 1)
+      return liveRes
+    }
+
     const requiredScope: PublicApiScope =
       input.resource === 'tasks'
         ? 'tasks:read'
@@ -619,36 +633,74 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
       return { ok: false, message: 'Webhook endpoint not found.' }
     }
     const secret = localEndpointSecrets[endpoint.id] ?? endpoint.signingSecretPrefix
+    const payload = {
+      event: input.eventType,
+      timestamp: new Date().toISOString(),
+      tenantName: activeTenant.name,
+      triggeredBy: activeUser.name,
+      ...(input.payloadData ?? { test: true }),
+    }
+
+    if (prismaStatus.connected) {
+      const res = await dispatchRealOutboundWebhookViaPrisma({
+        tenantId: activeTenant.id,
+        endpointId: endpoint.id,
+        eventType: input.eventType,
+        payload,
+        signingSecret: secret,
+      })
+
+      const deliveryRecord: OutboundWebhookDeliveryRecord = {
+        id: res.id ?? `whdel-${crypto.randomUUID().slice(0, 8)}`,
+        tenantId: activeTenant.id,
+        endpointId: endpoint.id,
+        eventType: input.eventType,
+        eventId: crypto.randomUUID(),
+        signatureHeader: res.signatureHeader ?? '',
+        deliveryStatus: res.deliveryStatus ?? (res.ok ? 'delivered' : 'failed'),
+        httpStatus: res.httpStatus ?? 0,
+        attemptCount: 1,
+        responseSnippet: res.responseSnippet ?? res.error ?? '',
+        createdAt: new Date().toISOString(),
+      }
+      setLocalDeliveries((prev) => [deliveryRecord, ...prev])
+
+      return {
+        ok: res.ok,
+        signatureHeader: res.signatureHeader,
+        message:
+          res.message ??
+          res.error ??
+          (res.ok ? 'Webhook delivered.' : 'Webhook delivery failed.'),
+      }
+    }
+
     const signed = await createSignedOutboundWebhookDelivery({
       tenantId: activeTenant.id,
       endpoint,
       signingSecret: secret,
       eventType: input.eventType,
-      payloadData: input.payloadData ?? {
-        tenantName: activeTenant.name,
-        triggeredBy: activeUser.name,
-        sample: true,
-      },
+      payloadData: payload,
     })
-
     setLocalDeliveries((prev) => [signed.delivery, ...prev])
-    if (prismaStatus.connected) {
-      void dispatchWebhookDeliveryViaPrisma({
-        tenantId: activeTenant.id,
-        endpointId: endpoint.id,
-        eventType: input.eventType,
-        eventId: signed.delivery.eventId,
-        payload: signed.envelope,
-        signatureHeader: signed.signatureHeader,
-        responseSnippet: signed.delivery.responseSnippet ?? '202 Accepted',
-      })
-    }
-
     return {
       ok: true,
       signatureHeader: signed.signatureHeader,
-      message: `Test event (${input.eventType}) delivered to ${endpoint.targetUrl}.`,
+      message: `Test event (${input.eventType}) queued (offline mode).`,
     }
+  }
+
+  function upsertRealConnectorState(connector: EcosystemConnectorRecord) {
+    setRemovedConnectorProviders((prev) => prev.filter((p) => p !== connector.provider))
+    setLocalConnectors((prev) => [
+      connector,
+      ...prev.filter((c) => c.provider !== connector.provider),
+    ])
+  }
+
+  function removeRealConnectorState(provider: string) {
+    setRemovedConnectorProviders((prev) => (prev.includes(provider) ? prev : [...prev, provider]))
+    setLocalConnectors((prev) => prev.filter((c) => c.provider !== provider))
   }
 
   function toggleEcosystemConnector(input: {
@@ -838,6 +890,8 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
         createWebhookEndpoint,
         dispatchTestOutboundWebhook,
         toggleEcosystemConnector,
+        upsertRealConnectorState,
+        removeRealConnectorState,
         syncCalendarMeeting,
         importExternalPmIssue,
         generateDeveloperPortableReport,

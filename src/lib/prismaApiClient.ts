@@ -656,3 +656,193 @@ export const registerPermissionViaPrisma = (input: {
     input,
     'POST'
   )
+
+// -----------------------------------------------------------------------------
+// Real External Integrations (Git, PM, Chat, Live Webhooks, Calendar OAuth, Public REST API)
+// -----------------------------------------------------------------------------
+
+export interface RealExternalTaskItem {
+  id: string
+  provider: string
+  externalKey: string
+  title: string
+  status: string
+  estimateMinutes: number
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  url?: string
+  projectOrRepo?: string
+}
+
+export interface RealCalendarEventItem {
+  id: string
+  title: string
+  startedAtUtc: string
+  endedAtUtc: string
+  durationMinutes: number
+}
+
+export async function connectRealIntegrationViaPrisma(input: {
+  tenantId: string
+  provider: string
+  credentials: Record<string, string>
+  connectedBy?: string
+}): Promise<{ ok: boolean; connector?: EcosystemConnectorRecord; message?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/integrations/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as {
+      ok: boolean
+      connector?: EcosystemConnectorRecord
+      message?: string
+      error?: string
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function disconnectRealIntegrationViaPrisma(input: {
+  tenantId: string
+  provider: string
+}): Promise<{ ok: boolean; message?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/integrations/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as { ok: boolean; message?: string; error?: string }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function fetchRealIntegrationItemsViaPrisma(input: {
+  tenantId: string
+  provider: string
+}): Promise<{ ok: boolean; items: RealExternalTaskItem[]; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/integrations/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as { ok: boolean; items: RealExternalTaskItem[]; error?: string }
+  } catch (err) {
+    return { ok: false, items: [], error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function sendChatTestAlertViaPrisma(input: {
+  tenantId: string
+  provider: 'slack' | 'discord' | 'ms_teams'
+  message?: string
+}): Promise<{ ok: boolean; httpStatus?: number; message?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/integrations/chat-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as {
+      ok: boolean
+      httpStatus?: number
+      message?: string
+      error?: string
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function dispatchRealOutboundWebhookViaPrisma(input: {
+  tenantId: string
+  endpointId: string
+  eventType: string
+  eventId?: string
+  payload: Record<string, unknown>
+  signingSecret?: string
+}): Promise<{
+  ok: boolean
+  id?: string
+  httpStatus?: number
+  deliveryStatus?: 'delivered' | 'failed'
+  signatureHeader?: string
+  responseSnippet?: string
+  message?: string
+  error?: string
+}> {
+  try {
+    const res = await fetch('/api/prisma/integrations/webhook-dispatch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as {
+      ok: boolean
+      id?: string
+      httpStatus?: number
+      deliveryStatus?: 'delivered' | 'failed'
+      signatureHeader?: string
+      responseSnippet?: string
+      message?: string
+      error?: string
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function fetchCalendarOAuthStatusViaPrisma(): Promise<{
+  googleConfigured: boolean
+  microsoftConfigured: boolean
+}> {
+  try {
+    const res = await fetch('/api/prisma/integrations/oauth-status')
+    if (!res.ok) return { googleConfigured: false, microsoftConfigured: false }
+    return (await res.json()) as { googleConfigured: boolean; microsoftConfigured: boolean }
+  } catch {
+    return { googleConfigured: false, microsoftConfigured: false }
+  }
+}
+
+export async function fetchRealCalendarEventsViaPrisma(input: {
+  tenantId: string
+  provider: 'google_calendar' | 'outlook_calendar'
+}): Promise<{ ok: boolean; events: RealCalendarEventItem[]; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/integrations/calendar-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as { ok: boolean; events: RealCalendarEventItem[]; error?: string }
+  } catch (err) {
+    return { ok: false, events: [], error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function callRealPublicApiV1(input: {
+  bearerKey: string
+  resource: 'projects' | 'tasks' | 'timesheets' | 'invoices'
+}): Promise<{ statusCode: number; ok: boolean; payload: unknown }> {
+  try {
+    const res = await fetch(`/api/prisma/v1/${input.resource}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${input.bearerKey.trim()}`,
+      },
+    })
+    const payload = await res.json().catch(() => ({ ok: false, error: 'Invalid JSON response' }))
+    return { statusCode: res.status, ok: res.ok, payload }
+  } catch (err) {
+    return {
+      statusCode: 0,
+      ok: false,
+      payload: { ok: false, error: err instanceof Error ? err.message : 'Network error' },
+    }
+  }
+}

@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store, type EnrolledDeviceRecord } from '@/context/Phase2Store'
-import {
-  CalendarAndPmPanel,
-  PublicApiAndWebhooksPanel,
-} from '@/features/integrations/EcosystemToolsAndApiPanels'
+import { PublicApiAndWebhooksPanel } from '@/features/integrations/EcosystemToolsAndApiPanels'
+import { RealIntegrationsHub } from '@/features/integrations/RealIntegrationsHub'
 
 const GITHUB_LATEST_RELEASE_API =
   'https://api.github.com/repos/KodeMargin/TikTrack-Release/releases/latest'
@@ -31,16 +29,14 @@ export function IntegrationsAndDevicesView() {
   const {
     ideMappings,
     confirmOrOverrideIdeMapping,
-    integrations,
-    toggleIntegrationConnection,
     webhookReceipts,
     devices,
     updateDeviceChannel,
     toggleDeviceRevocation,
   } = usePhase2Store()
 
-  const [activeTab, setActiveTab] = useState<'apps-git' | 'calendar-pm' | 'api-webhooks'>(
-    'apps-git'
+  const [activeTab, setActiveTab] = useState<'apps-devices' | 'external-tools' | 'api-webhooks'>(
+    'external-tools'
   )
   const [selectedTaskByMapping, setSelectedTaskByMapping] = useState<Record<string, string>>({})
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null)
@@ -87,7 +83,7 @@ export function IntegrationsAndDevicesView() {
     activeUser.role === 'super_admin' ||
     activeUser.role === 'tenant_owner' ||
     activeUser.role === 'project_manager'
-  const effectiveTab = activeTab === 'api-webhooks' && !canManageApi ? 'apps-git' : activeTab
+  const effectiveTab = activeTab === 'api-webhooks' && !canManageApi ? 'external-tools' : activeTab
 
   if (isFinanceOrClient) {
     return (
@@ -114,8 +110,8 @@ export function IntegrationsAndDevicesView() {
 
         <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-zinc-200/70 dark:bg-zinc-900/90 p-1">
           {[
-            { id: 'apps-git' as const, label: 'Apps & Git', show: true },
-            { id: 'calendar-pm' as const, label: 'Calendar & PM', show: true },
+            { id: 'external-tools' as const, label: 'Connected Tools', show: true },
+            { id: 'apps-devices' as const, label: 'Desktop & IDE Apps', show: true },
             { id: 'api-webhooks' as const, label: 'API & Webhooks', show: canManageApi },
           ]
             .filter((t) => t.show)
@@ -124,11 +120,10 @@ export function IntegrationsAndDevicesView() {
                 key={t.id}
                 type="button"
                 onClick={() => setActiveTab(t.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  effectiveTab === t.id
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${effectiveTab === t.id
                     ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 {t.label}
               </button>
@@ -138,11 +133,10 @@ export function IntegrationsAndDevicesView() {
 
       {feedback && (
         <div
-          className={`rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
-            feedback.ok
+          className={`rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${feedback.ok
               ? 'bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-emerald-500/25'
               : 'bg-rose-50/90 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-rose-500/25'
-          }`}
+            }`}
         >
           <span>{feedback.text}</span>
           <button
@@ -155,8 +149,8 @@ export function IntegrationsAndDevicesView() {
         </div>
       )}
 
-      {effectiveTab === 'calendar-pm' ? (
-        <CalendarAndPmPanel onFeedback={setFeedback} />
+      {effectiveTab === 'external-tools' ? (
+        <RealIntegrationsHub onFeedback={setFeedback} />
       ) : effectiveTab === 'api-webhooks' && canManageApi ? (
         <PublicApiAndWebhooksPanel onFeedback={setFeedback} />
       ) : (
@@ -301,81 +295,6 @@ export function IntegrationsAndDevicesView() {
             </div>
           </div>
 
-          {/* Connected Git & IDE Services */}
-          <div className={`${CARD_CLS} space-y-4`}>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-              Connected Services
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {integrations.map((int) => {
-                const connected = int.status === 'connected'
-                return (
-                  <div
-                    key={int.id}
-                    className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] p-4 flex flex-col justify-between gap-3"
-                  >
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-[#6d25da]/10 dark:bg-[#6d25da]/20 text-[#581eae] dark:text-[#c5a8f0] font-bold">
-                          {int.provider}
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            connected
-                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                              : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
-                          }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              connected ? 'bg-emerald-500' : 'bg-zinc-400'
-                            }`}
-                          />
-                          {connected ? 'Connected' : 'Disconnected'}
-                        </span>
-                      </div>
-                      <div className="text-xs font-bold text-zinc-900 dark:text-white">
-                        {int.displayName}
-                      </div>
-                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">
-                        {int.scopeSummary}
-                      </p>
-                      <div className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
-                        {int.reposOrWorkspaces.join(', ')} · {int.retentionDays}d retention
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-zinc-200/70 dark:border-zinc-800">
-                      <span className="text-[10px] text-zinc-400 font-mono">
-                        {int.installationId}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          toggleIntegrationConnection(int.id)
-                          setFeedback({
-                            ok: true,
-                            text: `${int.displayName} is now ${
-                              connected ? 'disconnected' : 'connected'
-                            }.`,
-                          })
-                        }}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition ${
-                          connected
-                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60'
-                            : 'bg-[#702fe3] hover:bg-[#5f21cc] text-white'
-                        }`}
-                      >
-                        {connected ? 'Disconnect' : 'Connect'}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
           {/* IDE & Branch Mappings */}
           {ideMappings.length > 0 && (
             <div className={`${CARD_CLS} space-y-3`}>
@@ -426,7 +345,7 @@ export function IntegrationsAndDevicesView() {
                         >
                           {tasks.map((t) => (
                             <option key={t.id} value={t.id}>
-                              {t.code} — {t.title}
+                              {t.code} - {t.title}
                             </option>
                           ))}
                         </select>
@@ -436,9 +355,8 @@ export function IntegrationsAndDevicesView() {
                             confirmOrOverrideIdeMapping(mapping.id, selectedTask)
                             setFeedback({
                               ok: true,
-                              text: `Linked branch "${mapping.branchName}" to ${
-                                tasks.find((t) => t.id === selectedTask)?.code ?? selectedTask
-                              }.`,
+                              text: `Linked branch "${mapping.branchName}" to ${tasks.find((t) => t.id === selectedTask)?.code ?? selectedTask
+                                }.`,
                             })
                           }}
                           className="px-3 py-1.5 rounded-xl bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white cursor-pointer transition"
@@ -469,11 +387,10 @@ export function IntegrationsAndDevicesView() {
                   {devices.map((dev) => (
                     <div
                       key={dev.id}
-                      className={`rounded-xl p-4 space-y-3 ring-1 ${
-                        dev.revokedAt
+                      className={`rounded-xl p-4 space-y-3 ring-1 ${dev.revokedAt
                           ? 'bg-rose-50/60 dark:bg-rose-950/20 ring-rose-500/25'
                           : 'bg-zinc-50 dark:bg-zinc-900/60 ring-zinc-950/[0.04] dark:ring-white/[0.06]'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -488,11 +405,10 @@ export function IntegrationsAndDevicesView() {
                           </div>
                         </div>
                         <span
-                          className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${
-                            dev.revokedAt
+                          className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${dev.revokedAt
                               ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
                               : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                          }`}
+                            }`}
                         >
                           {dev.revokedAt ? 'Revoked' : 'Active'}
                         </span>
@@ -522,11 +438,10 @@ export function IntegrationsAndDevicesView() {
                         <button
                           type="button"
                           onClick={() => toggleDeviceRevocation(dev.id)}
-                          className={`px-3 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition ${
-                            dev.revokedAt
+                          className={`px-3 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition ${dev.revokedAt
                               ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                               : 'bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200 dark:ring-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60'
-                          }`}
+                            }`}
                         >
                           {dev.revokedAt ? 'Restore Device' : 'Revoke Access'}
                         </button>
@@ -558,13 +473,12 @@ export function IntegrationsAndDevicesView() {
                           {r.provider.toUpperCase()} · {r.eventType}
                         </span>
                         <span
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                            r.status === 'processed'
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${r.status === 'processed'
                               ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                               : r.status === 'duplicate_ignored'
                                 ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
                                 : 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
-                          }`}
+                            }`}
                         >
                           {r.status === 'processed'
                             ? 'Processed'

@@ -8,12 +8,12 @@
 
 export interface GeminiDraftRequest {
   targetType:
-    | 'daily_summary'
-    | 'reviewer_digest'
-    | 'gap_explanation'
-    | 'task_mapping'
-    | 'debug_investigation'
-    | 'pattern_cluster'
+  | 'daily_summary'
+  | 'reviewer_digest'
+  | 'gap_explanation'
+  | 'task_mapping'
+  | 'debug_investigation'
+  | 'pattern_cluster'
   targetLabel: string
   sanitizedPayload: Record<string, unknown>
   citedIds: string[]
@@ -79,7 +79,7 @@ export async function generateGeminiSummaryDraft(
     '1. Only use the sanitized metadata provided in JSON. Never invent commits, bugs, or hours.',
     '2. Never accuse any developer of fraud, idleness, slacking, or low performance.',
     '3. Never recommend automatic pay deductions or punitive actions; human review is always authoritative.',
-    '4. Use clear, plain, everyday English — avoid technical jargon.',
+    '4. Use clear, plain, everyday English - avoid technical jargon.',
     '5. Output clean Markdown (a short bold title + 3 to 5 concise bullets). Keep it under 160 words.',
   ].join('\n')
 

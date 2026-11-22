@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase4Store } from '@/context/Phase4Store'
 import type {
-  EcosystemConnectorProvider,
   OutboundWebhookEventType,
   PublicApiScope,
 } from '@/types/domain.types'
@@ -31,291 +29,6 @@ const LABEL_CLS = 'block text-[11px] font-semibold text-zinc-600 dark:text-zinc-
 
 const CARD_CLS =
   'rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] shadow-sm p-5'
-
-export function CalendarAndPmPanel({
-  onFeedback,
-}: {
-  onFeedback?: (msg: { ok: boolean; text: string }) => void
-}) {
-  const { projects, tasks } = usePhase1Store()
-  const {
-    connectors,
-    calendarMeetings,
-    toggleEcosystemConnector,
-    syncCalendarMeeting,
-    importExternalPmIssue,
-  } = usePhase4Store()
-
-  const [calProjectId, setCalProjectId] = useState(() => projects[0]?.id ?? '')
-  const [calTitle, setCalTitle] = useState('Sprint Architecture Review')
-  const [calScope, setCalScope] = useState<'metadata_only' | 'title_and_duration'>(
-    'title_and_duration'
-  )
-  const [calDurationMins, setCalDurationMins] = useState(45)
-
-  const [pmProjectId, setPmProjectId] = useState(() => projects[0]?.id ?? '')
-  const [pmProvider, setPmProvider] = useState<'jira' | 'linear' | 'trello' | 'azure_devops'>(
-    'linear'
-  )
-  const [pmKey, setPmKey] = useState('LIN-408')
-  const [pmTitle, setPmTitle] = useState('Implement webhook retry dead-letter alert')
-  const [pmEstimate, setPmEstimate] = useState(180)
-
-  const resolvedCalProjectId = calProjectId || projects[0]?.id || ''
-  const resolvedPmProjectId = pmProjectId || projects[0]?.id || ''
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Calendar Sync */}
-      <div className={`lg:col-span-6 ${CARD_CLS} space-y-4`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-            Calendar Sync
-          </h3>
-          <div className="flex items-center gap-1.5">
-            {(['google_calendar', 'outlook_calendar'] as EcosystemConnectorProvider[]).map(
-              (prov) => {
-                const active = connectors.some(
-                  (c) => c.provider === prov && c.status === 'connected'
-                )
-                return (
-                  <button
-                    key={prov}
-                    type="button"
-                    onClick={() => {
-                      const res = toggleEcosystemConnector({
-                        category: 'calendar',
-                        provider: prov,
-                        displayName:
-                          prov === 'google_calendar' ? 'Google Calendar' : 'Outlook Calendar',
-                      })
-                      onFeedback?.({ ok: res.ok, text: res.message })
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold ring-1 transition cursor-pointer ${
-                      active
-                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-500/30'
-                        : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                    }`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        active ? 'bg-emerald-500' : 'bg-zinc-400'
-                      }`}
-                    />
-                    {prov === 'google_calendar' ? 'Google' : 'Outlook'}
-                    {active ? ' · Connected' : ''}
-                  </button>
-                )
-              }
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className={LABEL_CLS}>Meeting Title</label>
-            <input
-              type="text"
-              value={calTitle}
-              onChange={(e) => setCalTitle(e.target.value)}
-              placeholder="e.g. Sprint Planning"
-              className={INPUT_CLS}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className={LABEL_CLS}>Project</label>
-              <select
-                value={resolvedCalProjectId}
-                onChange={(e) => setCalProjectId(e.target.value)}
-                className={INPUT_CLS}
-              >
-                {projects.length === 0 ? (
-                  <option value="">No projects yet</option>
-                ) : (
-                  projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.code} — {p.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label className={LABEL_CLS}>What to Sync</label>
-              <select
-                value={calScope}
-                onChange={(e) =>
-                  setCalScope(e.target.value as 'metadata_only' | 'title_and_duration')
-                }
-                className={INPUT_CLS}
-              >
-                <option value="title_and_duration">Title &amp; Duration</option>
-                <option value="metadata_only">Time &amp; Duration Only</option>
-              </select>
-            </div>
-
-            <div>
-              <label className={LABEL_CLS}>Duration (mins)</label>
-              <input
-                type="number"
-                min={5}
-                value={calDurationMins}
-                onChange={(e) => setCalDurationMins(Number(e.target.value))}
-                className={`${INPUT_CLS} font-mono`}
-              />
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              const start = new Date()
-              const end = new Date(start.getTime() + calDurationMins * 60000)
-              const res = syncCalendarMeeting({
-                projectId: resolvedCalProjectId,
-                taskId: tasks[0]?.id,
-                rawTitle: calTitle,
-                startedAtUtc: start.toISOString(),
-                endedAtUtc: end.toISOString(),
-                syncPermissionScope: calScope,
-              })
-              onFeedback?.({ ok: res.ok, text: res.message })
-            }}
-            className="w-full py-2.5 rounded-xl bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold transition cursor-pointer"
-          >
-            Log Calendar Meeting
-          </button>
-        </div>
-
-        {calendarMeetings.length > 0 && (
-          <div className="space-y-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-            <div className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-              Recent Synced Meetings
-            </div>
-            {calendarMeetings.slice(0, 4).map((m) => (
-              <div
-                key={m.id}
-                className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] px-3 py-2 text-xs flex items-center justify-between gap-2"
-              >
-                <span className="text-zinc-900 dark:text-zinc-100 font-medium truncate">
-                  {m.meetingTitleSanitized}
-                </span>
-                <span className="font-mono text-[11px] text-[#581eae] dark:text-[#c5a8f0] shrink-0">
-                  {m.durationMinutes}m ·{' '}
-                  {m.syncPermissionScope === 'metadata_only' ? 'Time only' : 'Title + time'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Import External Task */}
-      <div className={`lg:col-span-6 ${CARD_CLS} space-y-4`}>
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-          Import External Task (Linear, Jira, Trello, Azure DevOps)
-        </h3>
-
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className={LABEL_CLS}>Tool</label>
-              <select
-                value={pmProvider}
-                onChange={(e) =>
-                  setPmProvider(
-                    e.target.value as 'jira' | 'linear' | 'trello' | 'azure_devops'
-                  )
-                }
-                className={INPUT_CLS}
-              >
-                <option value="linear">Linear</option>
-                <option value="jira">Jira</option>
-                <option value="trello">Trello</option>
-                <option value="azure_devops">Azure DevOps</option>
-              </select>
-            </div>
-
-            <div>
-              <label className={LABEL_CLS}>Target Project</label>
-              <select
-                value={resolvedPmProjectId}
-                onChange={(e) => setPmProjectId(e.target.value)}
-                className={INPUT_CLS}
-              >
-                {projects.length === 0 ? (
-                  <option value="">No projects yet</option>
-                ) : (
-                  projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.code} — {p.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className={LABEL_CLS}>Ticket Key</label>
-              <input
-                type="text"
-                value={pmKey}
-                onChange={(e) => setPmKey(e.target.value)}
-                placeholder="e.g. LIN-408"
-                className={`${INPUT_CLS} font-mono`}
-              />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Estimate (mins)</label>
-              <input
-                type="number"
-                min={15}
-                value={pmEstimate}
-                onChange={(e) => setPmEstimate(Number(e.target.value))}
-                className={`${INPUT_CLS} font-mono`}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={LABEL_CLS}>Task Title</label>
-            <input
-              type="text"
-              value={pmTitle}
-              onChange={(e) => setPmTitle(e.target.value)}
-              placeholder="Describe the task to import"
-              className={INPUT_CLS}
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              const res = importExternalPmIssue({
-                projectId: resolvedPmProjectId,
-                provider: pmProvider,
-                externalKey: pmKey,
-                title: pmTitle,
-                acceptanceCriteria: `Synced from ${pmProvider.toUpperCase()} (${pmKey})`,
-                estimateMinutes: pmEstimate,
-                priority: 'high',
-              })
-              onFeedback?.({ ok: res.ok, text: res.message })
-            }}
-            className="w-full py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 text-xs font-semibold transition cursor-pointer"
-          >
-            Import to Projects &amp; Tasks
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export function PublicApiAndWebhooksPanel({
   onFeedback,
@@ -347,14 +60,16 @@ export function PublicApiAndWebhooksPanel({
     'projects' | 'tasks' | 'timesheets' | 'invoices'
   >('projects')
   const [apiTestResult, setApiTestResult] = useState('')
+  const [testingApi, setTestingApi] = useState(false)
 
-  const [whName, setWhName] = useState('Finance & ERP Listener')
-  const [whUrl, setWhUrl] = useState('https://erp.example.com/webhooks/tiktrack')
+  const [whName, setWhName] = useState('Automation / Zapier Listener')
+  const [whUrl, setWhUrl] = useState('')
   const [whEvents, setWhEvents] = useState<OutboundWebhookEventType[]>([
     'timesheet.approved',
     'invoice.finalized',
   ])
   const [whSecretReveal, setWhSecretReveal] = useState<string | null>(null)
+  const [dispatchingId, setDispatchingId] = useState<string | null>(null)
 
   function copyToClipboard(id: string, value: string) {
     void navigator.clipboard?.writeText(value)
@@ -377,11 +92,18 @@ export function PublicApiAndWebhooksPanel({
   }
 
   async function handleTestApiCall() {
-    const res = await testPublicApiEndpoint({
-      bearerKey: testBearerKey,
-      resource: testResource,
-    })
-    setApiTestResult(`HTTP ${res.statusCode}\n${JSON.stringify(res.payload, null, 2)}`)
+    setTestingApi(true)
+    try {
+      const res = await testPublicApiEndpoint({
+        bearerKey: testBearerKey,
+        resource: testResource,
+      })
+      setApiTestResult(
+        `GET /api/prisma/v1/${testResource} → HTTP ${res.statusCode}\n${JSON.stringify(res.payload, null, 2)}`
+      )
+    } finally {
+      setTestingApi(false)
+    }
   }
 
   async function handleCreateWebhook(e: React.FormEvent) {
@@ -394,16 +116,22 @@ export function PublicApiAndWebhooksPanel({
     onFeedback?.({ ok: res.ok, text: res.message })
     if (res.ok && res.signingSecret) {
       setWhSecretReveal(res.signingSecret)
+      setWhUrl('')
     }
   }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* API Keys */}
+      {/* Public API Keys + Live REST API v1 Tester */}
       <div className={`lg:col-span-6 ${CARD_CLS} space-y-5`}>
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-          Public API Keys
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+            Public REST API Keys
+          </h3>
+          <code className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+            /api/prisma/v1/*
+          </code>
+        </div>
 
         <form onSubmit={(e) => void handleCreateApiKey(e)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -413,7 +141,7 @@ export function PublicApiAndWebhooksPanel({
                 type="text"
                 value={keyName}
                 onChange={(e) => setKeyName(e.target.value)}
-                placeholder="e.g. ERP Sync Key"
+                placeholder="e.g. PowerBI / ERP Sync"
                 className={INPUT_CLS}
                 required
               />
@@ -524,14 +252,14 @@ export function PublicApiAndWebhooksPanel({
           </div>
         )}
 
-        {/* Quick API Tester */}
+        {/* Live HTTP API Tester */}
         <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
           <div className="text-xs font-bold text-zinc-900 dark:text-white">
-            Test an API Request
+            Live API Request Tester
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
             <div className="sm:col-span-6">
-              <label className={LABEL_CLS}>API Key</label>
+              <label className={LABEL_CLS}>Bearer API Key</label>
               <input
                 type="text"
                 placeholder="Paste key here"
@@ -541,7 +269,7 @@ export function PublicApiAndWebhooksPanel({
               />
             </div>
             <div className="sm:col-span-3">
-              <label className={LABEL_CLS}>Data</label>
+              <label className={LABEL_CLS}>Endpoint</label>
               <select
                 value={testResource}
                 onChange={(e) =>
@@ -560,26 +288,32 @@ export function PublicApiAndWebhooksPanel({
             <div className="sm:col-span-3 flex items-end">
               <button
                 type="button"
+                disabled={testingApi}
                 onClick={() => void handleTestApiCall()}
-                className="w-full py-2 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 text-xs font-semibold cursor-pointer"
+                className="w-full py-2 rounded-xl bg-[#6d25da]/[0.08] hover:bg-[#702fe3] text-[#581eae] hover:text-white ring-1 ring-[#6d25da]/20 hover:ring-[#702fe3] dark:bg-[#6d25da]/20 dark:hover:bg-[#702fe3] dark:text-[#c5a8f0] dark:hover:text-white text-xs font-semibold cursor-pointer transition disabled:opacity-50"
               >
-                Send Test
+                {testingApi ? 'Calling...' : 'Send GET'}
               </button>
             </div>
           </div>
           {apiTestResult && (
-            <pre className="rounded-xl bg-zinc-50 dark:bg-zinc-950 ring-1 ring-zinc-200 dark:ring-zinc-800 p-3 text-[11px] font-mono text-zinc-700 dark:text-zinc-300 max-h-40 overflow-auto">
+            <pre className="rounded-xl bg-zinc-50 dark:bg-zinc-950 ring-1 ring-zinc-200 dark:ring-zinc-800 p-3 text-[11px] font-mono text-zinc-700 dark:text-zinc-300 max-h-44 overflow-auto">
               {apiTestResult}
             </pre>
           )}
         </div>
       </div>
 
-      {/* Outbound Webhooks */}
+      {/* Real Outbound Webhooks */}
       <div className={`lg:col-span-6 ${CARD_CLS} space-y-5`}>
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-          Outbound Webhooks (Send Events Out)
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
+            Outbound Webhooks (Live HTTP POST)
+          </h3>
+          <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+            HMAC-SHA256
+          </span>
+        </div>
 
         <form onSubmit={(e) => void handleCreateWebhook(e)} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -589,7 +323,7 @@ export function PublicApiAndWebhooksPanel({
                 type="text"
                 value={whName}
                 onChange={(e) => setWhName(e.target.value)}
-                placeholder="e.g. Accounting Sync"
+                placeholder="e.g. Zapier / n8n / Custom ERP"
                 className={INPUT_CLS}
                 required
               />
@@ -600,7 +334,7 @@ export function PublicApiAndWebhooksPanel({
                 type="url"
                 value={whUrl}
                 onChange={(e) => setWhUrl(e.target.value)}
-                placeholder="https://..."
+                placeholder="https://webhook.site/... or https://hooks.zapier.com/..."
                 className={`${INPUT_CLS} font-mono`}
                 required
               />
@@ -608,7 +342,7 @@ export function PublicApiAndWebhooksPanel({
           </div>
 
           <div>
-            <label className={LABEL_CLS}>Send Notifications For</label>
+            <label className={LABEL_CLS}>Trigger Events</label>
             <div className="flex flex-wrap gap-1.5">
               {WEBHOOK_EVENT_OPTIONS.map((ev) => {
                 const active = whEvents.includes(ev.value)
@@ -639,9 +373,9 @@ export function PublicApiAndWebhooksPanel({
 
           <button
             type="submit"
-            className="w-full py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 text-xs font-semibold transition cursor-pointer"
+            className="w-full py-2.5 rounded-xl bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-semibold transition cursor-pointer"
           >
-            Add Webhook
+            Add Webhook Endpoint
           </button>
         </form>
 
@@ -682,15 +416,19 @@ export function PublicApiAndWebhooksPanel({
                 </div>
                 <button
                   type="button"
+                  disabled={dispatchingId === ep.id}
                   onClick={() => {
+                    setDispatchingId(ep.id)
                     void dispatchTestOutboundWebhook({
                       endpointId: ep.id,
                       eventType: ep.subscribedEvents[0] ?? 'timesheet.approved',
-                    }).then((res) => onFeedback?.({ ok: res.ok, text: res.message }))
+                    })
+                      .then((res) => onFeedback?.({ ok: res.ok, text: res.message }))
+                      .finally(() => setDispatchingId(null))
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white text-[11px] font-semibold shrink-0 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white text-[11px] font-semibold shrink-0 cursor-pointer disabled:opacity-50"
                 >
-                  Send Test
+                  {dispatchingId === ep.id ? 'Sending...' : 'Send Live Test'}
                 </button>
               </div>
             ))}
@@ -702,22 +440,33 @@ export function PublicApiAndWebhooksPanel({
             <div className="text-xs font-bold text-zinc-900 dark:text-white">
               Recent Outbound Deliveries
             </div>
-            {webhookDeliveries.slice(0, 5).map((d) => (
-              <div
-                key={d.id}
-                className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] px-3 py-2 text-[11px] space-y-0.5"
-              >
-                <div className="flex items-center justify-between font-medium text-zinc-800 dark:text-zinc-200">
-                  <span className="font-mono">{d.eventType}</span>
-                  <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
-                    {d.deliveryStatus} ({d.httpStatus ?? 202})
-                  </span>
+            {webhookDeliveries.slice(0, 5).map((d) => {
+              const failed = d.deliveryStatus === 'failed'
+              return (
+                <div
+                  key={d.id}
+                  className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.06] px-3 py-2 text-[11px] space-y-0.5"
+                >
+                  <div className="flex items-center justify-between font-medium text-zinc-800 dark:text-zinc-200">
+                    <span className="font-mono">{d.eventType}</span>
+                    <span
+                      className={`font-semibold ${
+                        failed
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-emerald-700 dark:text-emerald-300'
+                      }`}
+                    >
+                      {failed ? 'Failed' : 'Delivered'} (HTTP {d.httpStatus ?? 0})
+                    </span>
+                  </div>
+                  {d.responseSnippet && (
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+                      Response: {d.responseSnippet}
+                    </div>
+                  )}
                 </div>
-                <div className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
-                  Signature: {d.signatureHeader}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

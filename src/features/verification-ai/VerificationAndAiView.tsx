@@ -36,7 +36,7 @@ const FRIENDLY_RULES: Record<
   'R-01': {
     title: 'Quiet Gap Reminder',
     summary:
-      'Asks for a brief note when standard coding/debugging has a long quiet period — never deducts pay.',
+      'Asks for a brief note when standard coding/debugging has a long quiet period - never deducts pay.',
   },
   'R-02': {
     title: 'Overlap Cleanup',
@@ -71,7 +71,7 @@ const FRIENDLY_RULES: Record<
   'R-08': {
     title: 'Device Clock Sync Check',
     summary:
-      'Flags computer clock mismatches as a technical sync issue — never treated as tampering.',
+      'Flags computer clock mismatches as a technical sync issue - never treated as tampering.',
   },
 }
 
@@ -186,11 +186,10 @@ export function VerificationAndAiView() {
       {/* Feedback Toast */}
       {banner && (
         <div
-          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
-            banner.ok
+          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${banner.ok
               ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
               : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
-          }`}
+            }`}
         >
           <span>{banner.text}</span>
           <button
@@ -225,11 +224,10 @@ export function VerificationAndAiView() {
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`px-3.5 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                tab === item.id
+              className={`px-3.5 py-1.5 rounded-lg font-semibold transition cursor-pointer ${tab === item.id
                   ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-              }`}
+                }`}
             >
               {item.label}
             </button>
@@ -315,7 +313,7 @@ export function VerificationAndAiView() {
 
                 {unusualPatternAlerts.length === 0 ? (
                   <p className="text-xs text-zinc-400 py-2">
-                    Everything looks normal — no heads-up notices right now.
+                    Everything looks normal - no heads-up notices right now.
                   </p>
                 ) : (
                   <div className="space-y-2.5">
@@ -478,11 +476,10 @@ export function VerificationAndAiView() {
                     return (
                       <label
                         key={code}
-                        className={`rounded-xl p-3 flex items-start gap-2.5 text-xs cursor-pointer transition ${
-                          enabled
+                        className={`rounded-xl p-3 flex items-start gap-2.5 text-xs cursor-pointer transition ${enabled
                             ? 'bg-[#6d25da]/[0.05] dark:bg-[#6d25da]/15 ring-1 ring-[#6d25da]/25'
                             : 'bg-zinc-50/90 dark:bg-white/[0.03] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.07] opacity-75'
-                        }`}
+                          }`}
                       >
                         <input
                           type="checkbox"
@@ -621,11 +618,10 @@ export function VerificationAndAiView() {
                         </div>
                       </div>
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold capitalize shrink-0 ${
-                          rs.status === 'active'
+                        className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold capitalize shrink-0 ${rs.status === 'active'
                             ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
                             : 'bg-zinc-200/70 dark:bg-white/[0.07] text-zinc-500 dark:text-zinc-400'
-                        }`}
+                          }`}
                       >
                         {rs.status}
                       </span>
@@ -668,11 +664,10 @@ export function VerificationAndAiView() {
                           {tv.taskCode}
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${
-                            isOver
+                          className={`px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${isOver
                               ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
                               : 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
-                          }`}
+                            }`}
                         >
                           {isOver ? `Over (${tv.variancePercent}%)` : `${tv.variancePercent}% of est.`}
                         </span>
@@ -788,18 +783,16 @@ export function VerificationAndAiView() {
                   Generate a Work Summary Draft
                 </h3>
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                    aiEnabled && aiServerStatus.configured
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${aiEnabled && aiServerStatus.configured
                       ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
                       : 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      aiEnabled && aiServerStatus.configured
+                    className={`h-1.5 w-1.5 rounded-full ${aiEnabled && aiServerStatus.configured
                         ? 'bg-emerald-500'
                         : 'bg-amber-500'
-                    }`}
+                      }`}
                   />
                   {aiEnabled && aiServerStatus.configured
                     ? `Gemini (${aiServerStatus.model})`
@@ -862,11 +855,10 @@ export function VerificationAndAiView() {
                     type="button"
                     disabled={generatingType !== null}
                     onClick={() => void handleGenerateAi(type)}
-                    className={`px-3.5 py-2 rounded-xl font-semibold transition cursor-pointer disabled:opacity-55 ${
-                      idx === 0
+                    className={`px-3.5 py-2 rounded-xl font-semibold transition cursor-pointer disabled:opacity-55 ${idx === 0
                         ? 'bg-[#702fe3] hover:bg-[#5f21cc] text-white shadow-xs'
                         : 'bg-zinc-100 hover:bg-zinc-200/80 dark:bg-white/[0.07] dark:hover:bg-white/[0.12] text-zinc-800 dark:text-zinc-200'
-                    }`}
+                      }`}
                   >
                     {isBusy ? 'Generating...' : `+ ${DRAFT_TYPE_LABELS[type]}`}
                   </button>
@@ -893,18 +885,18 @@ export function VerificationAndAiView() {
                 const statusBadge =
                   gen.status === 'edited_approved'
                     ? {
-                        label: 'Approved',
-                        cls: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
-                      }
+                      label: 'Approved',
+                      cls: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
+                    }
                     : gen.status === 'discarded'
                       ? {
-                          label: 'Discarded',
-                          cls: 'bg-zinc-200/80 dark:bg-white/[0.08] text-zinc-500 dark:text-zinc-400',
-                        }
+                        label: 'Discarded',
+                        cls: 'bg-zinc-200/80 dark:bg-white/[0.08] text-zinc-500 dark:text-zinc-400',
+                      }
                       : {
-                          label: 'Needs Review',
-                          cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-                        }
+                        label: 'Needs Review',
+                        cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+                      }
 
                 return (
                   <article

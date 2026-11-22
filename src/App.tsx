@@ -712,22 +712,22 @@ function DevProofShell() {
                       : 'Timer idle - Click to start tracking time'
               }
               className={`hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 hover:-translate-y-[0.5px] cursor-pointer ${timer.lifecycle === 'running'
-                  ? 'bg-[#6d25da]/12 text-[#581eae] shadow-[0_0_0_1px_rgba(109,37,218,0.22),0_4px_14px_-4px_rgba(109,37,218,0.3)] dark:bg-[#6d25da]/22 dark:text-[#d8c4f8] dark:shadow-[0_0_0_1px_rgba(139,81,225,0.35),0_4px_16px_-4px_rgba(139,81,225,0.35)]'
-                  : timer.lifecycle === 'on_break'
-                    ? 'bg-white text-zinc-700 shadow-(--dp-shadow-pill) dark:bg-white/6 dark:text-zinc-300'
-                    : timer.elapsedSeconds > 0
-                      ? 'bg-amber-500/12 text-amber-700 shadow-[0_0_0_1px_rgba(245,158,11,0.25)] dark:text-amber-300'
-                      : 'bg-white/90 text-zinc-600 shadow-(--dp-shadow-pill) hover:bg-white dark:bg-white/[0.045] dark:hover:bg-white/[0.08] dark:text-zinc-300'
+                ? 'bg-[#6d25da]/12 text-[#581eae] shadow-[0_0_0_1px_rgba(109,37,218,0.22),0_4px_14px_-4px_rgba(109,37,218,0.3)] dark:bg-[#6d25da]/22 dark:text-[#d8c4f8] dark:shadow-[0_0_0_1px_rgba(139,81,225,0.35),0_4px_16px_-4px_rgba(139,81,225,0.35)]'
+                : timer.lifecycle === 'on_break'
+                  ? 'bg-white text-zinc-700 shadow-(--dp-shadow-pill) dark:bg-white/6 dark:text-zinc-300'
+                  : timer.elapsedSeconds > 0
+                    ? 'bg-amber-500/12 text-amber-700 shadow-[0_0_0_1px_rgba(245,158,11,0.25)] dark:text-amber-300'
+                    : 'bg-white/90 text-zinc-600 shadow-(--dp-shadow-pill) hover:bg-white dark:bg-white/[0.045] dark:hover:bg-white/[0.08] dark:text-zinc-300'
                 }`}
             >
               <span
                 className={`h-2 w-2 rounded-full ${timer.lifecycle === 'running'
-                    ? 'dp-beacon text-[#8b51e1] bg-[#8b51e1]'
-                    : timer.lifecycle === 'on_break'
-                      ? 'bg-zinc-400'
-                      : timer.elapsedSeconds > 0
-                        ? 'bg-amber-500'
-                        : 'bg-zinc-400'
+                  ? 'dp-beacon text-[#8b51e1] bg-[#8b51e1]'
+                  : timer.lifecycle === 'on_break'
+                    ? 'bg-zinc-400'
+                    : timer.elapsedSeconds > 0
+                      ? 'bg-amber-500'
+                      : 'bg-zinc-400'
                   }`}
               />
               <span>
@@ -790,8 +790,8 @@ function DevProofShell() {
                               setWorkspaceMenuOpen(false)
                             }}
                             className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition cursor-pointer text-left ${isSelected
-                                ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
-                                : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                              ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
+                              : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                               }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
@@ -865,8 +865,8 @@ function DevProofShell() {
                   </span>
                   <span
                     className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono uppercase shrink-0 font-bold tracking-wider ${isInSuperAdminPortal
-                        ? 'bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]'
-                        : 'bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                      ? 'bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]'
+                      : 'bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
                       }`}
                   >
                     {isInSuperAdminPortal ? 'PORTAL' : 'WORKSPACE'}
@@ -917,8 +917,8 @@ function DevProofShell() {
                           setPersonaMenuOpen(false)
                         }}
                         className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${isInSuperAdminPortal
-                            ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
-                            : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                          ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
+                          : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                           }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -947,7 +947,7 @@ function DevProofShell() {
                       </button>
                     </div>
 
-                    {/* Accessible Workspaces Section (own/authorized workspaces only — separate from Super Admin Portal) */}
+                    {/* Accessible Workspaces Section (own/authorized workspaces only - separate from Super Admin Portal) */}
                     <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-2">
                       <span>Your Workspaces</span>
                       <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-1.5 py-0.5 rounded text-[9px] font-mono">
@@ -968,8 +968,8 @@ function DevProofShell() {
                               setPersonaMenuOpen(false)
                             }}
                             className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition cursor-pointer text-left ${isSelected
-                                ? 'bg-emerald-500/12 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300 font-semibold'
-                                : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                              ? 'bg-emerald-500/12 dark:bg-emerald-500/18 text-emerald-700 dark:text-emerald-300 font-semibold'
+                              : 'text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                               }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -1131,8 +1131,8 @@ function DevProofShell() {
                           setPersonaMenuOpen(false)
                         }}
                         className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition ${activeUser.id === m.id
-                            ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
-                            : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                          ? 'bg-[#6d25da]/15 dark:bg-[#6d25da]/20 text-[#6d25da] dark:text-[#a87ce9] font-semibold'
+                          : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
                           }`}
                       >
                         {m.name} ({m.role.replace('_', ' ')})

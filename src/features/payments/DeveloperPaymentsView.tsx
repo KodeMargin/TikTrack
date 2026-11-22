@@ -486,12 +486,12 @@ export function DeveloperPaymentsView() {
       bankDetails:
         cfgMethod === 'bank_transfer'
           ? {
-              bankName: cfgBankName,
-              branchName: cfgBranchName,
-              accountHolderName: cfgAccountHolder,
-              accountNumber: cfgAccountNumber,
-              swiftOrRoutingCode: cfgSwiftCode,
-            }
+            bankName: cfgBankName,
+            branchName: cfgBranchName,
+            accountHolderName: cfgAccountHolder,
+            accountNumber: cfgAccountNumber,
+            swiftOrRoutingCode: cfgSwiftCode,
+          }
           : undefined,
       taxWithholdingPercent: cfgTaxPct,
       effectiveFrom: cfgEffectiveFrom,
@@ -593,11 +593,10 @@ export function DeveloperPaymentsView() {
       {/* Feedback Toast */}
       {banner && (
         <div
-          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
-            banner.ok
+          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${banner.ok
               ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
               : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
-          }`}
+            }`}
         >
           <span>{banner.text}</span>
           <button
@@ -631,11 +630,10 @@ export function DeveloperPaymentsView() {
             <button
               type="button"
               onClick={() => setActiveTab('team')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                effectiveTab === 'team'
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${effectiveTab === 'team'
                   ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-              }`}
+                }`}
             >
               User Payments
             </button>
@@ -644,11 +642,10 @@ export function DeveloperPaymentsView() {
               <button
                 type="button"
                 onClick={() => setActiveTab('tasks')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                  effectiveTab === 'tasks'
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${effectiveTab === 'tasks'
                     ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
                     : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 Task Payments ({taskPaymentConfigs.length})
               </button>
@@ -657,11 +654,10 @@ export function DeveloperPaymentsView() {
             <button
               type="button"
               onClick={() => setActiveTab('ledger')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                effectiveTab === 'ledger'
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${effectiveTab === 'ledger'
                   ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-              }`}
+                }`}
             >
               Payout Ledger ({developerPayouts.length})
             </button>
@@ -670,11 +666,10 @@ export function DeveloperPaymentsView() {
               <button
                 type="button"
                 onClick={() => setActiveTab('settings')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                  effectiveTab === 'settings'
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${effectiveTab === 'settings'
                     ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
                     : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 ⚙ Mode Settings
               </button>
@@ -683,11 +678,10 @@ export function DeveloperPaymentsView() {
             <button
               type="button"
               onClick={() => setActiveTab('mine')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                effectiveTab === 'mine'
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${effectiveTab === 'mine'
                   ? 'bg-white dark:bg-[#1a1a24] text-zinc-900 dark:text-white shadow-xs'
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-              }`}
+                }`}
             >
               My Payments
             </button>
@@ -838,13 +832,12 @@ export function DeveloperPaymentsView() {
 
                     <div className="text-right shrink-0">
                       <div
-                        className={`text-sm font-bold font-mono ${
-                          paymentMode === 'task_wise'
+                        className={`text-sm font-bold font-mono ${paymentMode === 'task_wise'
                             ? 'text-sky-600 dark:text-sky-400'
                             : cfg
                               ? 'text-[#6d25da] dark:text-[#c5a8f0]'
                               : 'text-amber-600 dark:text-amber-400'
-                        }`}
+                          }`}
                       >
                         {paymentMode === 'task_wise'
                           ? `${stat.bountyTasksCount} bounty tasks`
@@ -888,7 +881,7 @@ export function DeveloperPaymentsView() {
                         ${stat.paidTotal.toFixed(2)}
                       </div>
                       <div className="text-[10.5px] font-mono text-zinc-400">
-                        {cfg ? METHOD_LABEL[cfg.payoutMethod] : '—'}
+                        {cfg ? METHOD_LABEL[cfg.payoutMethod] : '-'}
                       </div>
                     </div>
                   </div>
@@ -1012,13 +1005,12 @@ export function DeveloperPaymentsView() {
 
                       <div className="text-right shrink-0">
                         <div
-                          className={`text-sm font-bold font-mono ${
-                            tCfg
+                          className={`text-sm font-bold font-mono ${tCfg
                               ? 'text-[#6d25da] dark:text-[#c5a8f0]'
                               : paymentMode === 'hybrid'
                                 ? 'text-zinc-500 dark:text-zinc-400'
                                 : 'text-amber-600 dark:text-amber-400'
-                          }`}
+                            }`}
                         >
                           {formatTaskRate(tCfg)}
                         </div>
@@ -1079,11 +1071,10 @@ export function DeveloperPaymentsView() {
                   key={st}
                   type="button"
                   onClick={() => setLedgerStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-xl font-semibold capitalize transition cursor-pointer ${
-                    ledgerStatusFilter === st
+                  className={`px-3 py-1.5 rounded-xl font-semibold capitalize transition cursor-pointer ${ledgerStatusFilter === st
                       ? 'bg-[#6d25da]/12 text-[#581eae] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] ring-1 ring-[#6d25da]/25'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/[0.05]'
-                  }`}
+                    }`}
                 >
                   {st}
                 </button>
@@ -1550,7 +1541,7 @@ export function DeveloperPaymentsView() {
                           amountDisplay = `$${((mins / 60) * myConfig.hourlyRate).toFixed(2)}`
                         } else {
                           rateLabel = 'Rate not set'
-                          amountDisplay = '—'
+                          amountDisplay = '-'
                         }
 
                         return (
@@ -1576,11 +1567,10 @@ export function DeveloperPaymentsView() {
                                 {amountDisplay}
                               </div>
                               <div
-                                className={`text-[10.5px] font-semibold capitalize ${
-                                  line.evidenceStatus === 'approved'
+                                className={`text-[10.5px] font-semibold capitalize ${line.evidenceStatus === 'approved'
                                     ? 'text-emerald-600 dark:text-emerald-400'
                                     : 'text-amber-600 dark:text-amber-400'
-                                }`}
+                                  }`}
                               >
                                 {line.evidenceStatus.replace(/_/g, ' ')}
                               </div>

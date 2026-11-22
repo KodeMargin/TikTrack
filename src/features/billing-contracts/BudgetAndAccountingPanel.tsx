@@ -24,13 +24,9 @@ const RISK_BADGE: Record<string, { label: string; cls: string }> = {
 const CARD_CLS =
   'rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] shadow-sm p-5'
 
-export function BudgetAndAccountingPanel({
-  onFeedback,
-}: {
-  onFeedback?: (msg: { ok: boolean; text: string }) => void
-}) {
+export function BudgetAndAccountingPanel() {
   const { activeTenant, invoices } = usePhase1Store()
-  const { connectors, projectForecasts, toggleEcosystemConnector } = usePhase4Store()
+  const { projectForecasts } = usePhase4Store()
   const [accountingPreview, setAccountingPreview] = useState('')
 
   function downloadTextFile(filename: string, content: string, mime: string) {
@@ -110,46 +106,15 @@ export function BudgetAndAccountingPanel({
         )}
       </section>
 
-      {/* Accounting Software & Exports */}
+      {/* Accounting Exports */}
       <section className={`${CARD_CLS} space-y-4`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-            Accounting Software &amp; Exports
+            Accounting Exports (Xero &amp; QuickBooks)
           </h3>
-          <div className="flex items-center gap-2">
-            {(['xero', 'quickbooks'] as const).map((prov) => {
-              const connected = connectors.some(
-                (c) => c.provider === prov && c.status === 'connected'
-              )
-              return (
-                <button
-                  key={prov}
-                  type="button"
-                  onClick={() => {
-                    const res = toggleEcosystemConnector({
-                      category: 'accounting',
-                      provider: prov,
-                      displayName: prov === 'xero' ? 'Xero Accounting' : 'QuickBooks Online',
-                      syncConfig: { accountCode: '200', taxType: 'OUTPUT' },
-                    })
-                    onFeedback?.({ ok: res.ok, text: res.message })
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold ring-1 transition cursor-pointer ${
-                    connected
-                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-500/30'
-                      : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 ring-zinc-200 dark:ring-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      connected ? 'bg-emerald-500' : 'bg-zinc-400'
-                    }`}
-                  />
-                  {prov === 'xero' ? 'Xero' : 'QuickBooks'}: {connected ? 'Connected' : 'Connect'}
-                </button>
-              )
-            })}
-          </div>
+          <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            Download import-ready CSV / JSON files
+          </span>
         </div>
 
         {invoices.length === 0 ? (

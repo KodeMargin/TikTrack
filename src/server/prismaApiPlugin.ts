@@ -72,6 +72,23 @@ import {
   handleUpdateTenantOwnerPermissionsPrisma,
   seedPermissionsAndRoles,
 } from './prismaRbacHandlers.ts'
+import {
+  handleConnectRealIntegration,
+  handleDisconnectRealIntegration,
+  handleDispatchRealOutboundWebhook,
+  handleFetchRealIntegrationItems,
+  handleSendChatTestAlert,
+} from './integrations/realConnectorsService.ts'
+import {
+  buildCalendarOAuthStartUrl,
+  getCalendarOAuthStatus,
+  handleCalendarOAuthCallback,
+  handleFetchRealCalendarEvents,
+} from './integrations/calendarOAuth.ts'
+import {
+  handlePublicRestApiV1Request,
+  type PublicApiResource,
+} from './integrations/publicApiV1.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -1060,6 +1077,136 @@ export async function handlePrismaApiRequest(
             if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/portable-reports')) {
               const body = await readJsonBody<Parameters<typeof handleCreatePortableReportPrisma>[0]>(req)
               return sendJson(res, 201, await handleCreatePortableReportPrisma(body))
+            }
+
+            // --- Real External Integrations (Git, PM Tools, Chat Alerts, Live Webhooks, Calendar OAuth) ---
+            if (req.method === 'POST' && url.startsWith('/api/prisma/integrations/connect')) {
+              const body = await readJsonBody<Parameters<typeof handleConnectRealIntegration>[0]>(req)
+              const result = await handleConnectRealIntegration(body)
+              return sendJson(res, result.ok ? 200 : 400, result)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/integrations/disconnect')) {
+              const body = await readJsonBody<Parameters<typeof handleDisconnectRealIntegration>[0]>(req)
+              return sendJson(res, 200, await handleDisconnectRealIntegration(body))
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/integrations/items')) {
+              const body = await readJsonBody<Parameters<typeof handleFetchRealIntegrationItems>[0]>(req)
+              const result = await handleFetchRealIntegrationItems(body)
+              return sendJson(res, result.ok ? 200 : 400, result)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/integrations/chat-test')) {
+              const body = await readJsonBody<Parameters<typeof handleSendChatTestAlert>[0]>(req)
+              const result = await handleSendChatTestAlert(body)
+              return sendJson(res, result.ok ? 200 : 400, result)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/integrations/webhook-dispatch')) {
+              const body = await readJsonBody<Parameters<typeof handleDispatchRealOutboundWebhook>[0]>(req)
+              const result = await handleDispatchRealOutboundWebhook(body)
+              return sendJson(res, 200, result)
+            }
+
+            if (req.method === 'GET' && url.startsWith('/api/prisma/integrations/oauth-status')) {
+              return sendJson(res, 200, getCalendarOAuthStatus())
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/integrations/calendar-events')) {
+              const body = await readJsonBody<Parameters<typeof handleFetchRealCalendarEvents>[0]>(req)
+              const result = await handleFetchRealCalendarEvents(body)
+              return sendJson(res, result.ok ? 200 : 400, result)
+            }
+
+            if (req.method === 'GET' && url.startsWith('/api/prisma/oauth/google/start')) {
+              const parsed = new URL(url, `http://${req.headers.host || 'localhost:5173'}`)
+              const origin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:5173'}`
+              const start = buildCalendarOAuthStartUrl({
+                provider: 'google_calendar',
+                tenantId: parsed.searchParams.get('tenantId') || '',
+                userId: parsed.searchParams.get('userId') || '',
+                origin,
+              })
+              if (!start.ok || !start.url) return sendJson(res, 400, start)
+              res.statusCode = 302
+              res.setHeader('Location', start.url)
+              res.end()
+              return true
+            }
+
+            if (req.method === 'GET' && url.startsWith('/api/prisma/oauth/google/callback')) {
+              const parsed = new URL(url, `http://${req.headers.host || 'localhost:5173'}`)
+              const origin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:5173'}`
+              const result = await handleCalendarOAuthCallback({
+                provider: 'google_calendar',
+                code: parsed.searchParams.get('code') || '',
+                state: parsed.searchParams.get('state') || '',
+                origin,
+              })
+              res.statusCode = 302
+              res.setHeader(
+                'Location',
+                result.ok
+                  ? '/integrations?oauth=google_connected'
+                  : `/integrations?oauth_error=${encodeURIComponent(result.error || 'OAuth failed')}`
+              )
+              res.end()
+              return true
+            }
+
+            if (req.method === 'GET' && url.startsWith('/api/prisma/oauth/microsoft/start')) {
+              const parsed = new URL(url, `http://${req.headers.host || 'localhost:5173'}`)
+              const origin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:5173'}`
+              const start = buildCalendarOAuthStartUrl({
+                provider: 'outlook_calendar',
+                tenantId: parsed.searchParams.get('tenantId') || '',
+                userId: parsed.searchParams.get('userId') || '',
+                origin,
+              })
+              if (!start.ok || !start.url) return sendJson(res, 400, start)
+              res.statusCode = 302
+              res.setHeader('Location', start.url)
+              res.end()
+              return true
+            }
+
+            if (req.method === 'GET' && url.startsWith('/api/prisma/oauth/microsoft/callback')) {
+              const parsed = new URL(url, `http://${req.headers.host || 'localhost:5173'}`)
+              const origin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:5173'}`
+              const result = await handleCalendarOAuthCallback({
+                provider: 'outlook_calendar',
+                code: parsed.searchParams.get('code') || '',
+                state: parsed.searchParams.get('state') || '',
+                origin,
+              })
+              res.statusCode = 302
+              res.setHeader(
+                'Location',
+                result.ok
+                  ? '/integrations?oauth=microsoft_connected'
+                  : `/integrations?oauth_error=${encodeURIComponent(result.error || 'OAuth failed')}`
+              )
+              res.end()
+              return true
+            }
+
+            // --- Real Public REST API v1 (Bearer API Key Authentication) ---
+            if (req.method === 'GET' && url.startsWith('/api/prisma/v1/')) {
+              const parsed = new URL(url, 'http://localhost')
+              const resourceSegment = parsed.pathname.replace('/api/prisma/v1/', '').split('/')[0]
+              const validResources: PublicApiResource[] = ['projects', 'tasks', 'timesheets', 'invoices']
+              if (!validResources.includes(resourceSegment as PublicApiResource)) {
+                return sendJson(res, 404, {
+                  ok: false,
+                  error: { code: 'UNKNOWN_RESOURCE', message: `Unknown resource "${resourceSegment}".` },
+                })
+              }
+              const apiRes = await handlePublicRestApiV1Request({
+                authorizationHeader: req.headers.authorization,
+                resource: resourceSegment as PublicApiResource,
+              })
+              return sendJson(res, apiRes.statusCode, apiRes.payload)
             }
 
             // --- Granular RBAC (Permissions Seed, Roles, Member Grants & Tenant Owner Policy) ---

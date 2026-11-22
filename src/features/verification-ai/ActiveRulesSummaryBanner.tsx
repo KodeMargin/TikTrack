@@ -8,7 +8,7 @@ const RULE_SUMMARIES: Record<
 > = {
   'R-01': {
     title: 'Quiet Gap Reminder',
-    summary: 'Quiet periods in standard modes ask for a quick note — zero automatic pay cuts.',
+    summary: 'Quiet periods in standard modes ask for a quick note - zero automatic pay cuts.',
   },
   'R-02': {
     title: 'Overlap Cleanup',
@@ -36,7 +36,7 @@ const RULE_SUMMARIES: Record<
   },
   'R-08': {
     title: 'Device Clock Sync Check',
-    summary: 'Flags clock drift as a technical sync issue — never tampering.',
+    summary: 'Flags clock drift as a technical sync issue - never tampering.',
   },
 }
 
