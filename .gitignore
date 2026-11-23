@@ -33,3 +33,5 @@ src-tauri/target/
 desktop-agent/release-output/
 *.vsix
 .env*
+
+
