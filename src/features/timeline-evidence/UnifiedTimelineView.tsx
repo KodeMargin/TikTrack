@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { notifySuccess } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import {
   usePhase2Store,
@@ -92,7 +93,7 @@ export function UnifiedTimelineView() {
     useState<SessionAnnotationItem['annotationType']>('investigation_log')
   const [annTitle, setAnnTitle] = useState('')
   const [annContent, setAnnContent] = useState('')
-  const [bannerMessage, setBannerMessage] = useState<string | null>(null)
+  const setBannerMessage = notifySuccess
 
   const canViewTeamTimeline =
     activeUser.role === 'super_admin' ||
@@ -212,20 +213,6 @@ export function UnifiedTimelineView() {
 
   return (
     <div className="space-y-6">
-      {/* Feedback Toast */}
-      {bannerMessage && (
-        <div className="dp-view-enter rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/25 px-4 py-3 text-xs font-medium text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
-          <span>{bannerMessage}</span>
-          <button
-            type="button"
-            onClick={() => setBannerMessage(null)}
-            className="ml-4 font-semibold underline cursor-pointer"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {/* Clean Header + Date Filter */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">

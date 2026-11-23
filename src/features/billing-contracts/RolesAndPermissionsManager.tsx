@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store, type WorkspaceMember } from '@/context/Phase1Store'
 import {
   PERMISSION_MODULES,
@@ -37,7 +38,7 @@ export function RolesAndPermissionsManager({
   } = usePhase1Store()
 
   const [activeTab, setActiveTab] = useState<'roster' | 'roles' | 'superadmin'>('roster')
-  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
+  const setBanner = notifyFeedback
 
   // Invite member state
   const [inviteName, setInviteName] = useState('')
@@ -243,25 +244,6 @@ export function RolesAndPermissionsManager({
 
   return (
     <div className="space-y-5">
-      {banner && (
-        <div
-          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
-            banner.ok
-              ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
-              : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200'
-          }`}
-        >
-          <span>{banner.text}</span>
-          <button
-            type="button"
-            onClick={() => setBanner(null)}
-            className="underline ml-4 cursor-pointer text-xs"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {/* Navigation Sub-Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
         <div className="inline-flex rounded-2xl bg-zinc-200/60 dark:bg-white/[0.045] p-1 text-xs font-medium shadow-[inset_0_1px_2px_rgba(15,5,31,0.06)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">

@@ -1,27 +1,35 @@
 import { useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { usePhase1Store, type TaskRecord } from '@/context/Phase1Store'
+import { notifyFeedback } from '@/lib/notify'
+import {
+  usePhase1Store,
+  type TaskIssueType,
+  type TaskRecord,
+} from '@/context/Phase1Store'
 import type { WorkMode } from '@/types/domain.types'
-
-function formatDuration(minutes: number): string {
-  const safe = Math.max(0, Math.round(minutes))
-  const h = Math.floor(safe / 60)
-  const m = safe % 60
-  if (h === 0) return `${m}m`
-  if (m === 0) return `${h}h`
-  return `${h}h ${m}m`
-}
-
-const WORK_MODE_OPTIONS: WorkMode[] = [
-  'coding',
-  'thinking',
-  'debugging',
-  'research',
-  'testing',
-  'review',
-  'meeting',
-  'design',
-]
+import {
+  applyBoardFilters,
+  DEFAULT_BOARD_FILTERS,
+  generateNextTaskCode,
+  getActiveMembers,
+  getDefaultDueDate,
+  type BoardFilters,
+  type ProjectPermissions,
+  type ProjectTab,
+  type SwimlaneMode,
+  type TaskStatus,
+  type TaskTimeStatsMap,
+} from './types'
+import { ProjectHeaderBar } from './components/ProjectHeaderBar'
+import { BoardFilterToolbar } from './components/BoardFilterToolbar'
+import { CreateProjectModal } from './components/CreateProjectModal'
+import { CreateIssueModal } from './components/CreateIssueModal'
+import { IssueDetailModal } from './components/IssueDetailModal'
+import { KanbanBoardView } from './views/KanbanBoardView'
+import { BacklogSprintView } from './views/BacklogSprintView'
+import { IssueListView } from './views/IssueListView'
+import { ProjectSummaryView } from './views/ProjectSummaryView'
+import { ProjectTimelineView } from './views/ProjectTimelineView'
+import { ProjectSettingsView } from './views/ProjectSettingsView'
 
 export function ProjectsTasksView({
   onLaunchTimerForTask,
@@ -34,60 +42,81 @@ export function ProjectsTasksView({
     members,
     projects,
     createProject,
+    updateProject,
+    deleteProject,
+    upsertProjectMember,
+    removeProjectMember,
+    sprints,
+    createSprint,
+    updateSprint,
+    deleteSprint,
     tasks,
     createTask,
     updateTask,
+    reorderTasks,
     deleteTask,
-    updateTaskStatus,
     assignTaskMembers,
     addTaskAttachment,
+    addTaskNote,
+    deleteTaskNote,
     timesheetLines,
+    auditLogs,
     hasPermission,
   } = usePhase1Store()
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    projects[0]?.id ?? ''
+    () => projects[0]?.id ?? ''
   )
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban')
+  const [activeTab, setActiveTab] = useState<ProjectTab>('board')
+  const [swimlaneMode, setSwimlaneMode] = useState<SwimlaneMode>('none')
+  const [filters, setFilters] = useState<BoardFilters>(DEFAULT_BOARD_FILTERS)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
-  const [showNewTaskModal, setShowNewTaskModal] = useState(false)
-  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
-  const [attachmentInput, setAttachmentInput] = useState<Record<string, string>>({})
+  const [showNewIssueModal, setShowNewIssueModal] = useState(false)
 
-  // Edit task state
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [editTitle, setEditTitle] = useState('')
-  const [editCriteria, setEditCriteria] = useState('')
-  const [editEstimate, setEditEstimate] = useState(120)
-  const [editPriority, setEditPriority] = useState<TaskRecord['priority']>('medium')
-  const [editMode, setEditMode] = useState<WorkMode>('coding')
+  const permissions: ProjectPermissions = useMemo(
+    () => ({
+      canCreateProject: hasPermission('project:create'),
+      canEditProject: hasPermission('project:edit'),
+      canDeleteProject: hasPermission('project:delete'),
+      canCreateTask: hasPermission('task:create'),
+      canEditTask: hasPermission('task:edit'),
+      canDeleteTask: hasPermission('task:delete'),
+      canAssignTask: hasPermission('task:assign'),
+      canChangeTaskStatus: hasPermission('task:status_change'),
+      canApproveTask: hasPermission('task:approve'),
+      canTrackTimer: hasPermission('timer:start_stop'),
+    }),
+    [hasPermission]
+  )
 
-  // Granular action permissions
-  const canCreateProject = hasPermission('project:create')
-
-  const canCreateTask = hasPermission('task:create')
-  const canEditTask = hasPermission('task:edit')
-  const canDeleteTask = hasPermission('task:delete')
-  const canAssignTask = hasPermission('task:assign')
-  const canChangeTaskStatus = hasPermission('task:status_change')
-  const canApproveTask = hasPermission('task:approve')
-  const canTrackTimer = hasPermission('timer:start_stop')
   const canViewTeamLogs =
     activeUser.role === 'super_admin' ||
     activeUser.role === 'tenant_owner' ||
     hasPermission('timesheet:view_team')
+
+  const currentProject = useMemo(
+    () => projects.find((p) => p.id === selectedProjectId) ?? projects[0],
+    [projects, selectedProjectId]
+  )
+
+  const activeMembers = useMemo(() => getActiveMembers(members), [members])
+
+  const taskCountByProject = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const t of tasks) {
+      map.set(t.projectId, (map.get(t.projectId) ?? 0) + 1)
+    }
+    return map
+  }, [tasks])
 
   const scopedTimesheetLines = useMemo(() => {
     if (canViewTeamLogs) return timesheetLines
     return timesheetLines.filter((l) => l.developerId === activeUser.id)
   }, [canViewTeamLogs, timesheetLines, activeUser.id])
 
-  const taskTimeStats = useMemo(() => {
-    const map = new Map<
-      string,
-      { loggedMinutes: number; approvedMinutes: number; entries: typeof scopedTimesheetLines }
-    >()
+  const taskTimeStats: TaskTimeStatsMap = useMemo(() => {
+    const map: TaskTimeStatsMap = new Map()
     for (const line of scopedTimesheetLines) {
       const existing = map.get(line.taskId) ?? {
         loggedMinutes: 0,
@@ -102,1130 +131,372 @@ export function ProjectsTasksView({
     return map
   }, [scopedTimesheetLines])
 
-  // New project form state
-  const [projCode, setProjCode] = useState('')
-  const [projName, setProjName] = useState('')
-  const [projClient, setProjClient] = useState('')
-  const [projDesc, setProjDesc] = useState('')
-
-  // New task form state
-  const [taskCode, setTaskCode] = useState('')
-  const [taskTitle, setTaskTitle] = useState('')
-  const [taskCriteria, setTaskCriteria] = useState('')
-  const [parentTaskId, setParentTaskId] = useState('')
-  const [taskEstimate, setTaskEstimate] = useState(120)
-  const [taskPriority, setTaskPriority] = useState<TaskRecord['priority']>('high')
-  const [taskMode, setTaskMode] = useState<WorkMode>('coding')
-  const [taskBillable, setTaskBillable] = useState(true)
-
-  const currentProject =
-    projects.find((p) => p.id === selectedProjectId) ?? projects[0]
-  const projectTasks = tasks.filter(
-    (t) => !currentProject || t.projectId === currentProject.id
+  const projectTasks = useMemo(
+    () => (currentProject ? tasks.filter((t) => t.projectId === currentProject.id) : []),
+    [tasks, currentProject]
   )
+
+  const projectSprints = useMemo(
+    () => (currentProject ? sprints.filter((s) => s.projectId === currentProject.id) : []),
+    [sprints, currentProject]
+  )
+
+  const activeSprint = useMemo(
+    () => projectSprints.find((s) => s.status === 'active'),
+    [projectSprints]
+  )
+
+  const filteredTasks = useMemo(
+    () =>
+      applyBoardFilters(
+        projectTasks,
+        filters,
+        activeUser.id,
+        taskTimeStats,
+        projectSprints
+      ),
+    [projectTasks, filters, activeUser.id, taskTimeStats, projectSprints]
+  )
+
+  const backlogCount = useMemo(() => {
+    const activeIds = new Set(
+      projectSprints.filter((s) => s.status !== 'completed').map((s) => s.id)
+    )
+    return projectTasks.filter((t) => !t.sprintId || !activeIds.has(t.sprintId)).length
+  }, [projectTasks, projectSprints])
+
   const selectedTask = selectedTaskId
     ? tasks.find((t) => t.id === selectedTaskId) ?? null
     : null
 
-  function startEditTask(task: TaskRecord) {
-    setEditingTaskId(task.id)
-    setEditTitle(task.title)
-    setEditCriteria(task.acceptanceCriteria)
-    setEditEstimate(task.estimateMinutes)
-    setEditPriority(task.priority)
-    setEditMode(task.defaultWorkMode)
+  function handleSelectProject(projectId: string) {
+    setSelectedProjectId(projectId)
+    setFilters((prev) => ({ ...prev, sprintFilter: 'all' }))
   }
 
-  function handleSaveEditTask(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingTaskId || !editTitle.trim()) return
-    updateTask(editingTaskId, {
-      title: editTitle.trim(),
-      acceptanceCriteria: editCriteria.trim(),
-      estimateMinutes: editEstimate,
-      priority: editPriority,
-      defaultWorkMode: editMode,
+  function handleQuickCreateOnBoard(
+    status: TaskStatus,
+    title: string,
+    issueType: TaskIssueType
+  ) {
+    if (!currentProject) return
+    const nextCode = generateNextTaskCode(currentProject, tasks)
+    const defaultSprint =
+      filters.sprintFilter === 'active_sprint'
+        ? activeSprint?.id ?? null
+        : filters.sprintFilter !== 'all' && filters.sprintFilter !== 'backlog_only'
+          ? filters.sprintFilter
+          : activeSprint?.id ?? null
+
+    createTask({
+      projectId: currentProject.id,
+      sprintId: defaultSprint,
+      code: nextCode,
+      title,
+      description: '',
+      acceptanceCriteria: '1. Implementation verified. 2. Code reviewed & tested.',
+      issueType,
+      status,
+      priority: 'medium',
+      labels: [],
+      storyPoints: null,
+      estimateMinutes: 120,
+      isBillable: true,
+      defaultWorkMode: 'coding',
+      assignedMemberIds: activeMembers.some((m) => m.id === activeUser.id)
+        ? [activeUser.id]
+        : [],
+      dueDate: getDefaultDueDate(7),
     })
-    setEditingTaskId(null)
-    setBanner({ ok: true, text: 'Task specifications updated successfully.' })
   }
 
-  function handleDeleteTask(taskId: string) {
-    if (window.confirm('Are you sure you want to delete this task?')) {
-      const res = deleteTask(taskId)
-      setBanner({ ok: res.ok, text: res.message })
-    }
+  function handleQuickCreateInBacklog(
+    sprintId: string | null,
+    title: string,
+    issueType: TaskIssueType
+  ) {
+    if (!currentProject) return
+    const nextCode = generateNextTaskCode(currentProject, tasks)
+    createTask({
+      projectId: currentProject.id,
+      sprintId,
+      code: nextCode,
+      title,
+      description: '',
+      acceptanceCriteria: '1. Implementation verified. 2. Code reviewed & tested.',
+      issueType,
+      status: sprintId ? 'active' : 'backlog',
+      priority: 'medium',
+      labels: [],
+      storyPoints: null,
+      estimateMinutes: 120,
+      isBillable: true,
+      defaultWorkMode: 'coding',
+      assignedMemberIds: [],
+      dueDate: getDefaultDueDate(10),
+    })
+  }
+
+  function handleCreateSubtask(parentTask: TaskRecord, title: string) {
+    if (!currentProject) return
+    const nextCode = generateNextTaskCode(currentProject, tasks)
+    createTask({
+      projectId: parentTask.projectId,
+      parentTaskId: parentTask.id,
+      sprintId: parentTask.sprintId ?? null,
+      code: nextCode,
+      title,
+      description: '',
+      acceptanceCriteria: 'Subtask deliverables completed and verified.',
+      issueType: 'subtask',
+      status: 'backlog',
+      priority: parentTask.priority,
+      labels: [],
+      storyPoints: null,
+      estimateMinutes: 60,
+      isBillable: parentTask.isBillable,
+      defaultWorkMode: parentTask.defaultWorkMode,
+      assignedMemberIds: parentTask.assignedMemberIds,
+      dueDate: parentTask.dueDate || getDefaultDueDate(7),
+    })
   }
 
   function handleApproveTask(task: TaskRecord) {
     updateTask(task.id, { status: 'done' })
-    setBanner({
+    notifyFeedback({
       ok: true,
-      text: `Task ${task.code} acceptance criteria verified & marked Done.`,
+      text: `Issue ${task.code} acceptance criteria signed off & marked Done.`,
     })
   }
 
-  function handleCreateProject(e: React.FormEvent) {
-    e.preventDefault()
-    if (!projCode.trim() || !projName.trim() || !projClient.trim()) return
-    const res = createProject(
-      projCode.trim(),
-      projName.trim(),
-      projClient.trim(),
-      projDesc.trim()
-    )
-    setBanner({ ok: res.ok, text: res.message })
-    if (res.ok) {
-      setProjCode('')
-      setProjName('')
-      setProjClient('')
-      setProjDesc('')
-      setShowNewProjectModal(false)
-    }
+  function handleDeleteTaskWithFeedback(taskId: string) {
+    const res = deleteTask(taskId)
+    notifyFeedback(res)
   }
 
-  function handleCreateTask(e: React.FormEvent) {
-    e.preventDefault()
-    if (!currentProject || !taskCode.trim() || !taskTitle.trim()) return
-    createTask({
-      projectId: currentProject.id,
-      parentTaskId: parentTaskId || undefined,
-      code: taskCode.trim().toUpperCase(),
-      title: taskTitle.trim(),
-      acceptanceCriteria:
-        taskCriteria.trim() || '1. Unit tests passing. 2. Peer reviewed.',
-      status: 'active',
-      priority: taskPriority,
-      estimateMinutes: taskEstimate,
-      isBillable: taskBillable,
-      defaultWorkMode: taskMode,
-      assignedMemberIds: [activeUser.id],
-      dueDate: '2026-11-22',
-    })
-    setTaskCode('')
-    setTaskTitle('')
-    setTaskCriteria('')
-    setParentTaskId('')
-    setShowNewTaskModal(false)
-  }
-
-  function toggleTaskAssignee(task: TaskRecord, memberId: string) {
-    const exists = task.assignedMemberIds.includes(memberId)
-    const next = exists
-      ? task.assignedMemberIds.filter((id) => id !== memberId)
-      : [...task.assignedMemberIds, memberId]
-    assignTaskMembers(task.id, next)
-  }
-
-  const columns: { status: TaskRecord['status']; label: string }[] = [
-    { status: 'backlog', label: 'Backlog' },
-    { status: 'active', label: 'Active Work' },
-    { status: 'review', label: 'In Review' },
-    { status: 'done', label: 'Done' },
-  ]
+  const showFilterBar =
+    Boolean(currentProject) &&
+    (activeTab === 'board' || activeTab === 'backlog' || activeTab === 'list')
 
   return (
-    <div className="space-y-6">
-      {banner && (
-        <div
-          className={`rounded-xl border px-4 py-3 text-xs font-medium flex items-center justify-between ${
-            banner.ok
-              ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-200'
-              : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200'
-          }`}
-        >
-          <span>{banner.text}</span>
-          <button
-            type="button"
-            onClick={() => setBanner(null)}
-            className="underline ml-4 cursor-pointer"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+    <div className="space-y-4">
+      {/* Jira-Style Project Header & Tab Navigation */}
+      <ProjectHeaderBar
+        tenantName={activeTenant.name}
+        projects={projects}
+        currentProject={currentProject}
+        activeSprint={activeSprint}
+        taskCountByProject={taskCountByProject}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onSelectProject={handleSelectProject}
+        onOpenNewProject={() => setShowNewProjectModal(true)}
+        onOpenNewIssue={() => setShowNewIssueModal(true)}
+        permissions={permissions}
+        projectTaskCount={projectTasks.length}
+        backlogTaskCount={backlogCount}
+      />
 
-      {/* Project Directory Bar */}
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 p-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-              {activeTenant.name} Projects
-            </h2>
+      {/* Empty Workspace Onboarding State */}
+      {!currentProject ? (
+        <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 bg-white dark:bg-[#111117] p-12 text-center space-y-4">
+          <div className="h-12 w-12 mx-auto rounded-2xl bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] flex items-center justify-center font-mono text-lg font-bold">
+            +
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('kanban')}
-                className={`px-3 py-1.5 rounded-md font-medium transition cursor-pointer ${
-                  viewMode === 'kanban'
-                    ? 'bg-[#702fe3] text-white'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
-              >
-                Kanban Board
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className={`px-3 py-1.5 rounded-md font-medium transition cursor-pointer ${
-                  viewMode === 'list'
-                    ? 'bg-[#702fe3] text-white'
-                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
-              >
-                Task List
-              </button>
-            </div>
-
-            {canCreateProject && (
-              <button
-                type="button"
-                onClick={() => setShowNewProjectModal((v) => !v)}
-                className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-xs font-semibold text-zinc-900 dark:text-white cursor-pointer"
-              >
-                + New Project
-              </button>
-            )}
-            {canCreateTask && (
-              <button
-                type="button"
-                onClick={() => setShowNewTaskModal((v) => !v)}
-                className="px-3.5 py-1.5 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-xs font-semibold text-white cursor-pointer"
-              >
-                + New Task / Subtask
-              </button>
-            )}
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white">
+              Create your first software project
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
+              Organize epics, sprints, drag-and-drop Kanban boards, acceptance sign-offs, and billable time tracking in one unified workspace.
+            </p>
           </div>
-        </div>
-
-        {/* Compact Horizontal Project Switcher (Space-Optimized) */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {projects.map((proj) => {
-            const isSelected = currentProject?.id === proj.id
-            const count = tasks.filter((t) => t.projectId === proj.id).length
-            return (
-              <button
-                key={proj.id}
-                type="button"
-                onClick={() => setSelectedProjectId(proj.id)}
-                title={proj.description}
-                className={`group inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-left transition-all duration-150 cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#f6f4fc] dark:bg-[#6d25da]/15 text-zinc-900 dark:text-white shadow-[inset_0_0_0_1px_rgba(109,37,218,0.28)]'
-                    : 'bg-zinc-100/70 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200/60 dark:hover:bg-white/[0.08]'
-                }`}
-              >
-                <span className="font-mono text-[11px] font-bold text-[#6d25da] dark:text-[#c5a8f0]">
-                  {proj.code}
-                </span>
-                <span className="text-xs font-semibold truncate max-w-[160px]">
-                  {proj.name}
-                </span>
-                <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-white/90 dark:bg-white/[0.07] text-zinc-500 dark:text-zinc-400">
-                  {proj.clientName}
-                </span>
-                <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500">
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Create Project Inline Drawer */}
-        {showNewProjectModal && (
-          <form
-            onSubmit={handleCreateProject}
-            className="rounded-xl border border-[#6d25da]/40 bg-zinc-50 dark:bg-zinc-950 p-4 space-y-3"
-          >
-            <div className="text-xs font-semibold text-[#6d25da] dark:text-[#c5a8f0]">
-              New Project
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <input
-                type="text"
-                placeholder="Project Code (e.g. CORE-API)"
-                value={projCode}
-                onChange={(e) => setProjCode(e.target.value)}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Project Name"
-                value={projName}
-                onChange={(e) => setProjName(e.target.value)}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Client Organization Name"
-                value={projClient}
-                onChange={(e) => setProjClient(e.target.value)}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-                required
-              />
-            </div>
-            <input
-              type="text"
-              placeholder="Project scope & deliverable summary..."
-              value={projDesc}
-              onChange={(e) => setProjDesc(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowNewProjectModal(false)}
-                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-3.5 py-1.5 rounded-lg bg-[#702fe3] text-xs font-semibold text-white cursor-pointer"
-              >
-                Save Project
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Create Task / Subtask Inline Drawer (F1-011, F1-012, F1-014) */}
-        {showNewTaskModal && (
-          <form
-            onSubmit={handleCreateTask}
-            className="rounded-xl border border-emerald-500/40 bg-zinc-50 dark:bg-zinc-950 p-4 space-y-3"
-          >
-            <div className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-              New Task
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
-              <input
-                type="text"
-                placeholder="Task Code (e.g. DEV-410)"
-                value={taskCode}
-                onChange={(e) => setTaskCode(e.target.value)}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white font-mono"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Task Title"
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
-                className="md:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-                required
-              />
-              <select
-                value={parentTaskId}
-                onChange={(e) => setParentTaskId(e.target.value)}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-              >
-                <option value="">Top-Level Task (No Parent)</option>
-                {projectTasks
-                  .filter((pt) => !pt.parentTaskId)
-                  .map((pt) => (
-                    <option key={pt.id} value={pt.id}>
-                      Subtask of {pt.code}
-                    </option>
-                  ))}
-              </select>
-              <select
-                value={taskMode}
-                onChange={(e) => setTaskMode(e.target.value as WorkMode)}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-              >
-                {WORK_MODE_OPTIONS.map((m) => (
-                  <option key={m} value={m}>
-                    Default Mode: {m.toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <input
-                type="text"
-                placeholder="Acceptance criteria (used by manager during timesheet review)..."
-                value={taskCriteria}
-                onChange={(e) => setTaskCriteria(e.target.value)}
-                className="md:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-              />
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min={15}
-                  step={15}
-                  value={taskEstimate}
-                  onChange={(e) => setTaskEstimate(Number(e.target.value))}
-                  className="w-28 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white font-mono"
-                  title="Estimate in minutes"
-                />
-                <select
-                  value={taskPriority}
-                  onChange={(e) =>
-                    setTaskPriority(e.target.value as TaskRecord['priority'])
-                  }
-                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-2 text-zinc-900 dark:text-white"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-                <label className="inline-flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={taskBillable}
-                    onChange={(e) => setTaskBillable(e.target.checked)}
-                  />
-                  Billable
-                </label>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowNewTaskModal(false)}
-                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-xs font-semibold text-white cursor-pointer"
-              >
-                Create Task
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Edit Task Inline Drawer (Granular: task:edit) */}
-        {editingTaskId && (
-          <form
-            onSubmit={handleSaveEditTask}
-            className="rounded-xl border border-[#6d25da]/50 bg-zinc-50 dark:bg-zinc-950 p-4 space-y-3"
-          >
-            <div className="flex items-center justify-between text-xs font-semibold text-[#6d25da] dark:text-[#c5a8f0]">
-              <span>Edit Task Specifications & Acceptance Criteria (task:edit)</span>
-              <button
-                type="button"
-                onClick={() => setEditingTaskId(null)}
-                className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-              <input
-                type="text"
-                placeholder="Task Title"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="md:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-                required
-              />
-              <select
-                value={editMode}
-                onChange={(e) => setEditMode(e.target.value as WorkMode)}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-              >
-                {WORK_MODE_OPTIONS.map((m) => (
-                  <option key={m} value={m}>
-                    Mode: {m.toUpperCase()}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={editPriority}
-                onChange={(e) =>
-                  setEditPriority(e.target.value as TaskRecord['priority'])
-                }
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <input
-                type="text"
-                placeholder="Acceptance criteria..."
-                value={editCriteria}
-                onChange={(e) => setEditCriteria(e.target.value)}
-                className="md:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
-              />
-              <input
-                type="number"
-                min={15}
-                step={15}
-                value={editEstimate}
-                onChange={(e) => setEditEstimate(Number(e.target.value))}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white font-mono"
-                title="Estimate in minutes"
-              />
-            </div>
-            <div className="flex justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setEditingTaskId(null)}
-                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-3.5 py-1.5 rounded-lg bg-[#702fe3] font-semibold text-white cursor-pointer hover:bg-[#5f21cc]"
-              >
-                Save Changes
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-
-      {/* Kanban Board or List View (Jira-style full-height columns) */}
-      {viewMode === 'kanban' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5 items-stretch">
-          {columns.map((col) => {
-            const colTasks = projectTasks.filter((t) => t.status === col.status)
-            const statusDotClass =
-              col.status === 'backlog'
-                ? 'bg-zinc-400'
-                : col.status === 'active'
-                  ? 'bg-[#6d25da] dark:bg-[#a87ce9]'
-                  : col.status === 'review'
-                    ? 'bg-amber-500'
-                    : 'bg-emerald-500'
-
-            return (
-              <div
-                key={col.status}
-                className="rounded-xl bg-[#f4f5f7] dark:bg-white/[0.03] p-2.5 flex flex-col gap-2.5 h-[calc(100vh-14.5rem)] min-h-[460px]"
-              >
-                <div className="flex items-center justify-between px-1 pb-1 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
-                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-200">
-                      {col.label}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-white dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300 shadow-[0_1px_2px_rgba(15,5,31,0.05)]">
-                    {colTasks.length}
-                  </span>
-                </div>
-
-                {colTasks.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-zinc-200/80 dark:border-white/[0.06] text-xs text-zinc-400 dark:text-zinc-500">
-                    No tasks
-                  </div>
-                ) : (
-                  <div className="flex-1 space-y-2.5 overflow-y-auto pr-0.5">
-                    {colTasks.map((task) => {
-                      const parentTask = task.parentTaskId
-                        ? tasks.find((p) => p.id === task.parentTaskId)
-                        : null
-                      const assignedMembers = members.filter(
-                        (m) => m.status === 'active' && task.assignedMemberIds.includes(m.id)
-                      )
-                      const stats = taskTimeStats.get(task.id)
-                      const loggedMins = stats?.loggedMinutes ?? 0
-                      const progressPct =
-                        task.estimateMinutes > 0
-                          ? Math.min(100, Math.round((loggedMins / task.estimateMinutes) * 100))
-                          : 0
-                      const isOverEstimate =
-                        task.estimateMinutes > 0 && loggedMins > task.estimateMinutes
-
-                      return (
-                        <div
-                          key={task.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setSelectedTaskId(task.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              setSelectedTaskId(task.id)
-                            }
-                          }}
-                          className="group rounded-xl bg-white dark:bg-[#131319] p-3.5 space-y-2.5 shadow-[0_1px_2px_rgba(15,5,31,0.04),0_4px_12px_-4px_rgba(15,5,31,0.06),0_0_0_1px_rgba(15,5,31,0.05)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_4px_14px_-4px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.06)] hover:shadow-[0_6px_18px_-6px_rgba(109,37,218,0.14),0_0_0_1px_rgba(109,37,218,0.22)] hover:-translate-y-[1px] transition-all duration-150 cursor-pointer"
-                        >
-                          {/* Compact Header: Code + Priority */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="font-mono text-[11px] font-bold text-[#6d25da] dark:text-[#c5a8f0]">
-                                {task.code}
-                              </span>
-                              {parentTask && (
-                                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 dark:text-zinc-400 truncate">
-                                  ↳ {parentTask.code}
-                                </span>
-                              )}
-                            </div>
-                            <span
-                              className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded shrink-0 ${
-                                task.priority === 'urgent'
-                                  ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
-                                  : task.priority === 'high'
-                                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
-                                    : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300'
-                              }`}
-                            >
-                              {task.priority}
-                            </span>
-                          </div>
-
-                          {/* Compact Title */}
-                          <div className="text-[13px] font-semibold text-zinc-900 dark:text-white leading-snug line-clamp-2 group-hover:text-[#6d25da] dark:group-hover:text-[#c5a8f0] transition-colors">
-                            {task.title}
-                          </div>
-
-                          {/* Logged vs Estimate Progress Strip */}
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px] font-mono">
-                              <span
-                                className={
-                                  isOverEstimate
-                                    ? 'text-rose-600 dark:text-rose-400 font-semibold'
-                                    : loggedMins > 0
-                                      ? 'text-zinc-700 dark:text-zinc-200 font-semibold'
-                                      : 'text-zinc-400 dark:text-zinc-500'
-                                }
-                              >
-                                {formatDuration(loggedMins)} logged
-                              </span>
-                              <span className="text-zinc-400 dark:text-zinc-500">
-                                Est. {formatDuration(task.estimateMinutes)}
-                              </span>
-                            </div>
-                            <div className="h-1 w-full rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                  isOverEstimate
-                                    ? 'bg-rose-500'
-                                    : task.status === 'done'
-                                      ? 'bg-emerald-500'
-                                      : 'bg-[#6d25da]'
-                                }`}
-                                style={{ width: `${progressPct}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Compact Footer: Metadata + Quick Track */}
-                          <div className="flex items-center justify-between gap-2 pt-0.5">
-                            <div className="flex items-center gap-1.5 min-w-0 text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-                              <span className="capitalize text-[#6d25da] dark:text-[#c5a8f0] truncate">
-                                {task.defaultWorkMode}
-                              </span>
-                              {stats && stats.entries.length > 0 && (
-                                <>
-                                  <span>·</span>
-                                  <span title="Logged time entries">
-                                    {stats.entries.length} {stats.entries.length === 1 ? 'log' : 'logs'}
-                                  </span>
-                                </>
-                              )}
-                              {task.attachments.length > 0 && (
-                                <>
-                                  <span>·</span>
-                                  <span>📎 {task.attachments.length}</span>
-                                </>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {assignedMembers.length > 0 && (
-                                <span
-                                  title={assignedMembers.map((m) => m.name).join(', ')}
-                                  className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.08] text-[10px] font-semibold text-zinc-700 dark:text-zinc-300"
-                                >
-                                  {assignedMembers[0].name.split(' ')[0].slice(0, 2).toUpperCase()}
-                                  {assignedMembers.length > 1 ? `+${assignedMembers.length - 1}` : ''}
-                                </span>
-                              )}
-
-                              {canTrackTimer && (
-                                <button
-                                  type="button"
-                                  title="Start Focus Session"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    onLaunchTimerForTask(
-                                      task.projectId,
-                                      task.id,
-                                      task.defaultWorkMode
-                                    )
-                                  }}
-                                  className="h-6 px-2 rounded-md bg-[#6d25da]/10 hover:bg-[#6d25da] text-[#6d25da] hover:text-white dark:bg-[#6d25da]/25 dark:text-[#c5a8f0] dark:hover:bg-[#6d25da] dark:hover:text-white text-[10px] font-semibold transition active:scale-95 cursor-pointer"
-                                >
-                                  ▶
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {permissions.canCreateProject && (
+            <button
+              type="button"
+              onClick={() => setShowNewProjectModal(true)}
+              className="px-4 py-2 rounded-xl bg-[#6d25da] hover:bg-[#581eae] text-xs font-semibold text-white cursor-pointer"
+            >
+              + Create First Project
+            </button>
+          )}
         </div>
       ) : (
-        <div className="rounded-2xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] overflow-x-auto shadow-[0_1px_2px_rgba(15,5,31,0.03)]">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-zinc-50/90 dark:bg-white/[0.03] text-zinc-500 dark:text-zinc-400 uppercase text-[11px]">
-              <tr>
-                <th className="py-3 px-4">Task</th>
-                <th className="py-3 px-4">Logged / Est.</th>
-                <th className="py-3 px-4">Mode</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projectTasks.map((t) => {
-                const stats = taskTimeStats.get(t.id)
-                const loggedMins = stats?.loggedMinutes ?? 0
-                const pct =
-                  t.estimateMinutes > 0
-                    ? Math.min(100, Math.round((loggedMins / t.estimateMinutes) * 100))
-                    : 0
-                const over = t.estimateMinutes > 0 && loggedMins > t.estimateMinutes
-                const statusBadge =
-                  t.status === 'done'
-                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                    : t.status === 'review'
-                      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                      : t.status === 'active'
-                        ? 'bg-[#6d25da]/10 text-[#581eae] dark:text-[#c5a8f0]'
-                        : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300'
+        <>
+          {/* Rich Filter & Swimlane Toolbar */}
+          {showFilterBar && (
+            <BoardFilterToolbar
+              filters={filters}
+              onChangeFilters={setFilters}
+              activeMembers={activeMembers}
+              sprints={projectSprints}
+              showSwimlanes={activeTab === 'board'}
+              swimlaneMode={swimlaneMode}
+              onChangeSwimlaneMode={setSwimlaneMode}
+              totalCount={projectTasks.length}
+              filteredCount={filteredTasks.length}
+            />
+          )}
 
-                return (
-                  <tr
-                    key={t.id}
-                    onClick={() => setSelectedTaskId(t.id)}
-                    className="cursor-pointer"
-                  >
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0] shrink-0">
-                          {t.code}
-                        </span>
-                        <span className="font-semibold text-zinc-900 dark:text-white">
-                          {t.title}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">
-                        {t.acceptanceCriteria}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 w-44">
-                      <div className="flex items-center justify-between font-mono text-[11px] mb-1">
-                        <span className={over ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-zinc-800 dark:text-zinc-200 font-semibold'}>
-                          {formatDuration(loggedMins)}
-                        </span>
-                        <span className="text-zinc-400">/ {formatDuration(t.estimateMinutes)}</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${over ? 'bg-rose-500' : t.status === 'done' ? 'bg-emerald-500' : 'bg-[#6d25da]'}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 capitalize font-medium text-[#6d25da] dark:text-[#c5a8f0]">
-                      {t.defaultWorkMode}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize ${statusBadge}`}>
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1.5">
-                        {canEditTask && (
-                          <button
-                            type="button"
-                            title="Edit Task"
-                            onClick={() => startEditTask(t)}
-                            className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-white/[0.07] hover:bg-zinc-200 dark:hover:bg-white/[0.12] text-zinc-700 dark:text-zinc-300 text-xs transition cursor-pointer"
-                          >
-                            ✎
-                          </button>
-                        )}
-                        {canDeleteTask && (
-                          <button
-                            type="button"
-                            title="Delete Task"
-                            onClick={() => handleDeleteTask(t.id)}
-                            className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-white/[0.07] hover:bg-rose-100 dark:hover:bg-rose-950 text-zinc-500 dark:text-zinc-400 hover:text-rose-800 dark:hover:text-rose-300 text-xs transition cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        )}
-                        {canApproveTask && (t.status === 'review' || t.status === 'active') && (
-                          <button
-                            type="button"
-                            title="Approve Acceptance Criteria"
-                            onClick={() => handleApproveTask(t)}
-                            className="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs transition cursor-pointer"
-                          >
-                            ✓ Sign-off
-                          </button>
-                        )}
-                        {canTrackTimer && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onLaunchTimerForTask(t.projectId, t.id, t.defaultWorkMode)
-                            }
-                            className="px-2.5 py-1 rounded-lg bg-[#6d25da] hover:bg-[#581eae] text-white font-semibold transition cursor-pointer text-xs"
-                          >
-                            ▶ Track
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+          {/* Active Tab Workspace */}
+          {activeTab === 'board' && (
+            <KanbanBoardView
+              project={currentProject}
+              tasks={filteredTasks}
+              allProjectTasks={projectTasks}
+              activeMembers={activeMembers}
+              taskTimeStats={taskTimeStats}
+              swimlaneMode={swimlaneMode}
+              permissions={permissions}
+              onSelectTask={setSelectedTaskId}
+              onReorderTasks={reorderTasks}
+              onQuickCreate={handleQuickCreateOnBoard}
+              onLaunchTimer={onLaunchTimerForTask}
+            />
+          )}
+
+          {activeTab === 'backlog' && (
+            <BacklogSprintView
+              project={currentProject}
+              tasks={filteredTasks}
+              sprints={projectSprints}
+              activeMembers={activeMembers}
+              taskTimeStats={taskTimeStats}
+              permissions={permissions}
+              onOpenTaskModal={setSelectedTaskId}
+              onUpdateTask={updateTask}
+              onQuickCreate={handleQuickCreateInBacklog}
+              onCreateSprint={(input) => {
+                const res = createSprint(input)
+                notifyFeedback(res)
+              }}
+              onUpdateSprint={updateSprint}
+              onDeleteSprint={deleteSprint}
+              onLaunchTimer={onLaunchTimerForTask}
+            />
+          )}
+
+          {activeTab === 'list' && (
+            <IssueListView
+              tasks={filteredTasks}
+              sprints={projectSprints}
+              activeMembers={activeMembers}
+              taskTimeStats={taskTimeStats}
+              permissions={permissions}
+              onSelectTask={setSelectedTaskId}
+              onUpdateTask={updateTask}
+              onDeleteTask={handleDeleteTaskWithFeedback}
+              onApproveTask={handleApproveTask}
+              onLaunchTimer={onLaunchTimerForTask}
+            />
+          )}
+
+          {activeTab === 'summary' && (
+            <ProjectSummaryView
+              project={currentProject}
+              tasks={projectTasks}
+              sprints={projectSprints}
+              activeMembers={activeMembers}
+              taskTimeStats={taskTimeStats}
+              auditLogs={auditLogs}
+              onSelectTask={setSelectedTaskId}
+            />
+          )}
+
+          {activeTab === 'timeline' && (
+            <ProjectTimelineView
+              tasks={projectTasks}
+              sprints={projectSprints}
+              taskTimeStats={taskTimeStats}
+              onSelectTask={setSelectedTaskId}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <ProjectSettingsView
+              key={currentProject.id}
+              project={currentProject}
+              activeMembers={activeMembers}
+              permissions={permissions}
+              onUpdateProject={updateProject}
+              onDeleteProject={async (projectId) => {
+                const res = await deleteProject(projectId)
+                if (res.ok && !res.archivedOnly) {
+                  setActiveTab('board')
+                }
+                return res
+              }}
+              onUpsertMember={upsertProjectMember}
+              onRemoveMember={removeProjectMember}
+              onNotify={notifyFeedback}
+            />
+          )}
+        </>
       )}
 
-      {/* Clean 2-Column Task Detail Modal (Portal to document.body for full-page backdrop) */}
-      {selectedTask &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/45 backdrop-blur-xs"
-            onClick={() => setSelectedTaskId(null)}
-          >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="dp-popover-enter w-full max-w-2xl rounded-2xl bg-white dark:bg-[#131319] shadow-(--dp-shadow-popover) overflow-hidden max-h-[88vh] flex flex-col"
-          >
-            {/* Top Bar */}
-            <div className="px-6 py-3.5 flex items-center justify-between gap-3 border-b border-zinc-100 dark:border-white/[0.06] shrink-0">
-              <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 min-w-0">
-                <span className="truncate font-medium text-zinc-700 dark:text-zinc-300">
-                  {currentProject?.name ?? 'Project'}
-                </span>
-                <span>/</span>
-                <span className="font-mono font-bold text-[#6d25da] dark:text-[#c5a8f0]">
-                  {selectedTask.code}
-                </span>
-              </div>
+      {/* Create Project Portal Modal */}
+      <CreateProjectModal
+        open={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+        onCreate={({ code, name, clientName, description }) => {
+          const res = createProject(code, name, clientName, description)
+          notifyFeedback(res)
+          if (res.ok && res.projectId) {
+            setSelectedProjectId(res.projectId)
+          }
+          return res
+        }}
+      />
 
-              <div className="flex items-center gap-1 shrink-0">
-                {canEditTask && (
-                  <button
-                    type="button"
-                    title="Edit task"
-                    onClick={() => {
-                      startEditTask(selectedTask)
-                      setSelectedTaskId(null)
-                    }}
-                    className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/[0.07] dark:hover:text-white transition cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                    </svg>
-                  </button>
-                )}
-                {canDeleteTask && (
-                  <button
-                    type="button"
-                    title="Delete task"
-                    onClick={() => {
-                      handleDeleteTask(selectedTask.id)
-                      setSelectedTaskId(null)
-                    }}
-                    className="p-1.5 rounded-lg text-zinc-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/60 dark:hover:text-rose-300 transition cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setSelectedTaskId(null)}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-white/[0.07] dark:hover:text-white transition cursor-pointer"
-                  aria-label="Close task details"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+      {/* Create Issue Portal Modal */}
+      {showNewIssueModal && currentProject && (
+        <CreateIssueModal
+          key={`${currentProject.id}-${tasks.length}`}
+          open={showNewIssueModal}
+          project={currentProject}
+          allTasks={tasks}
+          projectTasks={projectTasks}
+          projectSprints={projectSprints}
+          activeMembers={activeMembers}
+          currentUserId={activeUser.id}
+          defaultSprintId={activeSprint?.id ?? null}
+          onClose={() => setShowNewIssueModal(false)}
+          onCreate={(input) => {
+            const created = createTask(input)
+            notifyFeedback({
+              ok: true,
+              text: `Issue ${created.code} created in ${currentProject?.name ?? 'project'}.`,
+            })
+          }}
+        />
+      )}
 
-            {/* 2-Column Body */}
-            <div className="grid grid-cols-1 md:grid-cols-12 overflow-y-auto">
-              {/* Left Column: Title, Criteria & Links */}
-              <div className="md:col-span-7 p-6 space-y-6">
-                <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug">
-                  {selectedTask.title}
-                </h3>
-
-                <div className="space-y-1.5">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                    Acceptance Criteria
-                  </div>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                    {selectedTask.acceptanceCriteria}
-                  </p>
-                </div>
-
-                {/* Developer Logged Time & Sessions for this Task */}
-                {(() => {
-                  const stats = taskTimeStats.get(selectedTask.id)
-                  const entries = stats?.entries ?? []
-                  return (
-                    <div className="space-y-2.5 pt-2 border-t border-zinc-100 dark:border-white/[0.06]">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                          Logged Developer Time ({entries.length})
-                        </span>
-                        <span className="font-mono text-xs font-semibold text-[#6d25da] dark:text-[#c5a8f0]">
-                          {formatDuration(stats?.loggedMinutes ?? 0)} / {formatDuration(selectedTask.estimateMinutes)}
-                        </span>
-                      </div>
-                      {entries.length === 0 ? (
-                        <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                          No sessions logged against this task yet.
-                        </p>
-                      ) : (
-                        <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-                          {entries.map((entry) => (
-                            <div
-                              key={entry.id}
-                              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-zinc-50 dark:bg-white/[0.04] text-xs"
-                            >
-                              <div className="min-w-0">
-                                <div className="font-semibold text-zinc-900 dark:text-white truncate">
-                                  {entry.developerName}
-                                </div>
-                                <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
-                                  {entry.workDate} · {entry.startTime}–{entry.endTime} ·{' '}
-                                  <span className="capitalize">{entry.workMode}</span>
-                                </div>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <div className="font-mono font-bold text-zinc-900 dark:text-white">
-                                  {formatDuration(entry.claimedMinutes)}
-                                </div>
-                                <div className="text-[10.5px] capitalize text-zinc-500 dark:text-zinc-400">
-                                  {entry.evidenceStatus.replace(/_/g, ' ')}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-
-                <div className="space-y-2.5 pt-2 border-t border-zinc-100 dark:border-white/[0.06]">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                    Links &amp; Attachments
-                  </div>
-                  {selectedTask.attachments.length > 0 && (
-                    <div className="space-y-1.5">
-                      {selectedTask.attachments.map((att) => (
-                        <div
-                          key={att}
-                          className="flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-lg bg-zinc-50 dark:bg-white/[0.04] text-zinc-700 dark:text-zinc-300 truncate"
-                        >
-                          <svg className="w-3.5 h-3.5 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                          </svg>
-                          <span className="truncate">{att}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Paste doc or PR URL..."
-                      value={attachmentInput[selectedTask.id] ?? ''}
-                      onChange={(e) =>
-                        setAttachmentInput((prev) => ({
-                          ...prev,
-                          [selectedTask.id]: e.target.value,
-                        }))
-                      }
-                      className="min-w-0 flex-1 px-3 py-1.5 text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const val = (attachmentInput[selectedTask.id] ?? '').trim()
-                        if (!val) return
-                        addTaskAttachment(selectedTask.id, val)
-                        setAttachmentInput((prev) => ({ ...prev, [selectedTask.id]: '' }))
-                      }}
-                      className="shrink-0 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-white/[0.07] dark:hover:bg-white/[0.12] text-xs font-medium text-zinc-700 dark:text-zinc-200 cursor-pointer"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Clean Properties Sidebar */}
-              <div className="md:col-span-5 bg-zinc-50/80 dark:bg-white/[0.02] p-6 border-t md:border-t-0 md:border-l border-zinc-100 dark:border-white/[0.06] flex flex-col justify-between gap-6">
-                <div className="space-y-4 text-xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-zinc-500 dark:text-zinc-400">Status</span>
-                    <select
-                      value={selectedTask.status}
-                      disabled={!canChangeTaskStatus}
-                      onChange={(e) =>
-                        updateTaskStatus(
-                          selectedTask.id,
-                          e.target.value as TaskRecord['status']
-                        )
-                      }
-                      className={`!py-1 !pl-2.5 !pr-7 !text-xs ${!canChangeTaskStatus ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <option value="backlog">Backlog</option>
-                      <option value="active">Active Work</option>
-                      <option value="review">In Review</option>
-                      <option value="done">Done</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-zinc-500 dark:text-zinc-400">Priority</span>
-                    <span
-                      className={`text-[11px] font-semibold capitalize px-2 py-0.5 rounded-md ${
-                        selectedTask.priority === 'urgent'
-                          ? 'bg-rose-100/80 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
-                          : selectedTask.priority === 'high'
-                            ? 'bg-amber-100/80 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
-                            : 'bg-zinc-200/70 dark:bg-white/[0.07] text-zinc-700 dark:text-zinc-300'
-                      }`}
-                    >
-                      {selectedTask.priority}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-zinc-500 dark:text-zinc-400">Estimate</span>
-                    <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
-                      {selectedTask.estimateMinutes} min
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-zinc-500 dark:text-zinc-400">Work Mode</span>
-                    <span className="capitalize font-medium text-[#6d25da] dark:text-[#c5a8f0]">
-                      {selectedTask.defaultWorkMode}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-zinc-500 dark:text-zinc-400">Billing</span>
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                      {selectedTask.isBillable ? 'Billable' : 'Non-Billable'}
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-zinc-200/70 dark:border-white/[0.06] space-y-2">
-                    <div className="text-zinc-500 dark:text-zinc-400">Assignees (Active Profiles Only)</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {members
-                        .filter((m) => m.status === 'active' && !m.mustChangePassword)
-                        .map((m) => {
-                          const assigned = selectedTask.assignedMemberIds.includes(m.id)
-                          if (!canAssignTask) {
-                            if (!assigned) return null
-                            return (
-                              <span
-                                key={m.id}
-                                className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#f4effc] dark:bg-[#6d25da]/15 text-[#581eae] dark:text-[#c5a8f0]"
-                              >
-                                {m.name}
-                              </span>
-                            )
-                          }
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => toggleTaskAssignee(selectedTask, m.id)}
-                              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                                assigned
-                                  ? 'bg-[#f4effc] dark:bg-[#6d25da]/20 text-[#581eae] dark:text-[#c5a8f0] shadow-[inset_0_0_0_1px_rgba(109,37,218,0.18)]'
-                                  : 'bg-white dark:bg-white/[0.05] text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
-                              }`}
-                            >
-                              {assigned ? '✓ ' : '+ '}
-                              {m.name}
-                            </button>
-                          )
-                        })}
-                    </div>
-                    {canAssignTask && members.some((m) => m.status === 'invited' || m.mustChangePassword) && (
-                      <p className="text-[10.5px] text-amber-600 dark:text-amber-400">
-                        Invited members cannot be assigned tasks until they change their temporary password and activate their profile.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Primary Actions */}
-                <div className="space-y-2 pt-3 border-t border-zinc-200/70 dark:border-white/[0.06]">
-                  {canTrackTimer && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onLaunchTimerForTask(
-                          selectedTask.projectId,
-                          selectedTask.id,
-                          selectedTask.defaultWorkMode
-                        )
-                        setSelectedTaskId(null)
-                      }}
-                      className="w-full py-2 rounded-lg bg-[#6d25da] hover:bg-[#581eae] text-xs font-semibold text-white transition cursor-pointer"
-                    >
-                      ▶ Track Session
-                    </button>
-                  )}
-
-                  {canApproveTask &&
-                    (selectedTask.status === 'review' || selectedTask.status === 'active') && (
-                      <button
-                        type="button"
-                        onClick={() => handleApproveTask(selectedTask)}
-                        className="w-full py-2 rounded-lg bg-zinc-200/70 hover:bg-zinc-200 dark:bg-white/[0.07] dark:hover:bg-white/[0.12] text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition cursor-pointer"
-                      >
-                        ✓ Sign-off Task
-                      </button>
-                    )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-          document.body
-        )}
+      {/* Wide 2-Pane Jira Issue Detail Modal */}
+      {selectedTask && (
+        <IssueDetailModal
+          key={selectedTask.id}
+          task={selectedTask}
+          project={projects.find((p) => p.id === selectedTask.projectId) ?? currentProject}
+          projectTasks={tasks.filter((t) => t.projectId === selectedTask.projectId)}
+          projectSprints={sprints.filter((s) => s.projectId === selectedTask.projectId)}
+          members={members}
+          activeUser={activeUser}
+          stats={taskTimeStats.get(selectedTask.id)}
+          auditLogs={auditLogs}
+          permissions={permissions}
+          onClose={() => setSelectedTaskId(null)}
+          onSelectTask={setSelectedTaskId}
+          onUpdateTask={updateTask}
+          onDeleteTask={handleDeleteTaskWithFeedback}
+          onAssignMembers={assignTaskMembers}
+          onAddAttachment={addTaskAttachment}
+          onAddNote={(taskId, content) => addTaskNote(taskId, content)}
+          onDeleteNote={deleteTaskNote}
+          onCreateSubtask={handleCreateSubtask}
+          onApproveTask={handleApproveTask}
+          onLaunchTimer={onLaunchTimerForTask}
+        />
+      )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { notifyFeedback } from '@/lib/notify'
 import {
   usePhase1Store,
   type DeveloperPaymentConfig,
@@ -133,7 +134,7 @@ export function DeveloperPaymentsView() {
   const [taskProjectFilter, setTaskProjectFilter] = useState('all')
   const [ledgerStatusFilter, setLedgerStatusFilter] = useState<string>('all')
   const [ledgerMemberFilter, setLedgerMemberFilter] = useState<string>('all')
-  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
+  const setBanner = notifyFeedback
 
   // Modal 1: Configure User Payment
   const [configMember, setConfigMember] = useState<WorkspaceMember | null>(null)
@@ -590,25 +591,6 @@ export function DeveloperPaymentsView() {
 
   return (
     <div className="space-y-6">
-      {/* Feedback Toast */}
-      {banner && (
-        <div
-          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${banner.ok
-              ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
-            }`}
-        >
-          <span>{banner.text}</span>
-          <button
-            type="button"
-            onClick={() => setBanner(null)}
-            className="ml-4 font-semibold underline cursor-pointer"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {/* Header & Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">

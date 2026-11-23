@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import type { RoundingRule } from '@/types/domain.types'
 import { BudgetAndAccountingPanel } from '@/features/billing-contracts/BudgetAndAccountingPanel'
@@ -47,7 +48,7 @@ export function BillingAndAdminView() {
   const [creditAmount, setCreditAmount] = useState<number>(125)
   const [creditReason, setCreditReason] = useState('')
   const [billingTab, setBillingTab] = useState<'invoicing' | 'accounting'>('invoicing')
-  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
+  const setBanner = notifyFeedback
 
   const summary = useMemo(() => {
     const latestRate =
@@ -125,26 +126,6 @@ export function BillingAndAdminView() {
 
   return (
     <div className="space-y-6">
-      {/* Feedback Toast */}
-      {banner && (
-        <div
-          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
-            banner.ok
-              ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
-          }`}
-        >
-          <span>{banner.text}</span>
-          <button
-            type="button"
-            onClick={() => setBanner(null)}
-            className="underline font-semibold ml-4 cursor-pointer"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {/* Header + Segmented Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">

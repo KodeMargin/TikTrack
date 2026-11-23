@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store, type TimesheetLineItem } from '@/context/Phase1Store'
 import { ActiveRulesSummaryBanner } from '@/features/verification-ai/ActiveRulesSummaryBanner'
 import { PortableWorkReportPanel } from '@/features/timesheets-review/PortableWorkReportPanel'
@@ -129,7 +130,7 @@ export function TimesheetsAndReviewView() {
   const [clarificationDrafts, setClarificationDrafts] = useState<Record<string, string>>({})
   const [managerReasons, setManagerReasons] = useState<Record<string, string>>({})
   const [managerAdjustMins, setManagerAdjustMins] = useState<Record<string, number>>({})
-  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
+  const setBanner = notifyFeedback
 
   // Unique developers present in scoped lines (for quick filter strip)
   const developerSummaries = useMemo(() => {
@@ -789,26 +790,6 @@ export function TimesheetsAndReviewView() {
 
   return (
     <div className="space-y-6">
-      {/* Feedback Toast Banner */}
-      {banner && (
-        <div
-          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
-            banner.ok
-              ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
-          }`}
-        >
-          <span>{banner.text}</span>
-          <button
-            type="button"
-            onClick={() => setBanner(null)}
-            className="ml-4 font-semibold underline cursor-pointer"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {/* Clean Header + Primary Actions */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">

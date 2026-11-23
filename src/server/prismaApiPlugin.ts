@@ -623,7 +623,65 @@ export async function handlePrismaApiRequest(
               }
             }
 
-            if (req.method === 'POST' && url.startsWith('/api/prisma/projects')) {
+            if (req.method === 'POST' && url.startsWith('/api/prisma/projects/members')) {
+              const body = await readJsonBody<{
+                tenantId: string
+                projectId: string
+                userId: string
+                projectRole: string
+              }>(req)
+              if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId) || !isValidUuid(body.userId)) {
+                return sendJson(res, 200, { ok: false, error: 'Invalid UUIDs' })
+              }
+              const member = await prisma.projectMember.upsert({
+                where: {
+                  tenantId_projectId_userId: {
+                    tenantId: body.tenantId,
+                    projectId: body.projectId,
+                    userId: body.userId,
+                  },
+                },
+                update: { projectRole: body.projectRole || 'developer' },
+                create: {
+                  tenantId: body.tenantId,
+                  projectId: body.projectId,
+                  userId: body.userId,
+                  projectRole: body.projectRole || 'developer',
+                },
+              })
+              return sendJson(res, 200, {
+                ok: true,
+                member: {
+                  id: member.id,
+                  tenantId: member.tenantId,
+                  projectId: member.projectId,
+                  userId: member.userId,
+                  projectRole: member.projectRole,
+                  addedAt: member.addedAt.toISOString(),
+                },
+              })
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/projects/members')) {
+              const body = await readJsonBody<{
+                tenantId: string
+                projectId: string
+                userId: string
+              }>(req)
+              if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId) || !isValidUuid(body.userId)) {
+                return sendJson(res, 200, { ok: false })
+              }
+              await prisma.projectMember.deleteMany({
+                where: {
+                  tenantId: body.tenantId,
+                  projectId: body.projectId,
+                  userId: body.userId,
+                },
+              })
+              return sendJson(res, 200, { ok: true })
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/projects') && !url.includes('/members')) {
               const body = await readJsonBody<{
                 tenantId: string
                 code: string
@@ -669,20 +727,394 @@ export async function handlePrismaApiRequest(
                   clientName: created.clientName,
                   status: created.status,
                   description: created.description ?? '',
+                  boardConfig: (created.boardConfig ?? undefined) as Record<string, unknown> | undefined,
+                  members: [],
                 },
               })
             }
 
-            if (req.method === 'POST' && url.startsWith('/api/prisma/tasks') && !url.includes('/status') && !url.includes('/assign')) {
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/projects') && !url.includes('/members')) {
+              const body = await readJsonBody<{
+                projectId: string
+                tenantId?: string
+                actorUserId?: string
+                code?: string
+                name?: string
+                clientName?: string
+                description?: string
+                status?: string
+                boardConfig?: Record<string, unknown>
+              }>(req)
+              if (!isValidUuid(body.projectId)) {
+                return sendJson(res, 200, { ok: false, error: 'Invalid project ID' })
+              }
+              const updated = await prisma.project.update({
+                where: { id: body.projectId },
+                data: {
+                  ...(body.code !== undefined ? { code: body.code.toUpperCase() } : {}),
+                  ...(body.name !== undefined ? { name: body.name } : {}),
+                  ...(body.clientName !== undefined ? { clientName: body.clientName } : {}),
+                  ...(body.description !== undefined ? { description: body.description } : {}),
+                  ...(body.status !== undefined ? { status: body.status } : {}),
+                  ...(body.boardConfig !== undefined ? { boardConfig: body.boardConfig as object } : {}),
+                },
+              })
+              if (isValidUuid(body.tenantId)) {
+                await prisma.auditEntry.create({
+                  data: {
+                    tenantId: body.tenantId,
+                    actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+                    actionType: 'PROJECT_UPDATED',
+                    targetEntity: `projects:${updated.code}`,
+                    targetId: updated.id,
+                    reason: `Updated project ${updated.name}`,
+                  },
+                })
+              }
+              return sendJson(res, 200, {
+                ok: true,
+                project: {
+                  id: updated.id,
+                  tenantId: updated.tenantId,
+                  code: updated.code,
+                  name: updated.name,
+                  clientName: updated.clientName,
+                  status: updated.status,
+                  description: updated.description ?? '',
+                  boardConfig: (updated.boardConfig ?? undefined) as Record<string, unknown> | undefined,
+                },
+              })
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/projects') && !url.includes('/members')) {
+              const body = await readJsonBody<{
+                projectId: string
+                tenantId?: string
+                actorUserId?: string
+              }>(req)
+              if (!isValidUuid(body.projectId)) {
+                return sendJson(res, 200, { ok: false, error: 'Invalid project ID' })
+              }
+              const existing = await prisma.project.findUnique({
+                where: { id: body.projectId },
+                include: { _count: { select: { timesheets: true, invoiceDrafts: true } } },
+              })
+              if (!existing) {
+                return sendJson(res, 404, { ok: false, error: 'Project not found' })
+              }
+              if (existing._count.timesheets > 0 || existing._count.invoiceDrafts > 0) {
+                await prisma.project.update({
+                  where: { id: body.projectId },
+                  data: { status: 'archived' },
+                })
+                return sendJson(res, 200, {
+                  ok: true,
+                  archivedOnly: true,
+                  message: 'Project has billing/timesheet history and was archived instead of permanently deleted.',
+                })
+              }
+              await prisma.project.delete({ where: { id: body.projectId } })
+              if (isValidUuid(body.tenantId)) {
+                await prisma.auditEntry.create({
+                  data: {
+                    tenantId: body.tenantId,
+                    actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+                    actionType: 'PROJECT_DELETED',
+                    targetEntity: `projects:${existing.code}`,
+                    reason: `Deleted project ${existing.name}`,
+                  },
+                })
+              }
+              return sendJson(res, 200, { ok: true, message: `Project ${existing.code} deleted.` })
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/sprints')) {
+              const body = await readJsonBody<{
+                tenantId: string
+                projectId: string
+                name: string
+                goal?: string
+                status?: string
+                startDate?: string | null
+                endDate?: string | null
+              }>(req)
+              if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId)) {
+                return sendJson(res, 200, { ok: false, error: 'Invalid UUIDs' })
+              }
+              const created = await prisma.sprint.create({
+                data: {
+                  tenantId: body.tenantId,
+                  projectId: body.projectId,
+                  name: body.name,
+                  goal: body.goal ?? '',
+                  status: body.status ?? 'planned',
+                  startDate: body.startDate ? new Date(body.startDate) : null,
+                  endDate: body.endDate ? new Date(body.endDate) : null,
+                },
+              })
+              return sendJson(res, 201, {
+                ok: true,
+                sprint: {
+                  id: created.id,
+                  tenantId: created.tenantId,
+                  projectId: created.projectId,
+                  name: created.name,
+                  goal: created.goal ?? '',
+                  status: created.status,
+                  startDate: created.startDate ? created.startDate.toISOString().slice(0, 10) : null,
+                  endDate: created.endDate ? created.endDate.toISOString().slice(0, 10) : null,
+                  createdAt: created.createdAt.toISOString(),
+                },
+              })
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/sprints')) {
+              const body = await readJsonBody<{
+                sprintId: string
+                name?: string
+                goal?: string
+                status?: 'planned' | 'active' | 'completed'
+                startDate?: string | null
+                endDate?: string | null
+                moveIncompleteToSprintId?: string | null
+              }>(req)
+              if (!isValidUuid(body.sprintId)) {
+                return sendJson(res, 200, { ok: false, error: 'Invalid sprint ID' })
+              }
+              const updated = await prisma.$transaction(async (tx) => {
+                const sp = await tx.sprint.update({
+                  where: { id: body.sprintId },
+                  data: {
+                    ...(body.name !== undefined ? { name: body.name } : {}),
+                    ...(body.goal !== undefined ? { goal: body.goal } : {}),
+                    ...(body.status !== undefined ? { status: body.status } : {}),
+                    ...(body.startDate !== undefined
+                      ? { startDate: body.startDate ? new Date(body.startDate) : null }
+                      : {}),
+                    ...(body.endDate !== undefined
+                      ? { endDate: body.endDate ? new Date(body.endDate) : null }
+                      : {}),
+                  },
+                })
+                if (body.status === 'completed' && body.moveIncompleteToSprintId !== undefined) {
+                  const targetSprintId = isValidUuid(body.moveIncompleteToSprintId)
+                    ? body.moveIncompleteToSprintId
+                    : null
+                  await tx.task.updateMany({
+                    where: {
+                      sprintId: body.sprintId,
+                      status: { not: 'done' },
+                    },
+                    data: { sprintId: targetSprintId },
+                  })
+                }
+                return sp
+              })
+              return sendJson(res, 200, {
+                ok: true,
+                sprint: {
+                  id: updated.id,
+                  tenantId: updated.tenantId,
+                  projectId: updated.projectId,
+                  name: updated.name,
+                  goal: updated.goal ?? '',
+                  status: updated.status,
+                  startDate: updated.startDate ? updated.startDate.toISOString().slice(0, 10) : null,
+                  endDate: updated.endDate ? updated.endDate.toISOString().slice(0, 10) : null,
+                  createdAt: updated.createdAt.toISOString(),
+                },
+              })
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/sprints')) {
+              const body = await readJsonBody<{ sprintId: string }>(req)
+              if (!isValidUuid(body.sprintId)) return sendJson(res, 200, { ok: false })
+              await prisma.$transaction(async (tx) => {
+                await tx.task.updateMany({
+                  where: { sprintId: body.sprintId },
+                  data: { sprintId: null },
+                })
+                await tx.sprint.delete({ where: { id: body.sprintId } })
+              })
+              return sendJson(res, 200, { ok: true })
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/tasks/notes')) {
+              const body = await readJsonBody<{
+                tenantId: string
+                projectId: string
+                taskId: string
+                authorId: string
+                contentMarkdown: string
+                attachmentPaths?: string[]
+              }>(req)
+              if (
+                !isValidUuid(body.tenantId) ||
+                !isValidUuid(body.projectId) ||
+                !isValidUuid(body.taskId) ||
+                !isValidUuid(body.authorId)
+              ) {
+                return sendJson(res, 200, { ok: false, error: 'Invalid UUIDs' })
+              }
+              const note = await prisma.taskNote.create({
+                data: {
+                  tenantId: body.tenantId,
+                  projectId: body.projectId,
+                  taskId: body.taskId,
+                  authorId: body.authorId,
+                  contentMarkdown: body.contentMarkdown,
+                  attachmentPaths: body.attachmentPaths ?? [],
+                },
+                include: { author: true },
+              })
+              return sendJson(res, 201, {
+                ok: true,
+                note: {
+                  id: note.id,
+                  taskId: note.taskId,
+                  authorId: note.authorId,
+                  authorName: note.author?.fullName ?? 'Team Member',
+                  contentMarkdown: note.contentMarkdown,
+                  attachmentPaths: note.attachmentPaths ?? [],
+                  createdAt: note.createdAt.toISOString(),
+                },
+              })
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/tasks/notes')) {
+              const body = await readJsonBody<{ noteId: string }>(req)
+              if (!isValidUuid(body.noteId)) return sendJson(res, 200, { ok: false })
+              await prisma.taskNote.delete({ where: { id: body.noteId } })
+              return sendJson(res, 200, { ok: true })
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/tasks/reorder')) {
+              const body = await readJsonBody<{
+                items: {
+                  taskId: string
+                  status?: string
+                  boardOrder: number
+                  sprintId?: string | null
+                }[]
+              }>(req)
+              const validItems = (body.items ?? []).filter((it) => isValidUuid(it.taskId))
+              if (validItems.length === 0) return sendJson(res, 200, { ok: true })
+              await prisma.$transaction(
+                validItems.map((it) =>
+                  prisma.task.update({
+                    where: { id: it.taskId },
+                    data: {
+                      boardOrder: it.boardOrder,
+                      ...(it.status !== undefined ? { status: it.status } : {}),
+                      ...(it.sprintId !== undefined
+                        ? { sprintId: isValidUuid(it.sprintId) ? it.sprintId : null }
+                        : {}),
+                    },
+                  })
+                )
+              )
+              return sendJson(res, 200, { ok: true })
+            }
+
+            if (req.method === 'PATCH' && url.startsWith('/api/prisma/tasks/update')) {
+              const body = await readJsonBody<{
+                taskId: string
+                title?: string
+                description?: string
+                acceptanceCriteria?: string
+                issueType?: string
+                status?: string
+                priority?: string
+                labels?: string[]
+                storyPoints?: number | null
+                boardOrder?: number
+                estimateMinutes?: number
+                isBillable?: boolean
+                defaultWorkMode?: string
+                dueDate?: string | null
+                parentTaskId?: string | null
+                sprintId?: string | null
+              }>(req)
+              if (!isValidUuid(body.taskId)) return sendJson(res, 200, { ok: false })
+              const updated = await prisma.task.update({
+                where: { id: body.taskId },
+                data: {
+                  ...(body.title !== undefined ? { title: body.title } : {}),
+                  ...(body.description !== undefined ? { description: body.description } : {}),
+                  ...(body.acceptanceCriteria !== undefined
+                    ? { acceptanceCriteria: body.acceptanceCriteria }
+                    : {}),
+                  ...(body.issueType !== undefined ? { issueType: body.issueType } : {}),
+                  ...(body.status !== undefined ? { status: body.status } : {}),
+                  ...(body.priority !== undefined ? { priority: body.priority } : {}),
+                  ...(body.labels !== undefined ? { labels: body.labels } : {}),
+                  ...(body.storyPoints !== undefined ? { storyPoints: body.storyPoints } : {}),
+                  ...(body.boardOrder !== undefined ? { boardOrder: body.boardOrder } : {}),
+                  ...(body.estimateMinutes !== undefined ? { estimateMinutes: body.estimateMinutes } : {}),
+                  ...(body.isBillable !== undefined ? { isBillable: body.isBillable } : {}),
+                  ...(body.defaultWorkMode !== undefined ? { defaultWorkMode: body.defaultWorkMode } : {}),
+                  ...(body.dueDate !== undefined
+                    ? { dueDate: body.dueDate ? new Date(body.dueDate) : null }
+                    : {}),
+                  ...(body.parentTaskId !== undefined
+                    ? { parentTaskId: isValidUuid(body.parentTaskId) ? body.parentTaskId : null }
+                    : {}),
+                  ...(body.sprintId !== undefined
+                    ? { sprintId: isValidUuid(body.sprintId) ? body.sprintId : null }
+                    : {}),
+                },
+              })
+              return sendJson(res, 200, {
+                ok: true,
+                updatedAt: updated.updatedAt.toISOString(),
+              })
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/tasks') && !url.includes('/notes')) {
+              const body = await readJsonBody<{ taskId: string }>(req)
+              if (!isValidUuid(body.taskId)) return sendJson(res, 200, { ok: false })
+              try {
+                await prisma.$transaction(async (tx) => {
+                  await tx.task.updateMany({
+                    where: { parentTaskId: body.taskId },
+                    data: { parentTaskId: null },
+                  })
+                  await tx.task.delete({ where: { id: body.taskId } })
+                })
+                return sendJson(res, 200, { ok: true })
+              } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err)
+                return sendJson(res, 400, {
+                  ok: false,
+                  error:
+                    'Task has logged work sessions or time segments and cannot be permanently deleted. Consider moving it to Done or archiving.',
+                  detail: msg,
+                })
+              }
+            }
+
+            if (
+              req.method === 'POST' &&
+              url.startsWith('/api/prisma/tasks') &&
+              !url.includes('/status') &&
+              !url.includes('/assign') &&
+              !url.includes('/notes')
+            ) {
               const body = await readJsonBody<{
                 tenantId: string
                 projectId: string
                 parentTaskId?: string
+                sprintId?: string | null
                 code: string
                 title: string
+                description?: string
                 acceptanceCriteria: string
+                issueType?: string
                 status: string
                 priority: string
+                labels?: string[]
+                storyPoints?: number | null
+                boardOrder?: number
                 estimateMinutes: number
                 isBillable: boolean
                 defaultWorkMode: string
@@ -718,11 +1150,17 @@ export async function handlePrismaApiRequest(
                     tenantId: body.tenantId,
                     projectId: body.projectId,
                     parentTaskId: isValidUuid(body.parentTaskId) ? body.parentTaskId : null,
+                    sprintId: isValidUuid(body.sprintId) ? body.sprintId : null,
                     code: body.code.toUpperCase(),
                     title: body.title,
+                    description: body.description ?? '',
                     acceptanceCriteria: body.acceptanceCriteria,
+                    issueType: body.issueType || (isValidUuid(body.parentTaskId) ? 'subtask' : 'task'),
                     status: body.status,
                     priority: body.priority,
+                    labels: body.labels ?? [],
+                    storyPoints: body.storyPoints ?? null,
+                    boardOrder: body.boardOrder ?? 0,
                     estimateMinutes: body.estimateMinutes,
                     isBillable: body.isBillable,
                     defaultWorkMode: body.defaultWorkMode,
@@ -748,17 +1186,26 @@ export async function handlePrismaApiRequest(
                   tenantId: created.tenantId,
                   projectId: created.projectId,
                   parentTaskId: created.parentTaskId ?? undefined,
+                  sprintId: created.sprintId ?? null,
                   code: created.code,
                   title: created.title,
+                  description: created.description ?? '',
                   acceptanceCriteria: created.acceptanceCriteria,
+                  issueType: created.issueType,
                   status: created.status,
                   priority: created.priority,
+                  labels: created.labels ?? [],
+                  storyPoints: created.storyPoints ?? null,
+                  boardOrder: created.boardOrder ?? 0,
                   estimateMinutes: created.estimateMinutes,
                   isBillable: created.isBillable,
                   defaultWorkMode: created.defaultWorkMode,
                   assignedMemberIds: body.assignedMemberIds ?? [],
-                  dueDate: created.dueDate ? created.dueDate.toISOString().slice(0, 10) : body.dueDate,
+                  dueDate: created.dueDate ? created.dueDate.toISOString().slice(0, 10) : '',
                   attachments: [],
+                  notes: [],
+                  createdAt: created.createdAt.toISOString(),
+                  updatedAt: created.updatedAt.toISOString(),
                 },
               })
             }

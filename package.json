@@ -24,6 +24,9 @@
     "release:macos": "bash scripts/release-macos-local.sh"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "@supabase/supabase-js": "^2.119.0",
@@ -34,6 +37,7 @@
     "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "sonner": "^2.0.8",
     "tailwindcss": "^4.3.5"
   },
   "devDependencies": {

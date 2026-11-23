@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase4Store } from '@/context/Phase4Store'
 import { PHASE4_PLAN_CATALOG } from '@/lib/phase4/saasBilling'
 
@@ -10,7 +11,7 @@ const LABEL_CLS = 'block text-[11px] font-semibold text-zinc-600 dark:text-zinc-
 export function WorkspaceBrandingCard() {
   const { subscription, whiteLabelBranding, updateWhiteLabelBranding } = usePhase4Store()
   const [brandDraft, setBrandDraft] = useState(() => whiteLabelBranding)
-  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
+  const setNotice = notifyFeedback
 
   const currentPlanSpec = PHASE4_PLAN_CATALOG[subscription.planTier]
 
@@ -26,25 +27,6 @@ export function WorkspaceBrandingCard() {
           </span>
         )}
       </div>
-
-      {notice && (
-        <div
-          className={`rounded-xl px-3.5 py-2.5 text-xs font-medium flex items-center justify-between ring-1 ${
-            notice.ok
-              ? 'bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-50/90 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-rose-500/25'
-          }`}
-        >
-          <span>{notice.text}</span>
-          <button
-            type="button"
-            onClick={() => setNotice(null)}
-            className="ml-3 underline font-semibold cursor-pointer"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div>

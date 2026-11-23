@@ -325,6 +325,7 @@ model Project {
   clientName             String   @map("client_name")
   status                 String   @default("active")
   evidencePolicyOverride Json?    @map("evidence_policy_override")
+  boardConfig            Json?    @map("board_config")
   createdBy              String?  @map("created_by") @db.Uuid
   createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -332,6 +333,7 @@ model Project {
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdByUser  UserProfile?    @relation(fields: [createdBy], references: [id])
   projectMembers ProjectMember[]
+  sprints        Sprint[]
   tasks          Task[]
   contracts      Contract[]
   timesheets     Timesheet[]
@@ -363,17 +365,41 @@ model ProjectMember {
   @@map("project_members")
 }
 
+model Sprint {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  projectId String    @map("project_id") @db.Uuid
+  name      String
+  goal      String?
+  status    String    @default("planned")
+  startDate DateTime? @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  tasks   Task[]
+
+  @@index([tenantId, projectId, status], map: "idx_sprints_tenant_project_status")
+  @@map("sprints")
+}
+
 model Task {
   id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId           String    @map("tenant_id") @db.Uuid
   projectId          String    @map("project_id") @db.Uuid
   parentTaskId       String?   @map("parent_task_id") @db.Uuid
+  sprintId           String?   @map("sprint_id") @db.Uuid
   code               String
   title              String
   description        String?
   acceptanceCriteria String    @default("") @map("acceptance_criteria")
+  issueType          String    @default("task") @map("issue_type")
   status             String    @default("backlog")
   priority           String    @default("medium")
+  labels             String[]  @default([])
+  storyPoints        Int?      @map("story_points")
+  boardOrder         Int       @default(0) @map("board_order")
   estimateMinutes    Int       @default(120) @map("estimate_minutes")
   isBillable         Boolean   @default(true) @map("is_billable")
   defaultWorkMode    String    @default("coding") @map("default_work_mode")
@@ -382,6 +408,7 @@ model Task {
   updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   project      Project          @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  sprint       Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   parentTask   Task?            @relation("TaskHierarchy", fields: [parentTaskId, tenantId, projectId], references: [id, tenantId, projectId], onDelete: SetNull)
   subtasks     Task[]           @relation("TaskHierarchy")
   assignments  TaskAssignment[]
@@ -395,6 +422,7 @@ model Task {
   @@unique([id, tenantId, projectId])
   @@index([tenantId, projectId, status], map: "idx_tasks_tenant_project_status")
   @@index([tenantId, projectId, parentTaskId], map: "idx_tasks_parent_task")
+  @@index([tenantId, projectId, sprintId], map: "idx_tasks_sprint")
   @@map("tasks")
 }
 

@@ -28,15 +28,23 @@ import {
 } from '@/types/permissions.types'
 import { applyTimeRounding, resolveEffectiveRate } from '@/lib/time-engine'
 import {
+  addTaskNoteViaPrisma,
   assignTaskMembersViaPrisma,
   createCustomRoleViaPrisma,
   createProjectViaPrisma,
+  createSprintViaPrisma,
   createTaskViaPrisma,
   createTenantViaPrisma,
   deleteCustomRoleViaPrisma,
+  deleteProjectViaPrisma,
+  deleteSprintViaPrisma,
+  deleteTaskNoteViaPrisma,
+  deleteTaskViaPrisma,
   fetchPrismaBootstrap,
   inviteMemberViaPrisma,
   registerPermissionViaPrisma,
+  removeProjectMemberViaPrisma,
+  reorderTasksViaPrisma,
   resendMemberInviteViaPrisma,
   runPermissionsSeedViaPrisma,
   lockInvoiceViaPrisma,
@@ -50,9 +58,13 @@ import {
   updateMemberRoleViaPrisma,
   updateMemberStatusViaPrisma,
   deleteMemberViaPrisma,
+  updateProjectViaPrisma,
+  updateSprintViaPrisma,
   updateTaskStatusViaPrisma,
+  updateTaskViaPrisma,
   updateTenantOwnerPermissionsViaPrisma,
   updateTenantSettingsViaPrisma,
+  upsertProjectMemberViaPrisma,
   type PrismaConnectionStatus,
   type PrismaPhase2BootstrapPayload,
   type PrismaPhase3BootstrapPayload,
@@ -112,6 +124,44 @@ export interface WorkspaceMember {
   customPermissions?: string[]
 }
 
+export type TaskIssueType = 'epic' | 'story' | 'task' | 'bug' | 'subtask'
+
+export interface ProjectBoardConfig {
+  wipLimits?: Partial<Record<'backlog' | 'active' | 'review' | 'done', number>>
+  defaultSprintWeeks?: number
+}
+
+export interface ProjectMemberRecord {
+  id: string
+  tenantId: string
+  projectId: string
+  userId: string
+  projectRole: string
+  addedAt: string
+}
+
+export interface SprintRecord {
+  id: string
+  tenantId: string
+  projectId: string
+  name: string
+  goal: string
+  status: 'planned' | 'active' | 'completed'
+  startDate: string | null
+  endDate: string | null
+  createdAt: string
+}
+
+export interface TaskNoteRecord {
+  id: string
+  taskId: string
+  authorId: string
+  authorName: string
+  contentMarkdown: string
+  attachmentPaths: string[]
+  createdAt: string
+}
+
 export interface ProjectRecord {
   id: string
   tenantId: string
@@ -120,6 +170,8 @@ export interface ProjectRecord {
   clientName: string
   status: 'active' | 'paused' | 'archived'
   description: string
+  boardConfig?: ProjectBoardConfig
+  members?: ProjectMemberRecord[]
 }
 
 export interface TaskRecord {
@@ -127,17 +179,26 @@ export interface TaskRecord {
   tenantId: string
   projectId: string
   parentTaskId?: string
+  sprintId?: string | null
   code: string
   title: string
+  description?: string
   acceptanceCriteria: string
+  issueType?: TaskIssueType
   status: 'backlog' | 'active' | 'review' | 'done'
   priority: 'low' | 'medium' | 'high' | 'urgent'
+  labels?: string[]
+  storyPoints?: number | null
+  boardOrder?: number
   estimateMinutes: number
   isBillable: boolean
   defaultWorkMode: WorkMode
   assignedMemberIds: string[]
   dueDate: string
   attachments: string[]
+  notes?: TaskNoteRecord[]
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface TimesheetLineItem {
@@ -407,14 +468,46 @@ interface Phase1StoreContextValue {
   }) => Promise<{ ok: boolean; message: string }>
   reseedPermissionsToDatabase: () => Promise<{ ok: boolean; message: string }>
   projects: ProjectRecord[]
-  createProject: (code: string, name: string, clientName: string, description: string) => { ok: boolean; message: string }
+  createProject: (code: string, name: string, clientName: string, description: string) => { ok: boolean; message: string; projectId?: string }
+  updateProject: (
+    projectId: string,
+    patch: Partial<Pick<ProjectRecord, 'code' | 'name' | 'clientName' | 'description' | 'status' | 'boardConfig'>>
+  ) => { ok: boolean; message: string }
+  deleteProject: (projectId: string) => Promise<{ ok: boolean; message: string; archivedOnly?: boolean }>
+  upsertProjectMember: (projectId: string, userId: string, projectRole: string) => void
+  removeProjectMember: (projectId: string, userId: string) => void
+  sprints: SprintRecord[]
+  createSprint: (input: {
+    projectId: string
+    name: string
+    goal?: string
+    startDate?: string | null
+    endDate?: string | null
+  }) => { ok: boolean; message: string; sprintId?: string }
+  updateSprint: (
+    sprintId: string,
+    patch: Partial<Pick<SprintRecord, 'name' | 'goal' | 'status' | 'startDate' | 'endDate'>> & {
+      moveIncompleteToSprintId?: string | null
+    }
+  ) => void
+  deleteSprint: (sprintId: string) => void
   tasks: TaskRecord[]
-  createTask: (input: Omit<TaskRecord, 'id' | 'tenantId' | 'attachments'>) => void
+  createTask: (input: Omit<TaskRecord, 'id' | 'tenantId' | 'attachments'>) => TaskRecord
   updateTask: (taskId: string, patch: Partial<Omit<TaskRecord, 'id' | 'tenantId'>>) => void
+  reorderTasks: (
+    items: {
+      taskId: string
+      status?: TaskRecord['status']
+      boardOrder: number
+      sprintId?: string | null
+    }[]
+  ) => void
   deleteTask: (taskId: string) => { ok: boolean; message: string }
   updateTaskStatus: (taskId: string, status: TaskRecord['status']) => void
   assignTaskMembers: (taskId: string, memberIds: string[]) => void
   addTaskAttachment: (taskId: string, fileName: string) => void
+  addTaskNote: (taskId: string, contentMarkdown: string, attachmentPaths?: string[]) => void
+  deleteTaskNote: (taskId: string, noteId: string) => void
   contractPolicy: ContractBillingPolicy
   updateContractPolicy: (next: ContractBillingPolicy) => void
   addContractRateVersion: (rate: Omit<ContractRateVersion, 'id'>) => { ok: boolean; message: string }
@@ -646,6 +739,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(null)
   const [sessionUserName, setSessionUserName] = useState<string | null>(null)
   const [projects, setProjects] = useState<ProjectRecord[]>([])
+  const [sprints, setSprints] = useState<SprintRecord[]>([])
   const [tasks, setTasks] = useState<TaskRecord[]>([])
   const [contractPolicy, setContractPolicy] =
     useState<ContractBillingPolicy>(EMPTY_CONTRACT_POLICY)
@@ -853,6 +947,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         return payload.members[0]?.id ?? ''
       })
       setProjects(payload.projects)
+      setSprints(payload.sprints ?? [])
       setTasks(payload.tasks)
       setTimesheetLines(payload.timesheetLines)
       setInvoices(payload.invoices)
@@ -909,6 +1004,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       setTenants([])
       setMembers([])
       setProjects([])
+      setSprints([])
       setTasks([])
       setTimesheetLines([])
       setInvoices([])
@@ -2102,7 +2198,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     name: string,
     clientName: string,
     description: string
-  ): { ok: boolean; message: string } {
+  ): { ok: boolean; message: string; projectId?: string } {
     const tenantProjects = projects.filter((p) => p.tenantId === activeTenant.id)
     if (tenantProjects.length >= activeEntitlement.maxActiveProjects) {
       return {
@@ -2119,6 +2215,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       clientName,
       status: 'active',
       description,
+      members: [],
     }
     setProjects((prev) => [...prev, newProj])
     appendAudit('PROJECT_CREATED', `projects:${newProj.code}`, `Created project ${name}`)
@@ -2139,22 +2236,251 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         }
       })
     }
-    return { ok: true, message: `Project ${newProj.code} created.` }
+    return { ok: true, message: `Project ${newProj.code} created.`, projectId: newProj.id }
   }
 
-  function createTask(input: Omit<TaskRecord, 'id' | 'tenantId' | 'attachments'>) {
+  function updateProject(
+    projectId: string,
+    patch: Partial<Pick<ProjectRecord, 'code' | 'name' | 'clientName' | 'description' | 'status' | 'boardConfig'>>
+  ): { ok: boolean; message: string } {
+    const target = projects.find((p) => p.id === projectId)
+    if (!target) return { ok: false, message: 'Project not found.' }
+    const normalizedPatch = {
+      ...patch,
+      ...(patch.code !== undefined ? { code: patch.code.toUpperCase() } : {}),
+    }
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, ...normalizedPatch } : p))
+    )
+    appendAudit(
+      'PROJECT_UPDATED',
+      `projects:${normalizedPatch.code ?? target.code}`,
+      `Updated project ${normalizedPatch.name ?? target.name}`
+    )
+    if (prismaStatus.connected) {
+      void updateProjectViaPrisma({
+        projectId,
+        tenantId: activeTenant.id,
+        actorUserId: activeUser.id,
+        ...normalizedPatch,
+      })
+    }
+    return { ok: true, message: `Project ${normalizedPatch.name ?? target.name} updated.` }
+  }
+
+  async function deleteProject(
+    projectId: string
+  ): Promise<{ ok: boolean; message: string; archivedOnly?: boolean }> {
+    const target = projects.find((p) => p.id === projectId)
+    if (!target) return { ok: false, message: 'Project not found.' }
+
+    if (prismaStatus.connected) {
+      const res = await deleteProjectViaPrisma({
+        projectId,
+        tenantId: activeTenant.id,
+        actorUserId: activeUser.id,
+      })
+      if (res?.ok) {
+        if (res.archivedOnly) {
+          setProjects((prev) =>
+            prev.map((p) => (p.id === projectId ? { ...p, status: 'archived' } : p))
+          )
+          return {
+            ok: true,
+            archivedOnly: true,
+            message: res.message ?? `Project ${target.code} archived.`,
+          }
+        }
+        setProjects((prev) => prev.filter((p) => p.id !== projectId))
+        setTasks((prev) => prev.filter((t) => t.projectId !== projectId))
+        setSprints((prev) => prev.filter((s) => s.projectId !== projectId))
+        return { ok: true, message: res.message ?? `Project ${target.code} deleted.` }
+      }
+      return { ok: false, message: res?.error ?? 'Failed to delete project.' }
+    }
+
+    setProjects((prev) => prev.filter((p) => p.id !== projectId))
+    setTasks((prev) => prev.filter((t) => t.projectId !== projectId))
+    setSprints((prev) => prev.filter((s) => s.projectId !== projectId))
+    appendAudit('PROJECT_DELETED', `projects:${target.code}`, `Deleted project ${target.name}`)
+    return { ok: true, message: `Project ${target.code} deleted.` }
+  }
+
+  function upsertProjectMember(projectId: string, userId: string, projectRole: string) {
+    const tempId = `pm-${Date.now()}`
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id !== projectId) return p
+        const existing = p.members ?? []
+        const found = existing.some((m) => m.userId === userId)
+        const nextMembers = found
+          ? existing.map((m) => (m.userId === userId ? { ...m, projectRole } : m))
+          : [
+              ...existing,
+              {
+                id: tempId,
+                tenantId: activeTenant.id,
+                projectId,
+                userId,
+                projectRole,
+                addedAt: new Date().toISOString(),
+              },
+            ]
+        return { ...p, members: nextMembers }
+      })
+    )
+    if (prismaStatus.connected) {
+      void upsertProjectMemberViaPrisma({
+        tenantId: activeTenant.id,
+        projectId,
+        userId,
+        projectRole,
+      }).then((res) => {
+        if (res?.ok && res.member) {
+          setProjects((prev) =>
+            prev.map((p) => {
+              if (p.id !== projectId) return p
+              const existing = p.members ?? []
+              return {
+                ...p,
+                members: existing.map((m) =>
+                  m.userId === userId ? res.member! : m
+                ),
+              }
+            })
+          )
+        }
+      })
+    }
+  }
+
+  function removeProjectMember(projectId: string, userId: string) {
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? { ...p, members: (p.members ?? []).filter((m) => m.userId !== userId) }
+          : p
+      )
+    )
+    if (prismaStatus.connected) {
+      void removeProjectMemberViaPrisma({
+        tenantId: activeTenant.id,
+        projectId,
+        userId,
+      })
+    }
+  }
+
+  function createSprint(input: {
+    projectId: string
+    name: string
+    goal?: string
+    startDate?: string | null
+    endDate?: string | null
+  }): { ok: boolean; message: string; sprintId?: string } {
+    const newSprint: SprintRecord = {
+      id: `spr-${Date.now()}`,
+      tenantId: activeTenant.id,
+      projectId: input.projectId,
+      name: input.name.trim(),
+      goal: (input.goal ?? '').trim(),
+      status: 'planned',
+      startDate: input.startDate ?? null,
+      endDate: input.endDate ?? null,
+      createdAt: new Date().toISOString(),
+    }
+    setSprints((prev) => [...prev, newSprint])
+    appendAudit('SPRINT_CREATED', `sprints:${newSprint.name}`, `Created sprint ${newSprint.name}`)
+    if (prismaStatus.connected) {
+      void createSprintViaPrisma({
+        tenantId: activeTenant.id,
+        projectId: input.projectId,
+        name: newSprint.name,
+        goal: newSprint.goal,
+        status: 'planned',
+        startDate: newSprint.startDate,
+        endDate: newSprint.endDate,
+      }).then((res) => {
+        if (res?.ok && res.sprint) {
+          const saved = res.sprint
+          setSprints((prev) => prev.map((s) => (s.id === newSprint.id ? saved : s)))
+          setTasks((prev) =>
+            prev.map((t) => (t.sprintId === newSprint.id ? { ...t, sprintId: saved.id } : t))
+          )
+        }
+      })
+    }
+    return { ok: true, message: `Sprint "${newSprint.name}" created.`, sprintId: newSprint.id }
+  }
+
+  function updateSprint(
+    sprintId: string,
+    patch: Partial<Pick<SprintRecord, 'name' | 'goal' | 'status' | 'startDate' | 'endDate'>> & {
+      moveIncompleteToSprintId?: string | null
+    }
+  ) {
+    const { moveIncompleteToSprintId, ...sprintPatch } = patch
+    setSprints((prev) =>
+      prev.map((s) => (s.id === sprintId ? { ...s, ...sprintPatch } : s))
+    )
+    if (patch.status === 'completed' && moveIncompleteToSprintId !== undefined) {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.sprintId === sprintId && t.status !== 'done'
+            ? { ...t, sprintId: moveIncompleteToSprintId }
+            : t
+        )
+      )
+    }
+    if (prismaStatus.connected) {
+      void updateSprintViaPrisma({
+        sprintId,
+        ...sprintPatch,
+        ...(moveIncompleteToSprintId !== undefined ? { moveIncompleteToSprintId } : {}),
+      })
+    }
+  }
+
+  function deleteSprint(sprintId: string) {
+    setSprints((prev) => prev.filter((s) => s.id !== sprintId))
+    setTasks((prev) =>
+      prev.map((t) => (t.sprintId === sprintId ? { ...t, sprintId: null } : t))
+    )
+    if (prismaStatus.connected) {
+      void deleteSprintViaPrisma({ sprintId })
+    }
+  }
+
+  function createTask(input: Omit<TaskRecord, 'id' | 'tenantId' | 'attachments'>): TaskRecord {
     const activeMemberIds = new Set(
       members
         .filter((m) => m.tenantId === activeTenant.id && m.status === 'active' && !m.mustChangePassword)
         .map((m) => m.id)
     )
     const eligibleAssignees = (input.assignedMemberIds ?? []).filter((id) => activeMemberIds.has(id))
+    const colTasks = tasks.filter(
+      (t) => t.projectId === input.projectId && t.status === input.status
+    )
+    const nextOrder =
+      input.boardOrder ??
+      (colTasks.reduce((max, t) => Math.max(max, t.boardOrder ?? 0), -1) + 1)
+
+    const nowIso = new Date().toISOString()
     const newTask: TaskRecord = {
       ...input,
+      description: input.description ?? '',
+      issueType: input.issueType ?? (input.parentTaskId ? 'subtask' : 'task'),
+      labels: input.labels ?? [],
+      storyPoints: input.storyPoints ?? null,
+      boardOrder: nextOrder,
+      sprintId: input.sprintId ?? null,
       assignedMemberIds: eligibleAssignees,
-      id: `tsk-${Date.now()}`,
+      id: `tsk-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       tenantId: activeTenant.id,
       attachments: [],
+      notes: [],
+      createdAt: nowIso,
+      updatedAt: nowIso,
     }
     setTasks((prev) => [...prev, newTask])
     appendAudit('TASK_CREATED', `tasks:${newTask.code}`, `Created task ${newTask.title}`)
@@ -2162,6 +2488,12 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     if (prismaStatus.connected) {
       void createTaskViaPrisma({
         ...input,
+        description: newTask.description,
+        issueType: newTask.issueType,
+        labels: newTask.labels,
+        storyPoints: newTask.storyPoints,
+        boardOrder: newTask.boardOrder,
+        sprintId: newTask.sprintId,
         assignedMemberIds: eligibleAssignees,
         tenantId: activeTenant.id,
       }).then((res) => {
@@ -2170,28 +2502,94 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         }
       })
     }
+    return newTask
   }
 
   function updateTask(
     taskId: string,
     patch: Partial<Omit<TaskRecord, 'id' | 'tenantId'>>
   ) {
+    const nowIso = new Date().toISOString()
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t))
+      prev.map((t) => (t.id === taskId ? { ...t, ...patch, updatedAt: nowIso } : t))
     )
     appendAudit('TASK_UPDATED', `tasks:${taskId}`, `Updated task specifications`)
+    if (prismaStatus.connected) {
+      void updateTaskViaPrisma({
+        taskId,
+        title: patch.title,
+        description: patch.description,
+        acceptanceCriteria: patch.acceptanceCriteria,
+        issueType: patch.issueType,
+        status: patch.status,
+        priority: patch.priority,
+        labels: patch.labels,
+        storyPoints: patch.storyPoints,
+        boardOrder: patch.boardOrder,
+        estimateMinutes: patch.estimateMinutes,
+        isBillable: patch.isBillable,
+        defaultWorkMode: patch.defaultWorkMode,
+        dueDate: patch.dueDate !== undefined ? patch.dueDate || null : undefined,
+        parentTaskId: patch.parentTaskId !== undefined ? patch.parentTaskId || null : undefined,
+        sprintId: patch.sprintId,
+      })
+    }
+  }
+
+  function reorderTasks(
+    items: {
+      taskId: string
+      status?: TaskRecord['status']
+      boardOrder: number
+      sprintId?: string | null
+    }[]
+  ) {
+    if (items.length === 0) return
+    const map = new Map(items.map((it) => [it.taskId, it]))
+    const nowIso = new Date().toISOString()
+    setTasks((prev) =>
+      prev.map((t) => {
+        const upd = map.get(t.id)
+        if (!upd) return t
+        return {
+          ...t,
+          boardOrder: upd.boardOrder,
+          ...(upd.status !== undefined ? { status: upd.status } : {}),
+          ...(upd.sprintId !== undefined ? { sprintId: upd.sprintId } : {}),
+          updatedAt: nowIso,
+        }
+      })
+    )
+    if (prismaStatus.connected) {
+      void reorderTasksViaPrisma({ items })
+    }
   }
 
   function deleteTask(taskId: string): { ok: boolean; message: string } {
     const target = tasks.find((t) => t.id === taskId)
     if (!target) return { ok: false, message: 'Task not found' }
-    setTasks((prev) => prev.filter((t) => t.id !== taskId))
+    setTasks((prev) =>
+      prev
+        .filter((t) => t.id !== taskId)
+        .map((t) => (t.parentTaskId === taskId ? { ...t, parentTaskId: undefined } : t))
+    )
     appendAudit('TASK_DELETED', `tasks:${target.code}`, `Deleted task ${target.title}`)
+    if (prismaStatus.connected) {
+      void deleteTaskViaPrisma({ taskId }).then((res) => {
+        if (res && !res.ok) {
+          // Restore task if DB rejected deletion (e.g. FK restrict due to logged time segments)
+          setTasks((prev) => (prev.some((t) => t.id === target.id) ? prev : [...prev, target]))
+        }
+      })
+    }
     return { ok: true, message: `Task ${target.code} deleted successfully.` }
   }
 
   function updateTaskStatus(taskId: string, status: TaskRecord['status']) {
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)))
+    const nowIso = new Date().toISOString()
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status, updatedAt: nowIso } : t))
+    )
     if (prismaStatus.connected) {
       void updateTaskStatusViaPrisma({ taskId, status })
     }
@@ -2225,14 +2623,69 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function addTaskAttachment(taskId: string, fileName: string) {
+  function addTaskNote(taskId: string, contentMarkdown: string, attachmentPaths: string[] = []) {
+    const target = tasks.find((t) => t.id === taskId)
+    if (!target) return
+    const tempNote: TaskNoteRecord = {
+      id: `note-${Date.now()}`,
+      taskId,
+      authorId: activeUser.id,
+      authorName: activeUser.name,
+      contentMarkdown,
+      attachmentPaths,
+      createdAt: new Date().toISOString(),
+    }
     setTasks((prev) =>
       prev.map((t) =>
         t.id === taskId
-          ? { ...t, attachments: Array.from(new Set([...t.attachments, fileName])) }
+          ? {
+              ...t,
+              notes: [...(t.notes ?? []), tempNote],
+              attachments: Array.from(new Set([...t.attachments, ...attachmentPaths])),
+            }
           : t
       )
     )
+    if (prismaStatus.connected) {
+      void addTaskNoteViaPrisma({
+        tenantId: activeTenant.id,
+        projectId: target.projectId,
+        taskId,
+        authorId: activeUser.id,
+        contentMarkdown,
+        attachmentPaths,
+      }).then((res) => {
+        if (res?.ok && res.note) {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    notes: (t.notes ?? []).map((n) => (n.id === tempNote.id ? res.note! : n)),
+                  }
+                : t
+            )
+          )
+        }
+      })
+    }
+  }
+
+  function deleteTaskNote(taskId: string, noteId: string) {
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? { ...t, notes: (t.notes ?? []).filter((n) => n.id !== noteId) }
+          : t
+      )
+    )
+    if (prismaStatus.connected) {
+      void deleteTaskNoteViaPrisma({ noteId })
+    }
+  }
+
+  function addTaskAttachment(taskId: string, fileName: string) {
+    addTaskNote(taskId, `Attached link: ${fileName}`, [fileName])
     appendAudit(
       'TASK_ATTACHMENT_LINKED',
       `storage:task-attachments/${activeTenant.id}/${fileName}`,
@@ -3512,13 +3965,24 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         reseedPermissionsToDatabase,
         projects: projects.filter((p) => p.tenantId === activeTenant.id),
         createProject,
+        updateProject,
+        deleteProject,
+        upsertProjectMember,
+        removeProjectMember,
+        sprints: sprints.filter((s) => s.tenantId === activeTenant.id),
+        createSprint,
+        updateSprint,
+        deleteSprint,
         tasks: tasks.filter((t) => t.tenantId === activeTenant.id),
         createTask,
         updateTask,
+        reorderTasks,
         deleteTask,
         updateTaskStatus,
         assignTaskMembers,
         addTaskAttachment,
+        addTaskNote,
+        deleteTaskNote,
         contractPolicy,
         updateContractPolicy,
         addContractRateVersion,

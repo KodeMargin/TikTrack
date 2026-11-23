@@ -36,7 +36,10 @@ import type {
   AuditLogEntry,
   InvoiceDraftRecord,
   NotificationItem,
+  ProjectMemberRecord,
   ProjectRecord,
+  SprintRecord,
+  TaskNoteRecord,
   TaskRecord,
   TenantWorkspace,
   TimesheetLineItem,
@@ -113,6 +116,7 @@ export interface PrismaBootstrapPayload {
   tenants: TenantWorkspace[]
   members: WorkspaceMember[]
   projects: ProjectRecord[]
+  sprints?: SprintRecord[]
   tasks: TaskRecord[]
   timesheetLines: TimesheetLineItem[]
   contracts?: ContractBillingPolicy[]
@@ -224,15 +228,105 @@ export const createProjectViaPrisma = (input: {
     input
   )
 
+export const updateProjectViaPrisma = (input: {
+  projectId: string
+  tenantId?: string
+  actorUserId?: string
+  code?: string
+  name?: string
+  clientName?: string
+  description?: string
+  status?: ProjectRecord['status']
+  boardConfig?: ProjectRecord['boardConfig']
+}) =>
+  postJson<{ ok: boolean; project?: ProjectRecord; error?: string }>(
+    '/api/prisma/projects',
+    input,
+    'PATCH'
+  )
+
+export const deleteProjectViaPrisma = (input: {
+  projectId: string
+  tenantId?: string
+  actorUserId?: string
+}) =>
+  postJson<{ ok: boolean; archivedOnly?: boolean; message?: string; error?: string }>(
+    '/api/prisma/projects',
+    input,
+    'DELETE'
+  )
+
+export const upsertProjectMemberViaPrisma = (input: {
+  tenantId: string
+  projectId: string
+  userId: string
+  projectRole: string
+}) =>
+  postJson<{ ok: boolean; member?: ProjectMemberRecord; error?: string }>(
+    '/api/prisma/projects/members',
+    input,
+    'POST'
+  )
+
+export const removeProjectMemberViaPrisma = (input: {
+  tenantId: string
+  projectId: string
+  userId: string
+}) =>
+  postJson<{ ok: boolean }>(
+    '/api/prisma/projects/members',
+    input,
+    'DELETE'
+  )
+
+export const createSprintViaPrisma = (input: {
+  tenantId: string
+  projectId: string
+  name: string
+  goal?: string
+  status?: SprintRecord['status']
+  startDate?: string | null
+  endDate?: string | null
+}) =>
+  postJson<{ ok: boolean; sprint?: SprintRecord; error?: string }>(
+    '/api/prisma/sprints',
+    input,
+    'POST'
+  )
+
+export const updateSprintViaPrisma = (input: {
+  sprintId: string
+  name?: string
+  goal?: string
+  status?: SprintRecord['status']
+  startDate?: string | null
+  endDate?: string | null
+  moveIncompleteToSprintId?: string | null
+}) =>
+  postJson<{ ok: boolean; sprint?: SprintRecord; error?: string }>(
+    '/api/prisma/sprints',
+    input,
+    'PATCH'
+  )
+
+export const deleteSprintViaPrisma = (input: { sprintId: string }) =>
+  postJson<{ ok: boolean }>('/api/prisma/sprints', input, 'DELETE')
+
 export const createTaskViaPrisma = (input: {
   tenantId: string
   projectId: string
   parentTaskId?: string
+  sprintId?: string | null
   code: string
   title: string
+  description?: string
   acceptanceCriteria: string
+  issueType?: TaskRecord['issueType']
   status: TaskRecord['status']
   priority: TaskRecord['priority']
+  labels?: string[]
+  storyPoints?: number | null
+  boardOrder?: number
   estimateMinutes: number
   isBillable: boolean
   defaultWorkMode: TaskRecord['defaultWorkMode']
@@ -243,6 +337,59 @@ export const createTaskViaPrisma = (input: {
     '/api/prisma/tasks',
     input
   )
+
+export const updateTaskViaPrisma = (input: {
+  taskId: string
+  title?: string
+  description?: string
+  acceptanceCriteria?: string
+  issueType?: TaskRecord['issueType']
+  status?: TaskRecord['status']
+  priority?: TaskRecord['priority']
+  labels?: string[]
+  storyPoints?: number | null
+  boardOrder?: number
+  estimateMinutes?: number
+  isBillable?: boolean
+  defaultWorkMode?: TaskRecord['defaultWorkMode']
+  dueDate?: string | null
+  parentTaskId?: string | null
+  sprintId?: string | null
+}) =>
+  postJson<{ ok: boolean; updatedAt?: string; error?: string }>(
+    '/api/prisma/tasks/update',
+    input,
+    'PATCH'
+  )
+
+export const reorderTasksViaPrisma = (input: {
+  items: {
+    taskId: string
+    status?: TaskRecord['status']
+    boardOrder: number
+    sprintId?: string | null
+  }[]
+}) => postJson<{ ok: boolean }>('/api/prisma/tasks/reorder', input, 'PATCH')
+
+export const deleteTaskViaPrisma = (input: { taskId: string }) =>
+  postJson<{ ok: boolean; error?: string }>('/api/prisma/tasks', input, 'DELETE')
+
+export const addTaskNoteViaPrisma = (input: {
+  tenantId: string
+  projectId: string
+  taskId: string
+  authorId: string
+  contentMarkdown: string
+  attachmentPaths?: string[]
+}) =>
+  postJson<{ ok: boolean; note?: TaskNoteRecord; error?: string }>(
+    '/api/prisma/tasks/notes',
+    input,
+    'POST'
+  )
+
+export const deleteTaskNoteViaPrisma = (input: { noteId: string }) =>
+  postJson<{ ok: boolean }>('/api/prisma/tasks/notes', input, 'DELETE')
 
 export const updateTaskStatusViaPrisma = (input: {
   taskId: string

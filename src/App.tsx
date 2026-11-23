@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Toaster } from 'sonner'
+import { notifyError, notifySuccess } from '@/lib/notify'
 import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
 import { Phase2StoreProvider } from '@/context/Phase2Store'
 import { Phase3StoreProvider } from '@/context/Phase3Store'
@@ -208,7 +210,6 @@ function FirstTimePasswordChangeModal({
 }) {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
 
@@ -224,20 +225,21 @@ function FirstTimePasswordChangeModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters long.')
+      notifyError('New password must be at least 8 characters long.')
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match. Please re-enter.')
+      notifyError('Passwords do not match. Please re-enter.')
       return
     }
     setLoading(true)
     const res = await onComplete(newPassword)
     setLoading(false)
     if (!res.ok) {
-      setError(res.message)
+      notifyError(res.message)
+    } else {
+      notifySuccess(res.message || 'Password updated successfully.')
     }
   }
 
@@ -275,12 +277,6 @@ function FirstTimePasswordChangeModal({
             Welcome, <strong>{user.name}</strong>! Your account was initialized with a temporary password. Before accessing your workspace, please set a new strong password.
           </p>
         </div>
-
-        {error && (
-          <div className="p-3 rounded-lg border border-rose-500/50 bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 text-xs font-medium">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
@@ -1242,7 +1238,11 @@ function DevProofShell() {
         </header>
 
         {/* Main Workspace Canvas with Strict RBAC Route Guard */}
-        <main className="flex-1 w-full max-w-7xl mx-auto px-5 sm:px-8 py-6">
+        <main
+          className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 ${
+            activeSection === 'projects-tasks' ? 'max-w-[1680px]' : 'max-w-7xl'
+          }`}
+        >
           {!canAccessNav(currentNav) ? (
             <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-8 text-center space-y-4">
               <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-300">
@@ -1294,9 +1294,26 @@ function DevProofShell() {
   )
 }
 
+function ThemeToaster() {
+  const { theme } = useTheme()
+  return (
+    <Toaster
+      position="top-right"
+      duration={3000}
+      richColors
+      closeButton
+      theme={theme}
+      toastOptions={{
+        duration: 3000,
+      }}
+    />
+  )
+}
+
 export function App() {
   return (
     <ThemeProvider>
+      <ThemeToaster />
       <Phase1StoreProvider>
         <Phase2StoreProvider>
           <Phase3StoreProvider>

@@ -2821,6 +2821,53 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-
 function isValidUuid(val) {
 	return Boolean(val && UUID_REGEX.test(val));
 }
+let jiraSchemaEnsured = false;
+async function ensureJiraWorkspaceSchema() {
+	if (jiraSchemaEnsured) return;
+	try {
+		await prisma.$executeRawUnsafe(`
+      ALTER TABLE public.projects
+        ADD COLUMN IF NOT EXISTS board_config JSONB;
+    `);
+		await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS public.sprints (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id  UUID NOT NULL,
+        project_id UUID NOT NULL,
+        name       TEXT NOT NULL,
+        goal       TEXT,
+        status     TEXT NOT NULL DEFAULT 'planned',
+        start_date DATE,
+        end_date   DATE,
+        created_at TIMESTAMPTZ(6) NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ(6) NOT NULL DEFAULT NOW(),
+        CONSTRAINT fk_sprints_project
+          FOREIGN KEY (project_id, tenant_id)
+          REFERENCES public.projects(id, tenant_id)
+          ON DELETE CASCADE
+      );
+    `);
+		await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS idx_sprints_tenant_project_status
+        ON public.sprints (tenant_id, project_id, status);
+    `);
+		await prisma.$executeRawUnsafe(`
+      ALTER TABLE public.tasks
+        ADD COLUMN IF NOT EXISTS sprint_id    UUID REFERENCES public.sprints(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS issue_type   TEXT NOT NULL DEFAULT 'task',
+        ADD COLUMN IF NOT EXISTS labels       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+        ADD COLUMN IF NOT EXISTS story_points INTEGER,
+        ADD COLUMN IF NOT EXISTS board_order  INTEGER NOT NULL DEFAULT 0;
+    `);
+		await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_sprint
+        ON public.tasks (tenant_id, project_id, sprint_id);
+    `);
+		jiraSchemaEnsured = true;
+	} catch (err) {
+		console.warn("[Prisma] ensureJiraWorkspaceSchema skipped/warn:", err instanceof Error ? err.message : String(err));
+	}
+}
 async function handleBootstrap() {
 	const status = await checkPrismaConnection();
 	if (!status.connected) return {
@@ -2828,6 +2875,7 @@ async function handleBootstrap() {
 		tenants: [],
 		members: [],
 		projects: [],
+		sprints: [],
 		tasks: [],
 		timesheetLines: [],
 		contracts: [],
@@ -2836,8 +2884,9 @@ async function handleBootstrap() {
 		planEntitlements: [],
 		auditLogs: []
 	};
+	await ensureJiraWorkspaceSchema();
 	const rbac = await handleBootstrapRbacData();
-	const [dbTenants, dbMemberships, dbProjects, dbTasks, dbTimesheetLines, dbContracts, dbInvoices, dbNotifications, dbEntitlements, dbAudits, phase2, phase3, phase4] = await Promise.all([
+	const [dbTenants, dbMemberships, dbProjects, dbSprints, dbTasks, dbTimesheetLines, dbContracts, dbInvoices, dbNotifications, dbEntitlements, dbAudits, phase2, phase3, phase4] = await Promise.all([
 		prisma.tenant.findMany({
 			include: {
 				settings: true,
@@ -2856,13 +2905,20 @@ async function handleBootstrap() {
 			} },
 			roleGrants: true
 		} }),
-		prisma.project.findMany({ orderBy: { createdAt: "asc" } }),
+		prisma.project.findMany({
+			include: { projectMembers: true },
+			orderBy: { createdAt: "asc" }
+		}),
+		prisma.sprint.findMany({ orderBy: [{ createdAt: "asc" }] }),
 		prisma.task.findMany({
 			include: {
 				assignments: true,
-				notes: true
+				notes: {
+					include: { author: true },
+					orderBy: { createdAt: "asc" }
+				}
 			},
-			orderBy: { createdAt: "asc" }
+			orderBy: [{ boardOrder: "asc" }, { createdAt: "asc" }]
 		}),
 		prisma.timesheetLine.findMany({
 			include: {
@@ -2947,24 +3003,61 @@ async function handleBootstrap() {
 			name: p.name,
 			clientName: p.clientName,
 			status: p.status,
-			description: p.description ?? ""
+			description: p.description ?? "",
+			boardConfig: p.boardConfig ?? void 0,
+			members: p.projectMembers.map((pm) => ({
+				id: pm.id,
+				tenantId: pm.tenantId,
+				projectId: pm.projectId,
+				userId: pm.userId,
+				projectRole: pm.projectRole,
+				addedAt: pm.addedAt.toISOString()
+			}))
+		})),
+		sprints: dbSprints.map((s) => ({
+			id: s.id,
+			tenantId: s.tenantId,
+			projectId: s.projectId,
+			name: s.name,
+			goal: s.goal ?? "",
+			status: s.status,
+			startDate: s.startDate ? s.startDate.toISOString().slice(0, 10) : null,
+			endDate: s.endDate ? s.endDate.toISOString().slice(0, 10) : null,
+			createdAt: s.createdAt.toISOString()
 		})),
 		tasks: dbTasks.map((t) => ({
 			id: t.id,
 			tenantId: t.tenantId,
 			projectId: t.projectId,
 			parentTaskId: t.parentTaskId ?? void 0,
+			sprintId: t.sprintId ?? null,
 			code: t.code,
 			title: t.title,
+			description: t.description ?? "",
 			acceptanceCriteria: t.acceptanceCriteria,
+			issueType: t.issueType || "task",
 			status: t.status,
 			priority: t.priority,
+			labels: t.labels ?? [],
+			storyPoints: t.storyPoints ?? null,
+			boardOrder: t.boardOrder ?? 0,
 			estimateMinutes: t.estimateMinutes,
 			isBillable: t.isBillable,
 			defaultWorkMode: t.defaultWorkMode,
 			assignedMemberIds: t.assignments.map((a) => a.userId),
-			dueDate: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : "2026-11-20",
-			attachments: t.notes.flatMap((n) => n.attachmentPaths)
+			dueDate: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : "",
+			attachments: Array.from(new Set(t.notes.flatMap((n) => n.attachmentPaths))),
+			notes: t.notes.map((n) => ({
+				id: n.id,
+				taskId: n.taskId,
+				authorId: n.authorId,
+				authorName: n.author?.fullName ?? "Team Member",
+				contentMarkdown: n.contentMarkdown,
+				attachmentPaths: n.attachmentPaths ?? [],
+				createdAt: n.createdAt.toISOString()
+			})),
+			createdAt: t.createdAt.toISOString(),
+			updatedAt: t.updatedAt.toISOString()
 		})),
 		timesheetLines: dbTimesheetLines.map((l) => {
 			const task = taskById.get(l.taskId);
@@ -5667,7 +5760,49 @@ async function handlePrismaApiRequest(req, res) {
 				});
 			}
 		}
-		if (req.method === "POST" && url.startsWith("/api/prisma/projects")) {
+		if (req.method === "POST" && url.startsWith("/api/prisma/projects/members")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId) || !isValidUuid(body.userId)) return sendJson(res, 200, {
+				ok: false,
+				error: "Invalid UUIDs"
+			});
+			const member = await prisma.projectMember.upsert({
+				where: { tenantId_projectId_userId: {
+					tenantId: body.tenantId,
+					projectId: body.projectId,
+					userId: body.userId
+				} },
+				update: { projectRole: body.projectRole || "developer" },
+				create: {
+					tenantId: body.tenantId,
+					projectId: body.projectId,
+					userId: body.userId,
+					projectRole: body.projectRole || "developer"
+				}
+			});
+			return sendJson(res, 200, {
+				ok: true,
+				member: {
+					id: member.id,
+					tenantId: member.tenantId,
+					projectId: member.projectId,
+					userId: member.userId,
+					projectRole: member.projectRole,
+					addedAt: member.addedAt.toISOString()
+				}
+			});
+		}
+		if (req.method === "DELETE" && url.startsWith("/api/prisma/projects/members")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId) || !isValidUuid(body.userId)) return sendJson(res, 200, { ok: false });
+			await prisma.projectMember.deleteMany({ where: {
+				tenantId: body.tenantId,
+				projectId: body.projectId,
+				userId: body.userId
+			} });
+			return sendJson(res, 200, { ok: true });
+		}
+		if (req.method === "POST" && url.startsWith("/api/prisma/projects") && !url.includes("/members")) {
 			const body = await readJsonBody(req);
 			if (!isValidUuid(body.tenantId)) return sendJson(res, 200, {
 				ok: false,
@@ -5702,11 +5837,275 @@ async function handlePrismaApiRequest(req, res) {
 					name: created.name,
 					clientName: created.clientName,
 					status: created.status,
-					description: created.description ?? ""
+					description: created.description ?? "",
+					boardConfig: created.boardConfig ?? void 0,
+					members: []
 				}
 			});
 		}
-		if (req.method === "POST" && url.startsWith("/api/prisma/tasks") && !url.includes("/status") && !url.includes("/assign")) {
+		if (req.method === "PATCH" && url.startsWith("/api/prisma/projects") && !url.includes("/members")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.projectId)) return sendJson(res, 200, {
+				ok: false,
+				error: "Invalid project ID"
+			});
+			const updated = await prisma.project.update({
+				where: { id: body.projectId },
+				data: {
+					...body.code !== void 0 ? { code: body.code.toUpperCase() } : {},
+					...body.name !== void 0 ? { name: body.name } : {},
+					...body.clientName !== void 0 ? { clientName: body.clientName } : {},
+					...body.description !== void 0 ? { description: body.description } : {},
+					...body.status !== void 0 ? { status: body.status } : {},
+					...body.boardConfig !== void 0 ? { boardConfig: body.boardConfig } : {}
+				}
+			});
+			if (isValidUuid(body.tenantId)) await prisma.auditEntry.create({ data: {
+				tenantId: body.tenantId,
+				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+				actionType: "PROJECT_UPDATED",
+				targetEntity: `projects:${updated.code}`,
+				targetId: updated.id,
+				reason: `Updated project ${updated.name}`
+			} });
+			return sendJson(res, 200, {
+				ok: true,
+				project: {
+					id: updated.id,
+					tenantId: updated.tenantId,
+					code: updated.code,
+					name: updated.name,
+					clientName: updated.clientName,
+					status: updated.status,
+					description: updated.description ?? "",
+					boardConfig: updated.boardConfig ?? void 0
+				}
+			});
+		}
+		if (req.method === "DELETE" && url.startsWith("/api/prisma/projects") && !url.includes("/members")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.projectId)) return sendJson(res, 200, {
+				ok: false,
+				error: "Invalid project ID"
+			});
+			const existing = await prisma.project.findUnique({
+				where: { id: body.projectId },
+				include: { _count: { select: {
+					timesheets: true,
+					invoiceDrafts: true
+				} } }
+			});
+			if (!existing) return sendJson(res, 404, {
+				ok: false,
+				error: "Project not found"
+			});
+			if (existing._count.timesheets > 0 || existing._count.invoiceDrafts > 0) {
+				await prisma.project.update({
+					where: { id: body.projectId },
+					data: { status: "archived" }
+				});
+				return sendJson(res, 200, {
+					ok: true,
+					archivedOnly: true,
+					message: "Project has billing/timesheet history and was archived instead of permanently deleted."
+				});
+			}
+			await prisma.project.delete({ where: { id: body.projectId } });
+			if (isValidUuid(body.tenantId)) await prisma.auditEntry.create({ data: {
+				tenantId: body.tenantId,
+				actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+				actionType: "PROJECT_DELETED",
+				targetEntity: `projects:${existing.code}`,
+				reason: `Deleted project ${existing.name}`
+			} });
+			return sendJson(res, 200, {
+				ok: true,
+				message: `Project ${existing.code} deleted.`
+			});
+		}
+		if (req.method === "POST" && url.startsWith("/api/prisma/sprints")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId)) return sendJson(res, 200, {
+				ok: false,
+				error: "Invalid UUIDs"
+			});
+			const created = await prisma.sprint.create({ data: {
+				tenantId: body.tenantId,
+				projectId: body.projectId,
+				name: body.name,
+				goal: body.goal ?? "",
+				status: body.status ?? "planned",
+				startDate: body.startDate ? new Date(body.startDate) : null,
+				endDate: body.endDate ? new Date(body.endDate) : null
+			} });
+			return sendJson(res, 201, {
+				ok: true,
+				sprint: {
+					id: created.id,
+					tenantId: created.tenantId,
+					projectId: created.projectId,
+					name: created.name,
+					goal: created.goal ?? "",
+					status: created.status,
+					startDate: created.startDate ? created.startDate.toISOString().slice(0, 10) : null,
+					endDate: created.endDate ? created.endDate.toISOString().slice(0, 10) : null,
+					createdAt: created.createdAt.toISOString()
+				}
+			});
+		}
+		if (req.method === "PATCH" && url.startsWith("/api/prisma/sprints")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.sprintId)) return sendJson(res, 200, {
+				ok: false,
+				error: "Invalid sprint ID"
+			});
+			const updated = await prisma.$transaction(async (tx) => {
+				const sp = await tx.sprint.update({
+					where: { id: body.sprintId },
+					data: {
+						...body.name !== void 0 ? { name: body.name } : {},
+						...body.goal !== void 0 ? { goal: body.goal } : {},
+						...body.status !== void 0 ? { status: body.status } : {},
+						...body.startDate !== void 0 ? { startDate: body.startDate ? new Date(body.startDate) : null } : {},
+						...body.endDate !== void 0 ? { endDate: body.endDate ? new Date(body.endDate) : null } : {}
+					}
+				});
+				if (body.status === "completed" && body.moveIncompleteToSprintId !== void 0) {
+					const targetSprintId = isValidUuid(body.moveIncompleteToSprintId) ? body.moveIncompleteToSprintId : null;
+					await tx.task.updateMany({
+						where: {
+							sprintId: body.sprintId,
+							status: { not: "done" }
+						},
+						data: { sprintId: targetSprintId }
+					});
+				}
+				return sp;
+			});
+			return sendJson(res, 200, {
+				ok: true,
+				sprint: {
+					id: updated.id,
+					tenantId: updated.tenantId,
+					projectId: updated.projectId,
+					name: updated.name,
+					goal: updated.goal ?? "",
+					status: updated.status,
+					startDate: updated.startDate ? updated.startDate.toISOString().slice(0, 10) : null,
+					endDate: updated.endDate ? updated.endDate.toISOString().slice(0, 10) : null,
+					createdAt: updated.createdAt.toISOString()
+				}
+			});
+		}
+		if (req.method === "DELETE" && url.startsWith("/api/prisma/sprints")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.sprintId)) return sendJson(res, 200, { ok: false });
+			await prisma.$transaction(async (tx) => {
+				await tx.task.updateMany({
+					where: { sprintId: body.sprintId },
+					data: { sprintId: null }
+				});
+				await tx.sprint.delete({ where: { id: body.sprintId } });
+			});
+			return sendJson(res, 200, { ok: true });
+		}
+		if (req.method === "POST" && url.startsWith("/api/prisma/tasks/notes")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId) || !isValidUuid(body.taskId) || !isValidUuid(body.authorId)) return sendJson(res, 200, {
+				ok: false,
+				error: "Invalid UUIDs"
+			});
+			const note = await prisma.taskNote.create({
+				data: {
+					tenantId: body.tenantId,
+					projectId: body.projectId,
+					taskId: body.taskId,
+					authorId: body.authorId,
+					contentMarkdown: body.contentMarkdown,
+					attachmentPaths: body.attachmentPaths ?? []
+				},
+				include: { author: true }
+			});
+			return sendJson(res, 201, {
+				ok: true,
+				note: {
+					id: note.id,
+					taskId: note.taskId,
+					authorId: note.authorId,
+					authorName: note.author?.fullName ?? "Team Member",
+					contentMarkdown: note.contentMarkdown,
+					attachmentPaths: note.attachmentPaths ?? [],
+					createdAt: note.createdAt.toISOString()
+				}
+			});
+		}
+		if (req.method === "DELETE" && url.startsWith("/api/prisma/tasks/notes")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.noteId)) return sendJson(res, 200, { ok: false });
+			await prisma.taskNote.delete({ where: { id: body.noteId } });
+			return sendJson(res, 200, { ok: true });
+		}
+		if (req.method === "PATCH" && url.startsWith("/api/prisma/tasks/reorder")) {
+			const validItems = ((await readJsonBody(req)).items ?? []).filter((it) => isValidUuid(it.taskId));
+			if (validItems.length === 0) return sendJson(res, 200, { ok: true });
+			await prisma.$transaction(validItems.map((it) => prisma.task.update({
+				where: { id: it.taskId },
+				data: {
+					boardOrder: it.boardOrder,
+					...it.status !== void 0 ? { status: it.status } : {},
+					...it.sprintId !== void 0 ? { sprintId: isValidUuid(it.sprintId) ? it.sprintId : null } : {}
+				}
+			})));
+			return sendJson(res, 200, { ok: true });
+		}
+		if (req.method === "PATCH" && url.startsWith("/api/prisma/tasks/update")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.taskId)) return sendJson(res, 200, { ok: false });
+			return sendJson(res, 200, {
+				ok: true,
+				updatedAt: (await prisma.task.update({
+					where: { id: body.taskId },
+					data: {
+						...body.title !== void 0 ? { title: body.title } : {},
+						...body.description !== void 0 ? { description: body.description } : {},
+						...body.acceptanceCriteria !== void 0 ? { acceptanceCriteria: body.acceptanceCriteria } : {},
+						...body.issueType !== void 0 ? { issueType: body.issueType } : {},
+						...body.status !== void 0 ? { status: body.status } : {},
+						...body.priority !== void 0 ? { priority: body.priority } : {},
+						...body.labels !== void 0 ? { labels: body.labels } : {},
+						...body.storyPoints !== void 0 ? { storyPoints: body.storyPoints } : {},
+						...body.boardOrder !== void 0 ? { boardOrder: body.boardOrder } : {},
+						...body.estimateMinutes !== void 0 ? { estimateMinutes: body.estimateMinutes } : {},
+						...body.isBillable !== void 0 ? { isBillable: body.isBillable } : {},
+						...body.defaultWorkMode !== void 0 ? { defaultWorkMode: body.defaultWorkMode } : {},
+						...body.dueDate !== void 0 ? { dueDate: body.dueDate ? new Date(body.dueDate) : null } : {},
+						...body.parentTaskId !== void 0 ? { parentTaskId: isValidUuid(body.parentTaskId) ? body.parentTaskId : null } : {},
+						...body.sprintId !== void 0 ? { sprintId: isValidUuid(body.sprintId) ? body.sprintId : null } : {}
+					}
+				})).updatedAt.toISOString()
+			});
+		}
+		if (req.method === "DELETE" && url.startsWith("/api/prisma/tasks") && !url.includes("/notes")) {
+			const body = await readJsonBody(req);
+			if (!isValidUuid(body.taskId)) return sendJson(res, 200, { ok: false });
+			try {
+				await prisma.$transaction(async (tx) => {
+					await tx.task.updateMany({
+						where: { parentTaskId: body.taskId },
+						data: { parentTaskId: null }
+					});
+					await tx.task.delete({ where: { id: body.taskId } });
+				});
+				return sendJson(res, 200, { ok: true });
+			} catch (err) {
+				return sendJson(res, 400, {
+					ok: false,
+					error: "Task has logged work sessions or time segments and cannot be permanently deleted. Consider moving it to Done or archiving.",
+					detail: err instanceof Error ? err.message : String(err)
+				});
+			}
+		}
+		if (req.method === "POST" && url.startsWith("/api/prisma/tasks") && !url.includes("/status") && !url.includes("/assign") && !url.includes("/notes")) {
 			const body = await readJsonBody(req);
 			if (!isValidUuid(body.tenantId) || !isValidUuid(body.projectId)) return sendJson(res, 200, {
 				ok: false,
@@ -5733,11 +6132,17 @@ async function handlePrismaApiRequest(req, res) {
 					tenantId: body.tenantId,
 					projectId: body.projectId,
 					parentTaskId: isValidUuid(body.parentTaskId) ? body.parentTaskId : null,
+					sprintId: isValidUuid(body.sprintId) ? body.sprintId : null,
 					code: body.code.toUpperCase(),
 					title: body.title,
+					description: body.description ?? "",
 					acceptanceCriteria: body.acceptanceCriteria,
+					issueType: body.issueType || (isValidUuid(body.parentTaskId) ? "subtask" : "task"),
 					status: body.status,
 					priority: body.priority,
+					labels: body.labels ?? [],
+					storyPoints: body.storyPoints ?? null,
+					boardOrder: body.boardOrder ?? 0,
 					estimateMinutes: body.estimateMinutes,
 					isBillable: body.isBillable,
 					defaultWorkMode: body.defaultWorkMode,
@@ -5758,17 +6163,26 @@ async function handlePrismaApiRequest(req, res) {
 					tenantId: created.tenantId,
 					projectId: created.projectId,
 					parentTaskId: created.parentTaskId ?? void 0,
+					sprintId: created.sprintId ?? null,
 					code: created.code,
 					title: created.title,
+					description: created.description ?? "",
 					acceptanceCriteria: created.acceptanceCriteria,
+					issueType: created.issueType,
 					status: created.status,
 					priority: created.priority,
+					labels: created.labels ?? [],
+					storyPoints: created.storyPoints ?? null,
+					boardOrder: created.boardOrder ?? 0,
 					estimateMinutes: created.estimateMinutes,
 					isBillable: created.isBillable,
 					defaultWorkMode: created.defaultWorkMode,
 					assignedMemberIds: body.assignedMemberIds ?? [],
-					dueDate: created.dueDate ? created.dueDate.toISOString().slice(0, 10) : body.dueDate,
-					attachments: []
+					dueDate: created.dueDate ? created.dueDate.toISOString().slice(0, 10) : "",
+					attachments: [],
+					notes: [],
+					createdAt: created.createdAt.toISOString(),
+					updatedAt: created.updatedAt.toISOString()
 				}
 			});
 		}

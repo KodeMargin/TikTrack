@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase3Store } from '@/context/Phase3Store'
 import { formatMinuteOfDay } from '@/lib/time-engine'
@@ -115,7 +116,7 @@ export function VerificationAndAiView() {
   const [selectedTaskId, setSelectedTaskId] = useState<string>(() => tasks[0]?.id ?? '')
   const [editedAiText, setEditedAiText] = useState<Record<string, string>>({})
   const [generatingType, setGeneratingType] = useState<AiTargetType | null>(null)
-  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
+  const setBanner = notifyFeedback
 
   const isSuperOrOwner =
     activeUser.role === 'super_admin' || activeUser.role === 'tenant_owner'
@@ -183,25 +184,6 @@ export function VerificationAndAiView() {
 
   return (
     <div className="space-y-6">
-      {/* Feedback Toast */}
-      {banner && (
-        <div
-          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${banner.ok
-              ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
-            }`}
-        >
-          <span>{banner.text}</span>
-          <button
-            type="button"
-            onClick={() => setBanner(null)}
-            className="underline font-semibold ml-4 cursor-pointer"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {/* Clean Header & Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">

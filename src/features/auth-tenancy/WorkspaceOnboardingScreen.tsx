@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { notifyError, notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { useTheme } from '@/context/ThemeContext'
 import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
@@ -53,7 +54,9 @@ export function WorkspaceOnboardingScreen({
   const [timezone, setTimezone] = useState(() => detectUserLocation().timezone)
   const [currency, setCurrency] = useState('USD')
   const [creating, setCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const setError = (msg: string | null) => {
+    if (msg) notifyError(msg)
+  }
   const [createdCompanyName, setCreatedCompanyName] = useState('')
   const [createdSlug, setCreatedSlug] = useState('')
 
@@ -62,7 +65,9 @@ export function WorkspaceOnboardingScreen({
   const [devEmail, setDevEmail] = useState('')
   const [devRole, setDevRole] = useState<UserRole>('developer')
   const [devTempPassword, setDevTempPassword] = useState('')
-  const [inviteNotice, setInviteNotice] = useState<{ ok: boolean; text: string } | null>(null)
+  const setInviteNotice = (n: { ok: boolean; text: string } | null) => {
+    if (n) notifyFeedback(n)
+  }
   const [invitedList, setInvitedList] = useState<InvitedSummary[]>([])
 
   async function handleCreateWorkspace(e: React.FormEvent) {
@@ -334,12 +339,6 @@ export function WorkspaceOnboardingScreen({
                   />
                 </div>
 
-                {error && (
-                  <div className="rounded-xl border border-rose-300 bg-rose-50 dark:border-rose-700/60 dark:bg-rose-950/40 p-3 text-xs text-rose-700 dark:text-rose-200">
-                    {error}
-                  </div>
-                )}
-
                 <button
                   type="submit"
                   disabled={creating || !companyName.trim()}
@@ -442,18 +441,6 @@ export function WorkspaceOnboardingScreen({
                   + Send Developer Invite
                 </button>
               </form>
-
-              {inviteNotice && (
-                <div
-                  className={`rounded-xl border p-3 text-xs ${
-                    inviteNotice.ok
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-200'
-                      : 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-700/60 dark:bg-rose-950/40 dark:text-rose-200'
-                  }`}
-                >
-                  {inviteNotice.text}
-                </div>
-              )}
 
               {invitedList.length > 0 && (
                 <div className="space-y-2">

@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import {
   usePhase1Store,
   type PaymentCalculationMode,
@@ -110,8 +111,6 @@ export function PaymentModeConfigCard({
     activeUser.role === 'tenant_owner' ||
     hasPermission('payment:configure')
 
-  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
-
   const activeOption =
     MODE_OPTIONS.find((m) => m.id === workspacePaymentPolicy.paymentMode) ??
     MODE_OPTIONS[0]
@@ -122,7 +121,7 @@ export function PaymentModeConfigCard({
     if (onSaved) {
       onSaved(res)
     } else {
-      setNotice({ ok: res.ok, text: res.message })
+      notifyFeedback(res)
     }
   }
 
@@ -137,25 +136,6 @@ export function PaymentModeConfigCard({
           Updated by {workspacePaymentPolicy.updatedBy}
         </span>
       </div>
-
-      {notice && (
-        <div
-          className={`dp-view-enter rounded-xl px-3.5 py-2.5 text-xs font-medium flex items-center justify-between ring-1 ${
-            notice.ok
-              ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
-          }`}
-        >
-          <span>{notice.text}</span>
-          <button
-            type="button"
-            onClick={() => setNotice(null)}
-            className="ml-3 underline font-semibold cursor-pointer"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {/* 3 Scannable Mode Selector Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">

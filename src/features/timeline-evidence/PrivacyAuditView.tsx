@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { notifySuccess } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import {
   usePhase2Store,
@@ -46,10 +47,6 @@ export function PrivacyAuditView() {
   const [selectedBatchId, setSelectedBatchId] = useState<string>(
     () => privacyAuditBatches[0]?.batchId ?? ''
   )
-  const [guardrailTestResult, setGuardrailTestResult] = useState<{
-    blockedKeys: string[]
-    violationCount: number
-  } | null>(null)
   const [copied, setCopied] = useState(false)
 
   const selectedBatch =
@@ -118,10 +115,9 @@ export function PrivacyAuditView() {
       },
       privacyExclusions.map((e) => e.pattern)
     )
-    setGuardrailTestResult({
-      blockedKeys: sampleRejected.blockedPrivacyKeys,
-      violationCount: sampleRejected.errors.length,
-    })
+    notifySuccess(
+      `Privacy Filter Passed: Blocked ${sampleRejected.blockedPrivacyKeys.length} sensitive field(s) (${sampleRejected.blockedPrivacyKeys.join(', ')}) and caught ${sampleRejected.errors.length} rule violation(s).`
+    )
   }
 
   function handleCopyPayload() {
@@ -190,25 +186,6 @@ export function PrivacyAuditView() {
           </button>
         </div>
       </div>
-
-      {/* Live Privacy Test Result */}
-      {guardrailTestResult && (
-        <div className="dp-view-enter rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/25 px-4 py-3 text-xs text-emerald-900 dark:text-emerald-200 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <strong>✓ Privacy Filter Passed:</strong> Blocked{' '}
-            <strong>{guardrailTestResult.blockedKeys.length}</strong> sensitive field(s) (
-            <span className="font-mono">{guardrailTestResult.blockedKeys.join(', ')}</span>) and caught{' '}
-            <strong>{guardrailTestResult.violationCount}</strong> total rule violation(s) before anything left your device.
-          </div>
-          <button
-            type="button"
-            onClick={() => setGuardrailTestResult(null)}
-            className="font-semibold underline cursor-pointer shrink-0"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {/* First-Sight 4-Card KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { isSupabaseAuthConfigured, supabase } from '@/lib/supabaseClient'
 import { useTheme } from '@/context/ThemeContext'
 import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
@@ -14,7 +15,9 @@ export function AuthLoginScreen() {
   const [authTimezone, setAuthTimezone] = useState(() => detectUserLocation().timezone)
   const [authCountryName, setAuthCountryName] = useState('Sri Lanka')
   const [authMode, setAuthMode] = useState<'signup' | 'login' | 'recovery'>('login')
-  const [authNotice, setAuthNotice] = useState<{ text: string; error: boolean } | null>(null)
+  const setAuthNotice = (n: { text: string; error: boolean } | null) => {
+    if (n) notifyFeedback({ ok: !n.error, text: n.text })
+  }
   const [loading, setLoading] = useState(false)
   const [isRecoverySession, setIsRecoverySession] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -226,17 +229,6 @@ export function AuthLoginScreen() {
               Log in with your company or developer account to access your workspace.
             </p>
           </div>
-
-          {authNotice && (
-            <div
-              className={`p-3 rounded-lg text-xs border ${authNotice.error
-                ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
-                : 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
-                }`}
-            >
-              {authNotice.text}
-            </div>
-          )}
 
           {isRecoverySession ? (
             <form onSubmit={(e) => void handleSetNewPassword(e)} className="space-y-3 text-xs">

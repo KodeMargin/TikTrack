@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store } from '@/context/Phase2Store'
 import { usePhase3Store } from '@/context/Phase3Store'
@@ -90,7 +91,7 @@ export function DisputesAndAppealsView() {
   const [resolveNoteByDispute, setResolveNoteByDispute] = useState<
     Record<string, string>
   >({})
-  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null)
+  const setBanner = notifyFeedback
 
   const isClientReviewer = activeUser.role === 'client_reviewer'
   if (isClientReviewer) {
@@ -168,25 +169,6 @@ export function DisputesAndAppealsView() {
 
   return (
     <div className="space-y-6">
-      {banner && (
-        <div
-          className={`rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
-            banner.ok
-              ? 'bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-50/90 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-rose-500/25'
-          }`}
-        >
-          <span>{banner.text}</span>
-          <button
-            type="button"
-            onClick={() => setBanner(null)}
-            className="underline font-semibold ml-4 cursor-pointer shrink-0"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {/* Header + Export */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase4Store } from '@/context/Phase4Store'
 import {
@@ -267,7 +268,7 @@ export function PricingPlansView() {
   const [modalTier, setModalTier] = useState<SaasPlanTier | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<BillingProvider>('stripe')
   const [isProcessing, setIsProcessing] = useState(false)
-  const [actionMessage, setActionMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const setActionMessage = notifyFeedback
 
   const isOwnerOrAdmin =
     activeUser.role === 'super_admin' ||
@@ -340,39 +341,6 @@ export function PricingPlansView() {
           ))}
         </div>
       </div>
-
-      {/* Alert Banner */}
-      {actionMessage && (
-        <div
-          className={`rounded-xl border px-4 py-3.5 text-xs font-medium flex items-center justify-between shadow-sm ${actionMessage.ok
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200'
-              : 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-200'
-            }`}
-        >
-          <div className="flex items-center gap-2">
-            <svg
-              className={`w-4 h-4 shrink-0 ${actionMessage.ok ? 'text-emerald-500' : 'text-rose-500'}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              {actionMessage.ok ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              )}
-            </svg>
-            <span>{actionMessage.text}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActionMessage(null)}
-            className="text-xs font-semibold underline hover:opacity-75 cursor-pointer ml-4"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {pricingTab === 'usage' ? (
         <UsageAndReceiptsPanel />

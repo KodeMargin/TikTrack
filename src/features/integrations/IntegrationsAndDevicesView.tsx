@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store, type EnrolledDeviceRecord } from '@/context/Phase2Store'
 import { PublicApiAndWebhooksPanel } from '@/features/integrations/EcosystemToolsAndApiPanels'
@@ -39,7 +40,7 @@ export function IntegrationsAndDevicesView() {
     'external-tools'
   )
   const [selectedTaskByMapping, setSelectedTaskByMapping] = useState<Record<string, string>>({})
-  const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null)
+  const setFeedback = notifyFeedback
   const [copiedToken, setCopiedToken] = useState(false)
   const [copiedMacFix, setCopiedMacFix] = useState(false)
   const [desktopRelease, setDesktopRelease] = useState(DEFAULT_DESKTOP_RELEASE)
@@ -130,24 +131,6 @@ export function IntegrationsAndDevicesView() {
             ))}
         </div>
       </div>
-
-      {feedback && (
-        <div
-          className={`rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${feedback.ok
-              ? 'bg-emerald-50/90 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-50/90 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-rose-500/25'
-            }`}
-        >
-          <span>{feedback.text}</span>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            className="font-semibold underline cursor-pointer ml-4 shrink-0"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {effectiveTab === 'external-tools' ? (
         <RealIntegrationsHub onFeedback={setFeedback} />

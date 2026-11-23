@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { notifyError } from '@/lib/notify'
 import { createPortal } from 'react-dom'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase4Store } from '@/context/Phase4Store'
@@ -65,7 +66,6 @@ export function RealIntegrationsHub({
   const [activeGuideId, setActiveGuideId] = useState<string | null>(null)
   const [credDraft, setCredDraft] = useState<Record<string, string>>({})
   const [revealedFields, setRevealedFields] = useState<Record<string, boolean>>({})
-  const [modalError, setModalError] = useState<string | null>(null)
   const [busyProvider, setBusyProvider] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
@@ -127,14 +127,12 @@ export function RealIntegrationsHub({
 
   function openSetupModal(spec: ProviderGuideSpec) {
     setActiveGuideId(spec.id)
-    setModalError(null)
     setRevealedFields({})
     setCredDraft(spec.id === 'gitlab' ? { baseUrl: 'https://gitlab.com' } : {})
   }
 
   function closeSetupModal() {
     setActiveGuideId(null)
-    setModalError(null)
     setCredDraft({})
     setRevealedFields({})
   }
@@ -147,7 +145,6 @@ export function RealIntegrationsHub({
 
   async function handleConnectSubmit(spec: ProviderGuideSpec, e: React.FormEvent) {
     e.preventDefault()
-    setModalError(null)
     setBusyProvider(spec.id)
     try {
       const res = await connectRealIntegrationViaPrisma({
@@ -161,7 +158,7 @@ export function RealIntegrationsHub({
         closeSetupModal()
         onFeedback?.({ ok: true, text: res.message || `${spec.name} connected.` })
       } else {
-        setModalError(res.error || `Could not verify ${spec.name} credentials.`)
+        notifyError(res.error || `Could not verify ${spec.name} credentials.`)
       }
     } finally {
       setBusyProvider(null)
@@ -928,12 +925,6 @@ export function RealIntegrationsHub({
                         <div className="text-xs font-bold text-zinc-900 dark:text-white">
                           Enter Your Credentials
                         </div>
-
-                        {modalError && (
-                          <div className="rounded-xl bg-rose-50 dark:bg-rose-950/40 ring-1 ring-rose-500/30 px-3 py-2.5 text-xs text-rose-800 dark:text-rose-200">
-                            {modalError}
-                          </div>
-                        )}
 
                         {activeGuideSpec.fields.map((field) => {
                           const isSecret = field.type === 'password'

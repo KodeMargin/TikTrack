@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import type { WorkMode } from '@/types/domain.types'
 import { InfoTooltip } from '@/components/InfoTooltip'
@@ -100,10 +101,7 @@ export function WorkSessionTimerView() {
   const [endTime, setEndTime] = useState('10:30')
   const [durationMinutes, setDurationMinutes] = useState(90)
   const [breakMinutes, setBreakMinutes] = useState(0)
-  const [feedbackBanner, setFeedbackBanner] = useState<{
-    ok: boolean
-    text: string
-  } | null>(null)
+  const setFeedbackBanner = notifyFeedback
 
   // Manual time entry state
   const [manualDate, setManualDate] = useState('2026-11-12')
@@ -217,25 +215,6 @@ export function WorkSessionTimerView() {
             className="underline font-semibold ml-4 cursor-pointer"
           >
             Discard
-          </button>
-        </div>
-      )}
-
-      {feedbackBanner && (
-        <div
-          className={`dp-view-enter rounded-xl px-4 py-3 text-xs font-medium flex items-center justify-between ring-1 ${
-            feedbackBanner.ok
-              ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 ring-emerald-500/25'
-              : 'bg-rose-500/10 text-rose-800 dark:text-rose-200 ring-rose-500/25'
-          }`}
-        >
-          <span>{feedbackBanner.text}</span>
-          <button
-            type="button"
-            onClick={() => setFeedbackBanner(null)}
-            className="text-xs font-semibold underline ml-4 cursor-pointer"
-          >
-            Dismiss
           </button>
         </div>
       )}

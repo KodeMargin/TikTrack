@@ -20,6 +20,55 @@ export function isValidUuid(val: string | undefined | null): val is string {
   return Boolean(val && UUID_REGEX.test(val))
 }
 
+let jiraSchemaEnsured = false
+
+async function ensureJiraWorkspaceSchema(): Promise<void> {
+  if (jiraSchemaEnsured) return
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE public.projects
+        ADD COLUMN IF NOT EXISTS board_config JSONB;
+    `)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS public.sprints (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id  UUID NOT NULL,
+        project_id UUID NOT NULL,
+        name       TEXT NOT NULL,
+        goal       TEXT,
+        status     TEXT NOT NULL DEFAULT 'planned',
+        start_date DATE,
+        end_date   DATE,
+        created_at TIMESTAMPTZ(6) NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ(6) NOT NULL DEFAULT NOW(),
+        CONSTRAINT fk_sprints_project
+          FOREIGN KEY (project_id, tenant_id)
+          REFERENCES public.projects(id, tenant_id)
+          ON DELETE CASCADE
+      );
+    `)
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS idx_sprints_tenant_project_status
+        ON public.sprints (tenant_id, project_id, status);
+    `)
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE public.tasks
+        ADD COLUMN IF NOT EXISTS sprint_id    UUID REFERENCES public.sprints(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS issue_type   TEXT NOT NULL DEFAULT 'task',
+        ADD COLUMN IF NOT EXISTS labels       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+        ADD COLUMN IF NOT EXISTS story_points INTEGER,
+        ADD COLUMN IF NOT EXISTS board_order  INTEGER NOT NULL DEFAULT 0;
+    `)
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_sprint
+        ON public.tasks (tenant_id, project_id, sprint_id);
+    `)
+    jiraSchemaEnsured = true
+  } catch (err) {
+    console.warn('[Prisma] ensureJiraWorkspaceSchema skipped/warn:', err instanceof Error ? err.message : String(err))
+  }
+}
+
 export async function handleBootstrap() {
   const status = await checkPrismaConnection()
   if (!status.connected) {
@@ -28,6 +77,7 @@ export async function handleBootstrap() {
       tenants: [],
       members: [],
       projects: [],
+      sprints: [],
       tasks: [],
       timesheetLines: [],
       contracts: [],
@@ -38,6 +88,9 @@ export async function handleBootstrap() {
     }
   }
 
+  // Ensure Jira-grade workspace tables/columns exist idempotently
+  await ensureJiraWorkspaceSchema()
+
   // First-run & auto-evolution seed: ensures RBAC tables, permission_modules,
   // permissions, and pre-defined system roles are saved in PostgreSQL.
   const rbac = await handleBootstrapRbacData()
@@ -46,6 +99,7 @@ export async function handleBootstrap() {
     dbTenants,
     dbMemberships,
     dbProjects,
+    dbSprints,
     dbTasks,
     dbTimesheetLines,
     dbContracts,
@@ -79,10 +133,22 @@ export async function handleBootstrap() {
         roleGrants: true,
       },
     }),
-    prisma.project.findMany({ orderBy: { createdAt: 'asc' } }),
-    prisma.task.findMany({
-      include: { assignments: true, notes: true },
+    prisma.project.findMany({
+      include: { projectMembers: true },
       orderBy: { createdAt: 'asc' },
+    }),
+    prisma.sprint.findMany({
+      orderBy: [{ createdAt: 'asc' }],
+    }),
+    prisma.task.findMany({
+      include: {
+        assignments: true,
+        notes: {
+          include: { author: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: [{ boardOrder: 'asc' }, { createdAt: 'asc' }],
     }),
     prisma.timesheetLine.findMany({
       include: {
@@ -201,23 +267,60 @@ export async function handleBootstrap() {
       clientName: p.clientName,
       status: p.status as 'active' | 'paused' | 'archived',
       description: p.description ?? '',
+      boardConfig: (p.boardConfig ?? undefined) as Record<string, unknown> | undefined,
+      members: p.projectMembers.map((pm) => ({
+        id: pm.id,
+        tenantId: pm.tenantId,
+        projectId: pm.projectId,
+        userId: pm.userId,
+        projectRole: pm.projectRole,
+        addedAt: pm.addedAt.toISOString(),
+      })),
+    })),
+    sprints: dbSprints.map((s) => ({
+      id: s.id,
+      tenantId: s.tenantId,
+      projectId: s.projectId,
+      name: s.name,
+      goal: s.goal ?? '',
+      status: s.status as 'planned' | 'active' | 'completed',
+      startDate: s.startDate ? s.startDate.toISOString().slice(0, 10) : null,
+      endDate: s.endDate ? s.endDate.toISOString().slice(0, 10) : null,
+      createdAt: s.createdAt.toISOString(),
     })),
     tasks: dbTasks.map((t) => ({
       id: t.id,
       tenantId: t.tenantId,
       projectId: t.projectId,
       parentTaskId: t.parentTaskId ?? undefined,
+      sprintId: t.sprintId ?? null,
       code: t.code,
       title: t.title,
+      description: t.description ?? '',
       acceptanceCriteria: t.acceptanceCriteria,
+      issueType: (t.issueType || 'task') as 'epic' | 'story' | 'task' | 'bug' | 'subtask',
       status: t.status as 'backlog' | 'active' | 'review' | 'done',
       priority: t.priority as 'low' | 'medium' | 'high' | 'urgent',
+      labels: t.labels ?? [],
+      storyPoints: t.storyPoints ?? null,
+      boardOrder: t.boardOrder ?? 0,
       estimateMinutes: t.estimateMinutes,
       isBillable: t.isBillable,
       defaultWorkMode: t.defaultWorkMode,
       assignedMemberIds: t.assignments.map((a) => a.userId),
-      dueDate: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : '2026-11-20',
-      attachments: t.notes.flatMap((n) => n.attachmentPaths),
+      dueDate: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : '',
+      attachments: Array.from(new Set(t.notes.flatMap((n) => n.attachmentPaths))),
+      notes: t.notes.map((n) => ({
+        id: n.id,
+        taskId: n.taskId,
+        authorId: n.authorId,
+        authorName: n.author?.fullName ?? 'Team Member',
+        contentMarkdown: n.contentMarkdown,
+        attachmentPaths: n.attachmentPaths ?? [],
+        createdAt: n.createdAt.toISOString(),
+      })),
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
     })),
     timesheetLines: dbTimesheetLines.map((l) => {
       const task = taskById.get(l.taskId)

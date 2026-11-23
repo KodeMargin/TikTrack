@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
 import { detectUserLocation } from '@/lib/countryTimezones'
@@ -33,7 +34,9 @@ export function AuthAndOnboardingView() {
   const [inviteRole, setInviteRole] = useState<string>('developer')
   const [inviteTempPassword, setInviteTempPassword] = useState('')
   const [isInviting, setIsInviting] = useState(false)
-  const [inviteNotice, setInviteNotice] = useState<{ ok: boolean; text: string } | null>(null)
+  const setInviteNotice = (n: { ok: boolean; text: string } | null) => {
+    if (n) notifyFeedback(n)
+  }
 
   // Multi-Tenant Workspace Provisioning State (F1-001)
   const [wsName, setWsName] = useState('')
@@ -45,7 +48,9 @@ export function AuthAndOnboardingView() {
   const [ownerName, setOwnerName] = useState(defaultOwnerName)
   const [ownerEmail, setOwnerEmail] = useState(defaultOwnerEmail)
   const [creatingWorkspace, setCreatingWorkspace] = useState(false)
-  const [onboardingNotice, setOnboardingNotice] = useState<{ ok: boolean; text: string } | null>(null)
+  const setOnboardingNotice = (n: { ok: boolean; text: string } | null) => {
+    if (n) notifyFeedback(n)
+  }
 
   useEffect(() => {
     if (!isSuperAdminSession) {
@@ -184,18 +189,6 @@ export function AuthAndOnboardingView() {
                 </div>
               </div>
 
-              {inviteNotice && (
-                <div
-                  className={`rounded-lg border p-2.5 text-xs ${
-                    inviteNotice.ok
-                      ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200'
-                      : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200'
-                  }`}
-                >
-                  {inviteNotice.text}
-                </div>
-              )}
-
               <form onSubmit={(e) => void handleInviteMember(e)} className="space-y-2.5 text-xs">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
@@ -294,18 +287,6 @@ export function AuthAndOnboardingView() {
                   Provision an additional isolated tenant workspace under your ownership.
                 </p>
               </div>
-
-              {onboardingNotice && (
-                <div
-                  className={`rounded-lg border p-2.5 text-xs ${
-                    onboardingNotice.ok
-                      ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200'
-                      : 'border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200'
-                  }`}
-                >
-                  {onboardingNotice.text}
-                </div>
-              )}
 
               <form onSubmit={(e) => void handleProvisionTenant(e)} className="space-y-2.5 text-xs">
                 <div className="grid grid-cols-2 gap-2.5">
