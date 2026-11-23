@@ -761,14 +761,14 @@ export function ReportsAndAnalyticsView() {
                     type="button"
                     onClick={() => setActiveReportId(entry.id)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl transition cursor-pointer flex items-start gap-2.5 ${selected
-                        ? 'bg-[#6d25da] text-white shadow-sm shadow-[#6d25da]/25'
-                        : 'hover:bg-zinc-100/90 dark:hover:bg-white/[0.05] text-zinc-700 dark:text-zinc-200'
+                      ? 'bg-[#6d25da] text-white shadow-sm shadow-[#6d25da]/25'
+                      : 'hover:bg-zinc-100/90 dark:hover:bg-white/[0.05] text-zinc-700 dark:text-zinc-200'
                       }`}
                   >
                     <span
                       className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded mt-0.5 shrink-0 ${selected
-                          ? 'bg-white/20 text-white'
-                          : 'bg-[#6d25da]/10 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#6d25da]/10 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#c5a8f0]'
                         }`}
                     >
                       {entry.code}
@@ -809,14 +809,14 @@ export function ReportsAndAnalyticsView() {
                   type="button"
                   onClick={() => setActiveReportId(entry.id)}
                   className={`w-full text-left px-3 py-2.5 rounded-xl transition cursor-pointer flex items-start gap-2.5 ${selected
-                      ? 'bg-[#6d25da] text-white shadow-sm shadow-[#6d25da]/25'
-                      : 'hover:bg-zinc-100/90 dark:hover:bg-white/[0.05] text-zinc-700 dark:text-zinc-200'
+                    ? 'bg-[#6d25da] text-white shadow-sm shadow-[#6d25da]/25'
+                    : 'hover:bg-zinc-100/90 dark:hover:bg-white/[0.05] text-zinc-700 dark:text-zinc-200'
                     }`}
                 >
                   <span
                     className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded mt-0.5 shrink-0 ${selected
-                        ? 'bg-white/20 text-white'
-                        : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-600 dark:text-zinc-300'
                       }`}
                   >
                     {entry.code}
@@ -837,7 +837,7 @@ export function ReportsAndAnalyticsView() {
         </div>
 
         {/* Access Scope Summary Pill */}
-        <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-3 text-[11px] text-zinc-500 dark:text-zinc-400 space-y-1">
+        {/* <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-3 text-[11px] text-zinc-500 dark:text-zinc-400 space-y-1">
           <div className="font-semibold text-zinc-700 dark:text-zinc-200">
             Active Access Scope
           </div>
@@ -848,7 +848,7 @@ export function ReportsAndAnalyticsView() {
                 ? `Tenant Scope (${activeTenant.name})${canViewFinancials ? ' • Financials Enabled' : ' • Operational Only'}`
                 : 'Personal Scope: Showing your own recorded sessions & tasks only.'}
           </div>
-        </div>
+        </div> */}
       </aside>
 
       {/* =================================================================== */}
