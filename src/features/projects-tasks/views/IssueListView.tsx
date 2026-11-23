@@ -154,11 +154,10 @@ export function IssueListView({
       <Fragment key={task.id}>
         <tr
           onClick={() => onSelectTask(task.id)}
-          className={`cursor-pointer ${
-            selectedIds.has(task.id)
+          className={`cursor-pointer ${selectedIds.has(task.id)
               ? 'bg-[#6d25da]/[0.06] dark:bg-[#6d25da]/[0.14]'
               : ''
-          }`}
+            }`}
         >
           <td className="py-3 pl-4 pr-2 w-9" onClick={(e) => e.stopPropagation()}>
             <input
@@ -289,7 +288,7 @@ export function IssueListView({
                 {formatShortDate(task.dueDate)}
               </span>
             ) : (
-              <span className="text-zinc-400">—</span>
+              <span className="text-zinc-400">-</span>
             )}
           </td>
 
@@ -308,13 +307,12 @@ export function IssueListView({
             </div>
             <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
               <div
-                className={`h-full rounded-full ${
-                  over
+                className={`h-full rounded-full ${over
                     ? 'bg-rose-500'
                     : task.status === 'done'
                       ? 'bg-emerald-500'
                       : 'bg-[#6d25da]'
-                }`}
+                  }`}
                 style={{ width: `${pct}%` }}
               />
             </div>

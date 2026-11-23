@@ -659,7 +659,7 @@ export const INTEGRATION_PROVIDERS: ProviderGuideSpec[] = [
       },
       {
         title: 'Sync meetings privately to this workspace',
-        detail: 'Tokens are encrypted and isolated strictly to this workspace — other tenants can never view your calendar.',
+        detail: 'Tokens are encrypted and isolated strictly to this workspace - other tenants can never view your calendar.',
       },
     ],
     tip: 'You can connect both Google Calendar and Outlook Calendar side-by-side in the same workspace.',

@@ -13,6 +13,7 @@ export type PermissionModuleId =
   | 'timesheets'
   | 'payments'
   | 'billing'
+  | 'reports'
   | 'team'
   | 'roles'
   | 'timeline'
@@ -65,6 +66,12 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     name: 'Contracts & Billing',
     description: 'Rate card management, draft invoice generation and credit note adjustments.',
     icon: '💳',
+  },
+  {
+    id: 'reports',
+    name: 'Reports & Analytics',
+    description: 'Interactive dashboards, utilization, profitability, delivery, governance analytics and structured PDF/Excel exports.',
+    icon: '📊',
   },
   {
     id: 'team',
@@ -323,6 +330,50 @@ export const GRANULAR_PERMISSIONS: GranularPermissionDef[] = [
     description: 'Can issue credit notes and refund rebills against locked periods.',
   },
 
+  // --- REPORTS & ANALYTICS ---
+  {
+    key: 'report:view_own',
+    module: 'reports',
+    label: 'View Own Reports',
+    description: 'Can view personal time, deep-work, delivery and earnings analytics.',
+  },
+  {
+    key: 'report:view_team',
+    module: 'reports',
+    label: 'View Tenant & Team Reports',
+    description: 'Can view workspace-wide executive, utilization, deep-work, sprint delivery and governance reports.',
+  },
+  {
+    key: 'report:view_financials',
+    module: 'reports',
+    label: 'View Financial & Profitability Reports',
+    description: 'Can view client billing revenue, developer payout costs, gross profit margins and invoice aging analytics.',
+  },
+  {
+    key: 'report:export_pdf',
+    module: 'reports',
+    label: 'Export Reports (PDF)',
+    description: 'Can generate and download clean structured PDF documents for accessible reports.',
+  },
+  {
+    key: 'report:export_excel',
+    module: 'reports',
+    label: 'Export Reports (Excel)',
+    description: 'Can generate and download formatted multi-sheet Excel (.xlsx) workbooks for accessible reports.',
+  },
+  {
+    key: 'report:create_saved',
+    module: 'reports',
+    label: 'Build & Save Custom Reports',
+    description: 'Can use the custom pivot report builder and save reusable report views.',
+  },
+  {
+    key: 'report:ai_insights',
+    module: 'reports',
+    label: 'AI Report Executive Briefs',
+    description: 'Can generate guardrailed AI executive summaries from aggregated report metrics.',
+  },
+
   // --- TEAM MEMBERS ---
   {
     key: 'member:view',
@@ -522,6 +573,13 @@ export const GRANULAR_PERMISSIONS: GranularPermissionDef[] = [
     description: 'Master visibility into distributed background workers and audit chains.',
     isSuperAdminOnly: true,
   },
+  {
+    key: 'superadmin:platform_reports',
+    module: 'superadmin',
+    label: 'Platform & Cross-Tenant Reports',
+    description: 'Can view and export platform SaaS revenue, tenant quota health and per-tenant operational reports across all workspaces.',
+    isSuperAdminOnly: true,
+  },
 ]
 
 export interface CustomRole {
@@ -612,6 +670,12 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'dispute:view',
       'dispute:resolve',
       'integration:view',
+      'report:view_own',
+      'report:view_team',
+      'report:export_pdf',
+      'report:export_excel',
+      'report:create_saved',
+      'report:ai_insights',
     ],
   },
   {
@@ -637,6 +701,11 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'dispute:view',
       'member:view',
       'integration:view',
+      'report:view_own',
+      'report:export_pdf',
+      'report:export_excel',
+      'report:create_saved',
+      'report:ai_insights',
     ],
   },
   {
@@ -661,6 +730,13 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'invoice:lock_finalize',
       'invoice:credit_adjust',
       'member:view',
+      'report:view_own',
+      'report:view_team',
+      'report:view_financials',
+      'report:export_pdf',
+      'report:export_excel',
+      'report:create_saved',
+      'report:ai_insights',
     ],
   },
   {
@@ -681,6 +757,9 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'dispute:view',
       'timeline:view_team',
       'member:view',
+      'report:view_team',
+      'report:export_pdf',
+      'report:export_excel',
     ],
   },
   {
@@ -702,6 +781,10 @@ export const DEFAULT_PREDEFINED_ROLES: CustomRole[] = [
       'compliance:audit_export',
       'dispute:view',
       'member:view',
+      'report:view_team',
+      'report:export_pdf',
+      'report:export_excel',
+      'report:create_saved',
     ],
   },
 ]

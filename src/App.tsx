@@ -22,9 +22,11 @@ import { IntegrationsAndDevicesView } from '@/features/integrations/Integrations
 import { VerificationAndAiView } from '@/features/verification-ai/VerificationAndAiView'
 import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
 import { PricingPlansView } from '@/features/saas-ecosystem/PricingPlansView'
+import { ReportsAndAnalyticsView } from '@/features/reports-analytics/ReportsAndAnalyticsView'
 
 type NavSection =
   | 'timesheets-review'
+  | 'reports-analytics'
   | 'developer-payments'
   | 'timer-sessions'
   | 'projects-tasks'
@@ -108,6 +110,23 @@ const NAV_ITEMS: NavItem[] = [
     group: 'workspace',
     allowedRoles: ['super_admin', 'tenant_owner', 'project_manager', 'developer', 'auditor'],
     icon: <NavIcon path="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-5 5v-5Z" />,
+  },
+  {
+    id: 'reports-analytics',
+    path: '/reports',
+    label: 'Reports & Analytics',
+    description: 'Executive, utilization, profitability, delivery & clean PDF/Excel exports',
+    group: 'workspace',
+    allowedRoles: [
+      'super_admin',
+      'tenant_owner',
+      'project_manager',
+      'developer',
+      'finance',
+      'client_reviewer',
+      'auditor',
+    ],
+    icon: <NavIcon path="M3 3v18h18M7 16v-5m4 5V8m4 8v-3m4 3V6" />,
   },
 
   // 2. CONTEXT & EVIDENCE (Observe -> Verify -> Connect -> Protect)
@@ -358,6 +377,12 @@ function FirstTimePasswordChangeModal({
 // (tenant_owner, predefined roles, custom roles, and individual overrides).
 const NAV_PERMISSION_MAP: Partial<Record<NavSection, string[]>> = {
   'timesheets-review': ['timesheet:view_own', 'timesheet:view_team', 'timesheet:approve'],
+  'reports-analytics': [
+    'report:view_own',
+    'report:view_team',
+    'report:view_financials',
+    'superadmin:platform_reports',
+  ],
   'developer-payments': [
     'payment:view_own',
     'payment:view_team',
@@ -1240,7 +1265,9 @@ function DevProofShell() {
         {/* Main Workspace Canvas with Strict RBAC Route Guard */}
         <main
           className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 ${
-            activeSection === 'projects-tasks' ? 'max-w-[1680px]' : 'max-w-7xl'
+            activeSection === 'projects-tasks' || activeSection === 'reports-analytics'
+              ? 'max-w-[1680px]'
+              : 'max-w-7xl'
           }`}
         >
           {!canAccessNav(currentNav) ? (
@@ -1267,6 +1294,7 @@ function DevProofShell() {
           ) : (
             <div key={activeSection} className="dp-view-enter">
               {activeSection === 'timesheets-review' && <TimesheetsAndReviewView />}
+              {activeSection === 'reports-analytics' && <ReportsAndAnalyticsView />}
               {activeSection === 'developer-payments' && <DeveloperPaymentsView />}
               {activeSection === 'timer-sessions' && <WorkSessionTimerView />}
               {activeSection === 'projects-tasks' && (

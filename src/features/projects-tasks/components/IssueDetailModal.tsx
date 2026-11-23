@@ -327,11 +327,10 @@ export function IssueDetailModal({
                 <h2
                   onClick={() => permissions.canEditTask && setEditingTitle(true)}
                   title={permissions.canEditTask ? 'Click to edit title' : undefined}
-                  className={`text-xl font-bold text-zinc-900 dark:text-white leading-snug rounded-lg px-2 py-1 -mx-2 transition ${
-                    permissions.canEditTask
+                  className={`text-xl font-bold text-zinc-900 dark:text-white leading-snug rounded-lg px-2 py-1 -mx-2 transition ${permissions.canEditTask
                       ? 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04] cursor-text'
                       : ''
-                  }`}
+                    }`}
                 >
                   {task.title}
                 </h2>
@@ -387,11 +386,10 @@ export function IssueDetailModal({
               ) : (
                 <div
                   onClick={() => permissions.canEditTask && setEditingDesc(true)}
-                  className={`rounded-xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap transition ${
-                    task.description?.trim()
+                  className={`rounded-xl px-3.5 py-2.5 text-xs leading-relaxed whitespace-pre-wrap transition ${task.description?.trim()
                       ? 'bg-zinc-50/90 dark:bg-white/[0.03] text-zinc-700 dark:text-zinc-300'
                       : 'bg-zinc-50/50 dark:bg-white/[0.02] text-zinc-400 italic'
-                  } ${permissions.canEditTask ? 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.05] cursor-text' : ''}`}
+                    } ${permissions.canEditTask ? 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.05] cursor-text' : ''}`}
                 >
                   {task.description?.trim() || 'Add a detailed description...'}
                 </div>
@@ -446,9 +444,8 @@ export function IssueDetailModal({
               ) : (
                 <div
                   onClick={() => permissions.canEditTask && setEditingCriteria(true)}
-                  className={`rounded-xl px-3.5 py-2.5 text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-50/90 dark:bg-white/[0.03] leading-relaxed whitespace-pre-wrap ${
-                    permissions.canEditTask ? 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.05] cursor-text' : ''
-                  }`}
+                  className={`rounded-xl px-3.5 py-2.5 text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-50/90 dark:bg-white/[0.03] leading-relaxed whitespace-pre-wrap ${permissions.canEditTask ? 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.05] cursor-text' : ''
+                    }`}
                 >
                   {task.acceptanceCriteria || 'No acceptance criteria specified.'}
                 </div>
@@ -516,11 +513,10 @@ export function IssueDetailModal({
                               {sub.code}
                             </span>
                             <span
-                              className={`font-medium truncate ${
-                                isDone
+                              className={`font-medium truncate ${isDone
                                   ? 'line-through text-zinc-400 dark:text-zinc-500'
                                   : 'text-zinc-800 dark:text-zinc-200'
-                              }`}
+                                }`}
                             >
                               {sub.title}
                             </span>
@@ -666,11 +662,10 @@ export function IssueDetailModal({
                     key={tabId}
                     type="button"
                     onClick={() => setActivityTab(tabId)}
-                    className={`px-2.5 py-1 rounded-lg text-[11.5px] font-semibold transition cursor-pointer ${
-                      activityTab === tabId
+                    className={`px-2.5 py-1 rounded-lg text-[11.5px] font-semibold transition cursor-pointer ${activityTab === tabId
                         ? 'bg-[#6d25da]/12 text-[#6d25da] dark:bg-[#6d25da]/25 dark:text-[#d8c4f8]'
                         : 'text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-white/[0.05]'
-                    }`}
+                      }`}
                   >
                     {label}
                   </button>
@@ -823,9 +818,8 @@ export function IssueDetailModal({
                   onChange={(e) =>
                     onUpdateTask(task.id, { status: e.target.value as TaskRecord['status'] })
                   }
-                  className={`flex-1 font-semibold ${
-                    !permissions.canChangeTaskStatus ? 'opacity-60 cursor-not-allowed' : ''
-                  }`}
+                  className={`flex-1 font-semibold ${!permissions.canChangeTaskStatus ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
                 >
                   {BOARD_COLUMNS.map((c) => (
                     <option key={c.status} value={c.status}>
@@ -868,22 +862,20 @@ export function IssueDetailModal({
                   Time Tracking
                 </span>
                 <span
-                  className={`font-mono font-semibold ${
-                    isOverEstimate ? 'text-rose-600 dark:text-rose-400' : 'text-[#6d25da] dark:text-[#c5a8f0]'
-                  }`}
+                  className={`font-mono font-semibold ${isOverEstimate ? 'text-rose-600 dark:text-rose-400' : 'text-[#6d25da] dark:text-[#c5a8f0]'
+                    }`}
                 >
                   {progressPct}%
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    isOverEstimate
+                  className={`h-full rounded-full transition-all duration-300 ${isOverEstimate
                       ? 'bg-rose-500'
                       : task.status === 'done'
                         ? 'bg-emerald-500'
                         : 'bg-[#6d25da]'
-                  }`}
+                    }`}
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
@@ -1009,7 +1001,7 @@ export function IssueDetailModal({
                     type="number"
                     min={0}
                     max={100}
-                    placeholder="—"
+                    placeholder="-"
                     disabled={!permissions.canEditTask}
                     value={task.storyPoints ?? ''}
                     onChange={(e) =>
@@ -1148,11 +1140,10 @@ export function IssueDetailModal({
                         key={m.id}
                         type="button"
                         onClick={() => toggleAssignee(m.id)}
-                        className={`inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full text-[11px] font-medium transition cursor-pointer ${
-                          assigned
+                        className={`inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full text-[11px] font-medium transition cursor-pointer ${assigned
                             ? 'bg-[#f4effc] dark:bg-[#6d25da]/22 text-[#581eae] dark:text-[#d8c4f8] ring-1 ring-[#6d25da]/25'
                             : 'bg-white dark:bg-white/[0.05] text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                        }`}
+                          }`}
                       >
                         <MemberAvatar name={m.name} id={m.id} size="xs" />
                         <span>{m.name}</span>

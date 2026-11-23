@@ -92,6 +92,12 @@ model Tenant {
   roles                     Role[]
   tenantOwnerPolicy         TenantOwnerPermissionPolicy?
 
+  // Reporting & Analytics relations
+  savedReports              SavedReport[]
+  scheduledReports          ScheduledReport[]
+  sharedReportLinks         SharedReportLink[]
+  analyticsDailyRollups     AnalyticsDailyRollup[]
+
   @@unique([id, slug])
   @@map("tenants")
 }
@@ -168,6 +174,12 @@ model UserProfile {
   publishedFleetReleases     FleetRelease[]
   triggeredWarehouseExports  AnalyticsWarehouseExport[]
   conductedDrExercises       DrExercise[]
+
+  // Reporting & Analytics relations
+  savedReports               SavedReport[]
+  scheduledReports           ScheduledReport[]
+  sharedReportLinks          SharedReportLink[]
+  analyticsDailyRollups      AnalyticsDailyRollup[]
 
   @@map("user_profiles")
 }
@@ -342,6 +354,7 @@ model Project {
   evidenceArtifacts        EvidenceArtifact[]
   evidenceCorrelationEdges EvidenceCorrelationEdge[]
   calendarMeetingEvents    CalendarMeetingEvent[]
+  analyticsDailyRollups    AnalyticsDailyRollup[]
 
   @@unique([tenantId, code])
   @@unique([id, tenantId])
@@ -1918,4 +1931,110 @@ model SystemSeedRun {
   lastAppliedAt  DateTime @default(now()) @map("last_applied_at") @db.Timestamptz(6)
 
   @@map("system_seed_runs")
+}
+
+// -----------------------------------------------------------------------------
+// 10. Reporting & Analytics (0018)
+// -----------------------------------------------------------------------------
+
+model SavedReport {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  createdBy   String?  @map("created_by") @db.Uuid
+  name        String
+  description String   @default("")
+  reportType  String   @default("custom_pivot") @map("report_type")
+  visibility  String   @default("private")
+  configJson  Json     @default("{}") @map("config_json")
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUser    UserProfile?      @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  scheduledReports ScheduledReport[]
+  sharedLinks      SharedReportLink[]
+
+  @@index([tenantId, reportType, createdAt(sort: Desc)], map: "idx_saved_reports_tenant_type")
+  @@map("saved_reports")
+}
+
+model ScheduledReport {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  savedReportId   String    @map("saved_report_id") @db.Uuid
+  createdBy       String?   @map("created_by") @db.Uuid
+  frequency       String    @default("weekly")
+  dayOfWeek       Int?      @default(1) @map("day_of_week")
+  dayOfMonth      Int?      @default(1) @map("day_of_month")
+  sendTimeUtc     String    @default("08:00") @map("send_time_utc")
+  timezone        String    @default("UTC")
+  exportFormat    String    @default("pdf") @map("export_format")
+  recipientEmails String[]  @default([]) @map("recipient_emails")
+  isActive        Boolean   @default(true) @map("is_active")
+  lastSentAt      DateTime? @map("last_sent_at") @db.Timestamptz(6)
+  nextRunAt       DateTime? @map("next_run_at") @db.Timestamptz(6)
+  lastError       String?   @map("last_error")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  savedReport   SavedReport  @relation(fields: [savedReportId], references: [id], onDelete: Cascade)
+  createdByUser UserProfile? @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, isActive, nextRunAt], map: "idx_scheduled_reports_tenant_active")
+  @@map("scheduled_reports")
+}
+
+model SharedReportLink {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  savedReportId   String?   @map("saved_report_id") @db.Uuid
+  createdBy       String?   @map("created_by") @db.Uuid
+  label           String
+  tokenHashSha256 String    @unique @map("token_hash_sha256")
+  scopeConfigJson Json      @default("{}") @map("scope_config_json")
+  passcodeHash    String?   @map("passcode_hash")
+  expiresAt       DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  viewCount       Int       @default(0) @map("view_count")
+  lastViewedAt    DateTime? @map("last_viewed_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  savedReport   SavedReport? @relation(fields: [savedReportId], references: [id], onDelete: SetNull)
+  createdByUser UserProfile? @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, revokedAt, createdAt(sort: Desc)], map: "idx_shared_report_links_tenant")
+  @@map("shared_report_links")
+}
+
+model AnalyticsDailyRollup {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String   @map("tenant_id") @db.Uuid
+  workDate                DateTime @map("work_date") @db.Date
+  projectId               String   @map("project_id") @db.Uuid
+  userId                  String   @map("user_id") @db.Uuid
+  workMode                String   @default("coding") @map("work_mode")
+  elapsedMinutes          Decimal  @default(0) @map("elapsed_minutes") @db.Decimal(8, 2)
+  claimedMinutes          Decimal  @default(0) @map("claimed_minutes") @db.Decimal(8, 2)
+  observedMinutes         Decimal  @default(0) @map("observed_minutes") @db.Decimal(8, 2)
+  supportedMinutes        Decimal  @default(0) @map("supported_minutes") @db.Decimal(8, 2)
+  approvedBillableMinutes Decimal  @default(0) @map("approved_billable_minutes") @db.Decimal(8, 2)
+  billableAmount          Decimal  @default(0) @map("billable_amount") @db.Decimal(12, 2)
+  internalCostAmount      Decimal  @default(0) @map("internal_cost_amount") @db.Decimal(12, 2)
+  evidenceArtifactCount   Int      @default(0) @map("evidence_artifact_count")
+  ruleFlagCount           Int      @default(0) @map("rule_flag_count")
+  disputeCount            Int      @default(0) @map("dispute_count")
+  observationGapMinutes   Decimal  @default(0) @map("observation_gap_minutes") @db.Decimal(8, 2)
+  sessionsCount           Int      @default(0) @map("sessions_count")
+  updatedAt               DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, workDate, projectId, userId, workMode])
+  @@index([tenantId, workDate(sort: Desc)], map: "idx_analytics_daily_rollups_tenant_date")
+  @@map("analytics_daily_rollups")
 }

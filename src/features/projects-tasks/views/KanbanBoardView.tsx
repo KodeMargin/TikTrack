@@ -50,11 +50,10 @@ function DroppableColumnBody({
   return (
     <div
       ref={setNodeRef}
-      className={`transition-colors rounded-xl ${
-        isOver
+      className={`transition-colors rounded-xl ${isOver
           ? 'bg-[#6d25da]/[0.07] dark:bg-[#6d25da]/[0.14] ring-2 ring-inset ring-[#6d25da]/40'
           : ''
-      } ${className}`}
+        } ${className}`}
     >
       {children}
     </div>
@@ -318,11 +317,10 @@ export function KanbanBoardView({
             return (
               <div
                 key={col.status}
-                className={`rounded-2xl p-2.5 flex flex-col gap-2.5 h-[calc(100vh-16.5rem)] min-h-[480px] transition-colors ${
-                  wipExceeded
+                className={`rounded-2xl p-2.5 flex flex-col gap-2.5 h-[calc(100vh-16.5rem)] min-h-[480px] transition-colors ${wipExceeded
                     ? 'bg-rose-500/[0.06] dark:bg-rose-950/25 ring-1 ring-rose-500/35'
                     : 'bg-[#eef0f5] dark:bg-white/[0.03] ring-1 ring-zinc-950/[0.04] dark:ring-white/[0.05]'
-                }`}
+                  }`}
               >
                 {/* Column Header */}
                 <div className="px-1.5 pt-0.5 pb-1 shrink-0 space-y-1">
@@ -342,11 +340,10 @@ export function KanbanBoardView({
                               ? `WIP Limit exceeded (${colTasks.length} / ${wipLimit})`
                               : `WIP Limit: max ${wipLimit}`
                           }
-                          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
-                            wipExceeded
+                          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${wipExceeded
                               ? 'bg-rose-600 text-white'
                               : 'bg-zinc-200/80 dark:bg-white/[0.08] text-zinc-600 dark:text-zinc-300'
-                          }`}
+                            }`}
                         >
                           MAX {wipLimit}
                         </span>
@@ -502,7 +499,7 @@ export function KanbanBoardView({
                             >
                               {cellTasks.length === 0 ? (
                                 <div className="h-16 flex items-center justify-center text-[11px] text-zinc-400/80 border border-dashed border-zinc-300/60 dark:border-white/[0.05] rounded-lg">
-                                  —
+                                  -
                                 </div>
                               ) : (
                                 cellTasks.map((task) => renderCard(task))
@@ -538,8 +535,8 @@ export function KanbanBoardView({
               )}
               stats={taskTimeStats.get(activeDragTask.id)}
               canTrackTimer={false}
-              onSelect={() => {}}
-              onLaunchTimer={() => {}}
+              onSelect={() => { }}
+              onLaunchTimer={() => { }}
               isDragOverlay
             />
           </div>

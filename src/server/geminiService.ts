@@ -14,6 +14,7 @@ export interface GeminiDraftRequest {
   | 'task_mapping'
   | 'debug_investigation'
   | 'pattern_cluster'
+  | 'report_executive_brief'
   targetLabel: string
   sanitizedPayload: Record<string, unknown>
   citedIds: string[]
@@ -57,6 +58,8 @@ const TARGET_INSTRUCTIONS: Record<GeminiDraftRequest['targetType'], string> = {
     'Write a concise Debugging Recap summarizing debugging & local testing progress from lifecycle metadata without assuming or inventing code changes.',
   pattern_cluster:
     'Write a constructive Work Pattern Recap grouping recurring review notices and suggesting practical workflow improvements (like selecting Deep Work mode upfront).',
+  report_executive_brief:
+    'Write a concise Executive Report Brief (1 bold headline + 4-5 crisp bullet points) analyzing the aggregated reporting KPIs, highlighting key trends, budget/delivery risks, and constructive workflow recommendations. Never rank, blame, or accuse individual developers.',
 }
 
 export async function generateGeminiSummaryDraft(

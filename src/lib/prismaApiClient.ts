@@ -993,3 +993,175 @@ export async function callRealPublicApiV1(input: {
     }
   }
 }
+
+// =============================================================================
+// Reporting & Analytics API Client
+// =============================================================================
+
+export interface PlatformTenantReportRowClient {
+  tenantId: string
+  tenantName: string
+  tenantSlug: string
+  status: string
+  planTier: string
+  currency: string
+  timezone: string
+  createdAt: string
+  subscriptionStatus: string
+  billingCycle: string
+  billingProvider: string
+  activeSeats: number
+  maxSeats: number
+  seatUtilizationPct: number
+  estimatedMrrUsd: number
+  saasInvoicesCount: number
+  saasPaidTotalUsd: number
+  saasOpenTotalUsd: number
+  activeProjects: number
+  maxActiveProjects: number
+  monthlyEventsUsed: number
+  monthlyEventQuota: number
+  aiTokensUsed: number
+  monthlyAiTokenQuota: number
+  storageMbUsed: number
+  storageQuotaMb: number
+  elapsedHours: number
+  claimedHours: number
+  observedHours: number
+  supportedHours: number
+  approvedBillableHours: number
+  approvalRatePct: number
+  approvedBillableValue: number
+  openDisputesCount: number
+  totalDisputesCount: number
+  evidenceArtifactsCount: number
+  activeDevicesCount: number
+  clockAnomalyDevicesCount: number
+  policyConsentPct: number
+}
+
+export interface SavedReportClientItem {
+  id: string
+  tenantId: string
+  createdBy: string | null
+  name: string
+  description: string
+  reportType: string
+  visibility: string
+  configJson: Record<string, unknown>
+  isPinned: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export async function fetchPlatformReportsViaPrisma(input: {
+  actorRole: string
+}): Promise<{ ok: boolean; generatedAtUtc?: string; tenants: PlatformTenantReportRowClient[]; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/reports/platform', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as {
+      ok: boolean
+      generatedAtUtc?: string
+      tenants: PlatformTenantReportRowClient[]
+      error?: string
+    }
+  } catch (err) {
+    return { ok: false, tenants: [], error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function listSavedReportsViaPrisma(input: {
+  tenantId: string
+  actorRole: string
+  actorTenantId?: string
+}): Promise<{ ok: boolean; reports: SavedReportClientItem[]; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/reports/saved/list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as { ok: boolean; reports: SavedReportClientItem[]; error?: string }
+  } catch (err) {
+    return { ok: false, reports: [], error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function createSavedReportViaPrisma(input: {
+  tenantId: string
+  actorRole: string
+  actorTenantId?: string
+  createdBy?: string | null
+  name: string
+  description?: string
+  reportType: string
+  visibility?: string
+  configJson: Record<string, unknown>
+  isPinned?: boolean
+}): Promise<{ ok: boolean; report?: SavedReportClientItem; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/reports/saved/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as { ok: boolean; report?: SavedReportClientItem; error?: string }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function deleteSavedReportViaPrisma(input: {
+  id: string
+  tenantId: string
+  actorRole: string
+  actorTenantId?: string
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/prisma/reports/saved', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as { ok: boolean; error?: string }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+export async function generateReportAiBriefViaPrisma(input: {
+  reportTitle: string
+  scopeLabel: string
+  dateRangeLabel: string
+  kpis: Array<{ label: string; value: string; delta?: string }>
+  highlights: Record<string, unknown>
+}): Promise<{
+  ok: boolean
+  modelId?: string
+  mode?: string
+  briefMarkdown?: string
+  tokensUsed?: number
+  error?: string
+}> {
+  try {
+    const res = await fetch('/api/prisma/reports/ai-brief', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return (await res.json()) as {
+      ok: boolean
+      modelId?: string
+      mode?: string
+      briefMarkdown?: string
+      tokensUsed?: number
+      error?: string
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}

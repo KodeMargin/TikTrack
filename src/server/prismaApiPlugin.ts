@@ -89,6 +89,13 @@ import {
   handlePublicRestApiV1Request,
   type PublicApiResource,
 } from './integrations/publicApiV1.ts'
+import {
+  handleCreateSavedReportPrisma,
+  handleDeleteSavedReportPrisma,
+  handleFetchPlatformReportsPrisma,
+  handleGenerateReportAiBriefPrisma,
+  handleListSavedReportsPrisma,
+} from './prismaReportsHandlers.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -1690,6 +1697,39 @@ export async function handlePrismaApiRequest(
             if (req.method === 'POST' && url.startsWith('/api/prisma/rbac/permissions')) {
               const body = await readJsonBody<Parameters<typeof handleRegisterPermissionPrisma>[0]>(req)
               return sendJson(res, 201, await handleRegisterPermissionPrisma(body))
+            }
+
+            // --- Reporting & Analytics Endpoints ---
+            if (req.method === 'POST' && url.startsWith('/api/prisma/reports/platform')) {
+              const body = await readJsonBody<{ actorRole?: string }>(req)
+              const result = await handleFetchPlatformReportsPrisma({
+                actorRole: body.actorRole || '',
+              })
+              return sendJson(res, result.statusCode, result.payload)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/reports/saved/list')) {
+              const body = await readJsonBody<Parameters<typeof handleListSavedReportsPrisma>[0]>(req)
+              const result = await handleListSavedReportsPrisma(body)
+              return sendJson(res, result.statusCode, result.payload)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/reports/saved/create')) {
+              const body = await readJsonBody<Parameters<typeof handleCreateSavedReportPrisma>[0]>(req)
+              const result = await handleCreateSavedReportPrisma(body)
+              return sendJson(res, result.statusCode, result.payload)
+            }
+
+            if (req.method === 'DELETE' && url.startsWith('/api/prisma/reports/saved')) {
+              const body = await readJsonBody<Parameters<typeof handleDeleteSavedReportPrisma>[0]>(req)
+              const result = await handleDeleteSavedReportPrisma(body)
+              return sendJson(res, result.statusCode, result.payload)
+            }
+
+            if (req.method === 'POST' && url.startsWith('/api/prisma/reports/ai-brief')) {
+              const body = await readJsonBody<Parameters<typeof handleGenerateReportAiBriefPrisma>[0]>(req)
+              const result = await handleGenerateReportAiBriefPrisma(body)
+              return sendJson(res, result.statusCode, result.payload)
             }
 
             sendJson(res, 404, { error: 'Unknown Prisma API endpoint' })

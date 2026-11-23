@@ -320,8 +320,8 @@ export function RealIntegrationsHub({
               type="button"
               onClick={() => setCategoryFilter(cat.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${categoryFilter === cat.id
-                  ? 'bg-[#702fe3] text-white shadow-xs'
-                  : 'bg-white dark:bg-[#131319] text-zinc-600 dark:text-zinc-300 ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] hover:text-zinc-900 dark:hover:text-white'
+                ? 'bg-[#702fe3] text-white shadow-xs'
+                : 'bg-white dark:bg-[#131319] text-zinc-600 dark:text-zinc-300 ring-1 ring-zinc-950/[0.06] dark:ring-white/[0.08] hover:text-zinc-900 dark:hover:text-white'
                 }`}
             >
               {cat.label}
@@ -416,8 +416,8 @@ export function RealIntegrationsHub({
                   <label
                     key={item.id}
                     className={`rounded-xl p-3 flex items-center justify-between gap-3 text-xs cursor-pointer transition ring-1 ${checked
-                        ? 'bg-[#702fe3]/[0.06] dark:bg-[#702fe3]/15 ring-[#702fe3]/40'
-                        : 'bg-zinc-50 dark:bg-zinc-900/60 ring-zinc-950/[0.04] dark:ring-white/[0.06]'
+                      ? 'bg-[#702fe3]/[0.06] dark:bg-[#702fe3]/15 ring-[#702fe3]/40'
+                      : 'bg-zinc-50 dark:bg-zinc-900/60 ring-zinc-950/[0.04] dark:ring-white/[0.06]'
                       }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -567,18 +567,18 @@ export function RealIntegrationsHub({
 
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold shrink-0 ${connected
-                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                        : spec.isOAuthCalendar && !oauthReady
-                          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                      : spec.isOAuthCalendar && !oauthReady
+                        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
                       }`}
                   >
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${connected
-                          ? 'bg-emerald-500'
-                          : spec.isOAuthCalendar && !oauthReady
-                            ? 'bg-amber-500'
-                            : 'bg-zinc-400'
+                        ? 'bg-emerald-500'
+                        : spec.isOAuthCalendar && !oauthReady
+                          ? 'bg-amber-500'
+                          : 'bg-zinc-400'
                         }`}
                     />
                     {connected
@@ -844,11 +844,11 @@ export function RealIntegrationsHub({
                               </div>
                             )}
 
-                            {/* Platform OAuth Setup — visible ONLY to Super Admin */}
+                            {/* Platform OAuth Setup - visible ONLY to Super Admin */}
                             {isPlatformAdmin && !isConfigured && (
                               <details className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 ring-1 ring-amber-500/25 p-3 text-xs space-y-3" open>
                                 <summary className="font-semibold text-amber-900 dark:text-amber-200 cursor-pointer">
-                                  Platform OAuth Setup (Super Admin Only — 1-time for all tenants)
+                                  Platform OAuth Setup (Super Admin Only - 1-time for all tenants)
                                 </summary>
                                 <div className="space-y-3 pt-2">
                                   <a
@@ -904,11 +904,10 @@ export function RealIntegrationsHub({
                               onClick={(e) => {
                                 if (!isConfigured) e.preventDefault()
                               }}
-                              className={`block w-full text-center py-2.5 rounded-xl text-xs font-semibold transition ${
-                                isConfigured
+                              className={`block w-full text-center py-2.5 rounded-xl text-xs font-semibold transition ${isConfigured
                                   ? 'bg-[#702fe3] hover:bg-[#5f21cc] text-white cursor-pointer shadow-xs'
                                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                              }`}
+                                }`}
                             >
                               Connect {isGoogle ? 'Google Calendar' : 'Outlook Calendar'} →
                             </a>

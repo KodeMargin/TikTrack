@@ -311,7 +311,7 @@ export function ProjectSettingsView({
 
           {projectMembers.length === 0 ? (
             <p className="text-zinc-400 py-3">
-              No explicit project roster set yet — all active workspace members can participate.
+              No explicit project roster set yet - all active workspace members can participate.
             </p>
           ) : (
             <div className="space-y-2">
