@@ -250,11 +250,12 @@ const FAQS = [
 ]
 
 export function PricingPlansView() {
-  const { activeTenant, activeUser } = usePhase1Store()
+  const { activeTenant, activeUser, isSuperAdminAccount } = usePhase1Store()
   const {
     subscription,
     usageSnapshot,
     checkoutSubscriptionPlan,
+    requestSubscriptionUpgrade,
   } = usePhase4Store()
 
   const [pricingTab, setPricingTab] = useState<'plans' | 'usage'>('plans')
@@ -266,14 +267,20 @@ export function PricingPlansView() {
 
   // Upgrade Modal State
   const [modalTier, setModalTier] = useState<SaasPlanTier | null>(null)
-  const [selectedProvider, setSelectedProvider] = useState<BillingProvider>('stripe')
+  const [selectedProvider, setSelectedProvider] = useState<BillingProvider>('paddle')
+  const [requestMethod, setRequestMethod] = useState<'paddle' | 'payhere' | 'wire_transfer'>('paddle')
+  const [upgradeNote, setUpgradeNote] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const setActionMessage = notifyFeedback
 
   const isOwnerOrAdmin =
+    isSuperAdminAccount ||
     activeUser.role === 'super_admin' ||
     activeUser.role === 'tenant_owner' ||
     activeUser.role === 'finance'
+
+  const canActivateDirectly = (tier: SaasPlanTier) =>
+    isSuperAdminAccount || activeUser.role === 'super_admin' || tier === 'starter'
 
   const currentPlan = (activeTenant.planTier || 'starter') as SaasPlanTier
 
@@ -285,27 +292,40 @@ export function PricingPlansView() {
       })
       return
     }
+    setUpgradeNote('')
     setModalTier(tier)
   }
 
-  function handleConfirmSubscription() {
+  async function handleConfirmSubscription() {
     if (!modalTier) return
     setIsProcessing(true)
-
-    const res = checkoutSubscriptionPlan({
-      planTier: modalTier,
-      billingProvider: selectedProvider,
-      billingCycle,
-    })
-
-    setIsProcessing(false)
-    setModalTier(null)
-    setActionMessage({
-      ok: res.ok,
-      text: res.ok
-        ? `Successfully updated subscription to ${modalTier.toUpperCase()} (${billingCycle}) via ${selectedProvider.toUpperCase()}!`
-        : res.message,
-    })
+    try {
+      if (canActivateDirectly(modalTier)) {
+        const res = await checkoutSubscriptionPlan({
+          planTier: modalTier,
+          billingProvider: selectedProvider,
+          billingCycle,
+        })
+        setActionMessage({
+          ok: res.ok,
+          text: res.ok
+            ? `Successfully updated ${activeTenant.name} to ${modalTier.toUpperCase()} (${billingCycle})!`
+            : res.message,
+        })
+        if (res.ok) setModalTier(null)
+      } else {
+        const res = await requestSubscriptionUpgrade({
+          requestedPlanTier: modalTier,
+          billingProvider: requestMethod,
+          billingCycle,
+          contactNote: upgradeNote,
+        })
+        setActionMessage({ ok: res.ok, text: res.message })
+        if (res.ok) setModalTier(null)
+      }
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -783,92 +803,167 @@ export function PricingPlansView() {
       )}
 
       {/* Checkout / Upgrade Confirmation Modal */}
-      {modalTier && (
-        <div className="fixed inset-0 z-50 bg-zinc-50 dark:bg-zinc-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[#6d25da]/30 bg-white dark:bg-[#0d111b] p-6 shadow-2xl space-y-5 text-slate-900 dark:text-white">
-            <div className="space-y-1">
-              <div className="text-[11px] font-mono uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-bold">
-                Confirm Subscription Change
-              </div>
-              <h3 className="text-xl font-bold">
-                Switch to {PHASE4_PLAN_CATALOG[modalTier].displayName} Plan
-              </h3>
-            </div>
-
-            {/* Price Summary Breakdown */}
-            {(() => {
-              const seats = Math.max(1, usageSnapshot.activeSeats || 1)
-              const totals = calculateSaasSubscriptionTotals(modalTier, seats, billingCycle)
-
-              return (
-                <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] p-4 border border-slate-200 dark:border-white/10 space-y-2 text-xs">
-                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                    <span>Base Tier Monthly Fee:</span>
-                    <span>${(totals.baseCents / 100).toFixed(2)}</span>
+      {modalTier && (() => {
+        const directMode = canActivateDirectly(modalTier)
+        const isDowngradeToStarter = modalTier === 'starter'
+        return (
+          <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-[#6d25da]/30 bg-white dark:bg-[#13131a] p-6 shadow-2xl space-y-5 text-zinc-900 dark:text-white">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-[#6d25da] dark:text-[#c5a8f0] font-bold">
+                    {directMode
+                      ? isSuperAdminAccount && !isDowngradeToStarter
+                        ? 'Super Admin Direct Plan Activation'
+                        : 'Confirm Subscription Change'
+                      : 'Request Plan Upgrade'}
                   </div>
-                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                    <span>Active Seats ({seats} × ${(PHASE4_PLAN_CATALOG[modalTier].perSeatPriceCents / 100).toFixed(2)}):</span>
-                    <span>${(totals.seatCents / 100).toFixed(2)}</span>
-                  </div>
-                  {billingCycle === 'annual' && totals.discountCents > 0 && (
-                    <div className="flex justify-between text-[#6d25da] dark:text-[#a87ce9] font-medium">
-                      <span>Annual 15% Pre-payment Discount:</span>
-                      <span>-${(totals.discountCents / 100).toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex justify-between font-bold text-sm text-slate-900 dark:text-white">
-                    <span>Total ({billingCycle}):</span>
-                    <span className="font-mono text-indigo-600 dark:text-indigo-400">
-                      ${(totals.totalCents / 100).toFixed(2)}
+                  {isSuperAdminAccount && !isDowngradeToStarter && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#6d25da]/15 text-[#6d25da] dark:text-[#c5a8f0]">
+                      Super Admin
                     </span>
+                  )}
+                </div>
+                <h3 className="text-xl font-bold">
+                  {directMode
+                    ? isDowngradeToStarter
+                      ? 'Switch to Starter Plan ($0)'
+                      : `Activate ${PHASE4_PLAN_CATALOG[modalTier].displayName} Plan`
+                    : `Request ${PHASE4_PLAN_CATALOG[modalTier].displayName} Plan Upgrade`}
+                </h3>
+                {!directMode && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    Paid plans are activated via invoice or verified billing transfer while online card checkout is in rollout. Submit your request and our team will activate <strong className="text-zinc-800 dark:text-zinc-200">{activeTenant.name}</strong> promptly.
+                  </p>
+                )}
+              </div>
+
+              {/* Price Summary Breakdown */}
+              {(() => {
+                const seats = Math.max(1, usageSnapshot.activeSeats || 1)
+                const totals = calculateSaasSubscriptionTotals(modalTier, seats, billingCycle)
+
+                return (
+                  <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-4 border border-zinc-200 dark:border-white/10 space-y-2 text-xs">
+                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                      <span>Base Tier Monthly Fee:</span>
+                      <span>${(totals.baseCents / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                      <span>Active Seats ({seats} × ${(PHASE4_PLAN_CATALOG[modalTier].perSeatPriceCents / 100).toFixed(2)}):</span>
+                      <span>${(totals.seatCents / 100).toFixed(2)}</span>
+                    </div>
+                    {billingCycle === 'annual' && totals.discountCents > 0 && (
+                      <div className="flex justify-between text-[#6d25da] dark:text-[#a87ce9] font-medium">
+                        <span>Annual 15% Pre-payment Discount:</span>
+                        <span>-${(totals.discountCents / 100).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-zinc-200 dark:border-white/10 flex justify-between font-bold text-sm text-zinc-900 dark:text-white">
+                      <span>Estimated Total ({billingCycle}):</span>
+                      <span className="font-mono text-[#6d25da] dark:text-[#c5a8f0]">
+                        ${(totals.totalCents / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Billing Method Selection */}
+              {directMode ? (
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Billing Record Provider
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['paddle', 'stripe', 'wire_transfer'] as BillingProvider[]).map((prov) => (
+                      <button
+                        key={prov}
+                        type="button"
+                        onClick={() => setSelectedProvider(prov)}
+                        className={`py-2 px-3 rounded-lg border text-xs font-semibold uppercase tracking-wider transition cursor-pointer text-center ${
+                          selectedProvider === prov
+                            ? 'border-[#6d25da] bg-[#6d25da]/10 text-[#581eae] dark:bg-[#8b51e1]/20 dark:text-[#d8c4f8]'
+                            : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        {prov.replace('_', ' ')}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )
-            })()}
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      Preferred Payment Method
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(
+                        [
+                          { id: 'paddle', label: 'Paddle (USD)' },
+                          { id: 'payhere', label: 'PayHere (LKR)' },
+                          { id: 'wire_transfer', label: 'Bank Transfer' },
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setRequestMethod(opt.id)}
+                          className={`py-2 px-2.5 rounded-lg border text-xs font-semibold transition cursor-pointer text-center ${
+                            requestMethod === opt.id
+                              ? 'border-[#6d25da] bg-[#6d25da]/10 text-[#581eae] dark:bg-[#8b51e1]/20 dark:text-[#d8c4f8]'
+                              : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      Billing Contact / Note (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={upgradeNote}
+                      onChange={(e) => setUpgradeNote(e.target.value)}
+                      placeholder="e.g. Company invoice email or expected team size"
+                      className="w-full px-3 py-2 text-xs rounded-lg"
+                    />
+                  </div>
+                </div>
+              )}
 
-            {/* Provider Selection */}
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Payment Provider
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['stripe', 'paddle', 'wire_transfer'] as BillingProvider[]).map((prov) => (
-                  <button
-                    key={prov}
-                    type="button"
-                    onClick={() => setSelectedProvider(prov)}
-                    className={`py-2 px-3 rounded-lg border text-xs font-semibold uppercase tracking-wider transition cursor-pointer text-center ${selectedProvider === prov
-                        ? 'border-[#6d25da] bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'
-                        : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
-                      }`}
-                  >
-                    {prov.replace('_', ' ')}
-                  </button>
-                ))}
+              {/* Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setModalTier(null)}
+                  className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-white/5 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => void handleConfirmSubscription()}
+                  className="px-5 py-2 rounded-lg bg-[#6d25da] hover:bg-[#581eae] text-white text-xs font-bold shadow-md shadow-[#6d25da]/25 cursor-pointer disabled:opacity-50"
+                >
+                  {isProcessing
+                    ? 'Processing...'
+                    : directMode
+                      ? isDowngradeToStarter
+                        ? 'Confirm Downgrade'
+                        : 'Activate Plan Now'
+                      : 'Submit Upgrade Request'}
+                </button>
               </div>
             </div>
-
-            {/* Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setModalTier(null)}
-                className="px-4 py-2 rounded-lg border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={handleConfirmSubscription}
-                className="px-5 py-2 rounded-lg bg-[#702fe3] hover:bg-[#5f21cc] text-white text-xs font-bold shadow-md shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
-              >
-                {isProcessing ? 'Activating Plan...' : `Confirm & Upgrade`}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

@@ -23,6 +23,8 @@ import type {
 } from '@/types/domain.types'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store } from '@/context/Phase2Store'
+import { PHASE4_PLAN_CATALOG } from '@/lib/phase4/saasBilling'
+import { notifyError } from '@/lib/notify'
 import {
   DEFAULT_VERIFICATION_RULE_CONFIG,
   detectUnusualPatternAlerts,
@@ -166,8 +168,12 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
     setAllDisputes(phase3Bootstrap?.disputes ?? [])
   }
 
+  const planAllowsAi =
+    PHASE4_PLAN_CATALOG[activeTenant.planTier || 'starter'].aiAssistanceAvailable
+
   const aiEnabled =
-    aiEnabledByTenant[activeTenant.id] ?? Boolean(activeTenant.aiEnabled)
+    planAllowsAi &&
+    (aiEnabledByTenant[activeTenant.id] ?? Boolean(activeTenant.aiEnabled))
 
   const tenantRuleSets = useMemo(() => {
     const existing = allRuleSets.filter((r) => r.tenantId === activeTenant.id)
@@ -304,6 +310,12 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
   }, [evaluatedSegments, taskVariances, activeRuleSet])
 
   function toggleTenantAi(enabled: boolean) {
+    if (enabled && !planAllowsAi) {
+      notifyError(
+        `AI Evidence Assistance requires the Team plan or higher (currently on ${(activeTenant.planTier || 'starter').toUpperCase()}).`
+      )
+      return
+    }
     setAiEnabledByTenant((prev) => ({ ...prev, [activeTenant.id]: enabled }))
     if (prismaStatus.connected && activeTenant.id) {
       void toggleTenantAiViaPrisma({
@@ -461,7 +473,7 @@ export function Phase3StoreProvider({ children }: { children: ReactNode }) {
     })
 
     let generation: AiGenerationRecord = baseGeneration
-    let statusMessage = ''
+    let statusMessage: string
 
     if (aiEnabled) {
       const citedIds = [

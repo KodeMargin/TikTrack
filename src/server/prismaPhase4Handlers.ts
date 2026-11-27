@@ -11,8 +11,11 @@
  */
 
 import { prisma } from '../lib/prisma.ts'
+import { PHASE4_PLAN_CATALOG } from '../lib/phase4/saasBilling.ts'
 import { isValidUuid } from './prismaPhase1Handlers.ts'
 import { sanitizeSyncConfigForClient } from './integrations/integrationSecrets.ts'
+import { getSuperAdminEmailSet } from './serverAuthGuard.ts'
+import { getTenantPlanEntitlement } from './planEntitlementGuard.ts'
 import type {
   BillingProvider,
   EcosystemConnectorCategory,
@@ -244,9 +247,14 @@ export async function handleCheckoutSubscriptionPrisma(body: {
       },
     })
 
+    const planSpec = PHASE4_PLAN_CATALOG[body.planTier]
     await tx.tenant.update({
       where: { id: body.tenantId },
-      data: { planTier: body.planTier },
+      data: {
+        planTier: body.planTier,
+        // Disable AI automatically when downgrading to a tier without AI assistance
+        ...(!planSpec.aiAssistanceAvailable ? { aiEnabled: false } : {}),
+      },
     })
 
     const saasInvoice = await tx.saasSubscriptionInvoice.create({
@@ -283,6 +291,83 @@ export async function handleCheckoutSubscriptionPrisma(body: {
   return { ok: true, ...result }
 }
 
+export async function handleRequestSubscriptionUpgradePrisma(body: {
+  tenantId: string
+  requestedPlanTier: SaasPlanTier
+  billingProvider: string
+  billingCycle: 'monthly' | 'annual'
+  seatsBilled: number
+  estimatedTotalCents: number
+  currency: string
+  contactNote?: string
+  actorUserId?: string
+  actorEmail?: string
+}) {
+  if (!isValidUuid(body.tenantId)) {
+    return { ok: false, error: 'Invalid tenant ID.' }
+  }
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: body.tenantId },
+    select: { id: true, name: true, slug: true, planTier: true },
+  })
+  if (!tenant) {
+    return { ok: false, error: 'Workspace not found.' }
+  }
+
+  const estUsd = (body.estimatedTotalCents / 100).toFixed(2)
+  const reason = [
+    `Upgrade requested: ${tenant.planTier.toUpperCase()} -> ${body.requestedPlanTier.toUpperCase()} (${body.billingCycle})`,
+    `via ${body.billingProvider}`,
+    `for ${body.seatsBilled} seat(s) (~${body.currency} ${estUsd})`,
+    body.actorEmail ? `by ${body.actorEmail}` : '',
+    body.contactNote?.trim() ? `Note: ${body.contactNote.trim()}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  const audit = await prisma.auditEntry.create({
+    data: {
+      tenantId: body.tenantId,
+      actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+      actionType: 'SAAS_UPGRADE_REQUESTED',
+      targetEntity: `tenants:${tenant.slug}`,
+      reason,
+    },
+  })
+
+  // Notify platform Super Admins inside PostgreSQL notifications table
+  const superEmails = Array.from(getSuperAdminEmailSet())
+  const superUsers = await prisma.userProfile
+    .findMany({
+      where: {
+        email: { in: superEmails, mode: 'insensitive' },
+      },
+      select: { id: true },
+    })
+    .catch(() => [])
+
+  for (const su of superUsers) {
+    await prisma.notification
+      .create({
+        data: {
+          tenantId: body.tenantId,
+          recipientUserId: su.id,
+          notificationType: 'plan_upgrade_request',
+          title: `Upgrade Request: ${tenant.name} → ${body.requestedPlanTier.toUpperCase()}`,
+          body: reason,
+        },
+      })
+      .catch(() => {})
+  }
+
+  return {
+    ok: true,
+    requestId: audit.id,
+    message: `Upgrade request to ${body.requestedPlanTier.toUpperCase()} (${body.billingCycle}) submitted! Our billing team will activate your workspace shortly.`,
+  }
+}
+
 export async function handleUpdateBrandingPrisma(body: {
   tenantId: string
   brandingConfig: WhiteLabelBrandingConfig
@@ -317,6 +402,11 @@ export async function handleCreateApiKeyPrisma(body: {
   createdBy?: string
 }) {
   if (!isValidUuid(body.tenantId)) return { ok: false }
+  const { spec } = await getTenantPlanEntitlement(body.tenantId)
+  const clampedRateLimit = Math.max(
+    1,
+    Math.min(body.rateLimitPerMin || spec.apiRateLimitPerMin, spec.apiRateLimitPerMin)
+  )
   const created = await prisma.apiKey.create({
     data: {
       tenantId: body.tenantId,
@@ -324,11 +414,11 @@ export async function handleCreateApiKeyPrisma(body: {
       keyPrefix: body.keyPrefix,
       keyHashSha256: body.keyHashSha256,
       scopes: body.scopes,
-      rateLimitPerMin: body.rateLimitPerMin,
+      rateLimitPerMin: clampedRateLimit,
       createdBy: isValidUuid(body.createdBy) ? body.createdBy : null,
     },
   })
-  return { ok: true, id: created.id }
+  return { ok: true, id: created.id, rateLimitPerMin: clampedRateLimit }
 }
 
 export async function handleRevokeApiKeyPrisma(body: {

@@ -662,10 +662,32 @@ export const checkoutSubscriptionViaPrisma = (input: {
   billingPeriodLabel: string
   actorUserId?: string
 }) =>
-  postJson<{ ok: boolean; subId?: string; invoiceId?: string }>(
-    '/api/prisma/phase4/subscription/checkout',
-    input
-  )
+  postJson<{
+    ok: boolean
+    subId?: string
+    invoiceId?: string
+    requiresManualActivation?: boolean
+    error?: string
+  }>('/api/prisma/phase4/subscription/checkout', input)
+
+export const requestSubscriptionUpgradeViaPrisma = (input: {
+  tenantId: string
+  requestedPlanTier: SaasPlanTier
+  billingProvider: string
+  billingCycle: 'monthly' | 'annual'
+  seatsBilled: number
+  estimatedTotalCents: number
+  currency: string
+  contactNote?: string
+  actorUserId?: string
+  actorEmail?: string
+}) =>
+  postJson<{
+    ok: boolean
+    requestId?: string
+    message?: string
+    error?: string
+  }>('/api/prisma/phase4/subscription/request-upgrade', input)
 
 export const updateBrandingViaPrisma = (input: {
   tenantId: string

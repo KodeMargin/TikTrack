@@ -1192,6 +1192,93 @@ async function handleDisputeActionPrisma(body) {
 	});
 	return { ok: true };
 }
+// src/lib/phase4/saasBilling.ts
+const PHASE4_PLAN_CATALOG = {
+	starter: {
+		planTier: "starter",
+		displayName: "Starter",
+		tagline: "Core evidence-backed time tracking & timesheets",
+		maxSeats: 5,
+		maxActiveProjects: 3,
+		retentionDays: 90,
+		monthlyEventQuota: 5e4,
+		monthlyAiTokenQuota: 0,
+		storageQuotaMb: 512,
+		apiRateLimitPerMin: 30,
+		githubIdeEnabled: false,
+		clientPortalEnabled: false,
+		aiAssistanceAvailable: false,
+		outboundWebhooksEnabled: false,
+		accountingConnectorsEnabled: false,
+		externalPmEnabled: false,
+		whiteLabelEnabled: false,
+		baseMonthlyPriceCents: 0,
+		perSeatPriceCents: 0
+	},
+	team: {
+		planTier: "team",
+		displayName: "Team",
+		tagline: "GitHub/VS Code evidence correlation, rules & AI drafts",
+		maxSeats: 25,
+		maxActiveProjects: 25,
+		retentionDays: 365,
+		monthlyEventQuota: 5e5,
+		monthlyAiTokenQuota: 15e4,
+		storageQuotaMb: 5120,
+		apiRateLimitPerMin: 120,
+		githubIdeEnabled: true,
+		clientPortalEnabled: false,
+		aiAssistanceAvailable: true,
+		outboundWebhooksEnabled: true,
+		accountingConnectorsEnabled: false,
+		externalPmEnabled: true,
+		whiteLabelEnabled: false,
+		baseMonthlyPriceCents: 4900,
+		perSeatPriceCents: 1200
+	},
+	agency: {
+		planTier: "agency",
+		displayName: "Agency",
+		tagline: "Client read-only portal, white-label & accounting exports",
+		maxSeats: 100,
+		maxActiveProjects: 100,
+		retentionDays: 730,
+		monthlyEventQuota: 25e5,
+		monthlyAiTokenQuota: 75e4,
+		storageQuotaMb: 25600,
+		apiRateLimitPerMin: 600,
+		githubIdeEnabled: true,
+		clientPortalEnabled: true,
+		aiAssistanceAvailable: true,
+		outboundWebhooksEnabled: true,
+		accountingConnectorsEnabled: true,
+		externalPmEnabled: true,
+		whiteLabelEnabled: true,
+		baseMonthlyPriceCents: 14900,
+		perSeatPriceCents: 1800
+	},
+	enterprise: {
+		planTier: "enterprise",
+		displayName: "Enterprise",
+		tagline: "Dedicated SLA, custom retention, SSO & governance controls",
+		maxSeats: 1e4,
+		maxActiveProjects: 1e4,
+		retentionDays: 2555,
+		monthlyEventQuota: 25e6,
+		monthlyAiTokenQuota: 5e6,
+		storageQuotaMb: 256e3,
+		apiRateLimitPerMin: 2400,
+		githubIdeEnabled: true,
+		clientPortalEnabled: true,
+		aiAssistanceAvailable: true,
+		outboundWebhooksEnabled: true,
+		accountingConnectorsEnabled: true,
+		externalPmEnabled: true,
+		whiteLabelEnabled: true,
+		baseMonthlyPriceCents: 49900,
+		perSeatPriceCents: 2400
+	}
+};
 // src/server/integrations/integrationSecrets.ts
 const ENCRYPTED_PREFIX = "enc:v1:";
 function deriveEncryptionKey() {
@@ -1245,6 +1332,319 @@ function sanitizeSyncConfigForClient(raw) {
 		if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") out[k] = v;
 	}
 	return out;
+}
+// src/server/serverAuthGuard.ts
+/**
+* DevProof (TikTrack) - Server-Side Authentication & Tenant Isolation Guard
+*
+* Cryptographically verifies Supabase Auth JWTs from `Authorization: Bearer <token>`
+* and resolves the caller's canonical Super Admin status and active workspace
+* memberships directly from PostgreSQL — never trusting client-supplied role fields.
+*/
+const TOKEN_CACHE_TTL_MS = 3e4;
+const TOKEN_CACHE_MAX_SIZE = 256;
+const tokenCache = /* @__PURE__ */ new Map();
+function getSuperAdminEmailSet() {
+	return /* @__PURE__ */ new Set([...(process.env.SUPER_ADMIN_EMAILS || process.env.VITE_SUPER_ADMIN_EMAILS || "iamartseeker@gmail.com").toLowerCase().split(",").map((e) => e.trim()).filter(Boolean), "iamartseeker@gmail.com"]);
+}
+function getSupabaseAuthVerifierConfig() {
+	const url = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+	const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim();
+	if (!url || !key || key.includes("your-local-or-project")) return null;
+	return {
+		url,
+		key
+	};
+}
+function extractBearerToken(req) {
+	const raw = req.headers.authorization;
+	if (!raw || typeof raw !== "string") return null;
+	const match = raw.match(/^Bearer\s+(.+)$/i);
+	return match ? match[1].trim() : null;
+}
+async function verifySupabaseJwt(token, cfg) {
+	const hash = crypto$1.createHash("sha256").update(token).digest("hex");
+	const now = Date.now();
+	const cached = tokenCache.get(hash);
+	if (cached && cached.expiresAtMs > now) return {
+		userId: cached.userId,
+		email: cached.email
+	};
+	try {
+		const { data, error } = await createClient(cfg.url, cfg.key, { auth: {
+			autoRefreshToken: false,
+			persistSession: false
+		} }).auth.getUser(token);
+		if (error || !data?.user?.email) {
+			tokenCache.delete(hash);
+			return null;
+		}
+		const identity = {
+			userId: data.user.id,
+			email: data.user.email.toLowerCase().trim()
+		};
+		if (tokenCache.size >= TOKEN_CACHE_MAX_SIZE) {
+			const oldestKey = tokenCache.keys().next().value;
+			if (oldestKey) tokenCache.delete(oldestKey);
+		}
+		tokenCache.set(hash, {
+			...identity,
+			expiresAtMs: now + TOKEN_CACHE_TTL_MS
+		});
+		return identity;
+	} catch {
+		return null;
+	}
+}
+async function resolveServerActor(req) {
+	const authCfg = getSupabaseAuthVerifierConfig();
+	if (!authCfg) return {
+		authEnforced: false,
+		authenticated: true,
+		userId: null,
+		email: null,
+		isSuperAdmin: true,
+		tenantIds: /* @__PURE__ */ new Set(),
+		tenantRoles: /* @__PURE__ */ new Map()
+	};
+	const token = extractBearerToken(req);
+	if (!token) return {
+		authEnforced: true,
+		authenticated: false,
+		userId: null,
+		email: null,
+		isSuperAdmin: false,
+		tenantIds: /* @__PURE__ */ new Set(),
+		tenantRoles: /* @__PURE__ */ new Map()
+	};
+	const identity = await verifySupabaseJwt(token, authCfg);
+	if (!identity) return {
+		authEnforced: true,
+		authenticated: false,
+		userId: null,
+		email: null,
+		isSuperAdmin: false,
+		tenantIds: /* @__PURE__ */ new Set(),
+		tenantRoles: /* @__PURE__ */ new Map()
+	};
+	const isSuperAdmin = getSuperAdminEmailSet().has(identity.email);
+	const tenantIds = /* @__PURE__ */ new Set();
+	const tenantRoles = /* @__PURE__ */ new Map();
+	try {
+		const memberships = await prisma.membership.findMany({
+			where: {
+				status: { in: ["active", "invited"] },
+				OR: [...isValidUuid(identity.userId) ? [{ userId: identity.userId }] : [], { user: { email: {
+					equals: identity.email,
+					mode: "insensitive"
+				} } }]
+			},
+			include: { roleGrants: true }
+		});
+		for (const m of memberships) {
+			tenantIds.add(m.tenantId);
+			const roles = tenantRoles.get(m.tenantId) ?? /* @__PURE__ */ new Set();
+			for (const rg of m.roleGrants) roles.add(rg.role);
+			tenantRoles.set(m.tenantId, roles);
+		}
+	} catch (err) {
+		console.warn("[ServerAuthGuard] Failed to resolve memberships:", err instanceof Error ? err.message : String(err));
+	}
+	return {
+		authEnforced: true,
+		authenticated: true,
+		userId: identity.userId,
+		email: identity.email,
+		isSuperAdmin,
+		tenantIds,
+		tenantRoles
+	};
+}
+function canActorAccessTenant(actor, tenantId) {
+	if (!actor.authEnforced) return true;
+	if (!actor.authenticated) return false;
+	if (actor.isSuperAdmin) return true;
+	if (!tenantId || !isValidUuid(tenantId)) return true;
+	return actor.tenantIds.has(tenantId);
+}
+// src/server/planEntitlementGuard.ts
+/**
+* DevProof (TikTrack) - Server-Side Plan Entitlement & Quota Guard
+*
+* Enforces SaaS subscription limits and feature flags directly against PostgreSQL
+* (`tenants.plan_tier`, `subscription_accounts`, `plan_entitlements`) so clients
+* cannot bypass seat/project quotas or paid feature gates.
+*/
+const FEATURE_META = {
+	ai_assistance: {
+		flag: "aiAssistanceAvailable",
+		label: "AI Evidence Assistance",
+		requiredPlan: "Team"
+	},
+	white_label: {
+		flag: "whiteLabelEnabled",
+		label: "White-Label Workspace Branding",
+		requiredPlan: "Agency"
+	},
+	outbound_webhooks: {
+		flag: "outboundWebhooksEnabled",
+		label: "Outbound Webhooks",
+		requiredPlan: "Team"
+	},
+	accounting_connectors: {
+		flag: "accountingConnectorsEnabled",
+		label: "Accounting Connectors (Xero / QuickBooks)",
+		requiredPlan: "Agency"
+	},
+	external_pm: {
+		flag: "externalPmEnabled",
+		label: "External PM Connectors (Jira / Linear / Asana / Trello / ClickUp)",
+		requiredPlan: "Team"
+	},
+	github_ide: {
+		flag: "githubIdeEnabled",
+		label: "Git & Code Repository Integrations (GitHub / GitLab / Bitbucket)",
+		requiredPlan: "Team"
+	},
+	client_portal: {
+		flag: "clientPortalEnabled",
+		label: "Client Verification Portal",
+		requiredPlan: "Agency"
+	}
+};
+function normalizePlanTier(raw) {
+	if (raw === "team" || raw === "agency" || raw === "enterprise") return raw;
+	return "starter";
+}
+async function getTenantPlanEntitlement(tenantId) {
+	if (!isValidUuid(tenantId)) return {
+		planTier: "starter",
+		spec: PHASE4_PLAN_CATALOG.starter,
+		effectiveMaxSeats: PHASE4_PLAN_CATALOG.starter.maxSeats
+	};
+	const [tenant, sub] = await Promise.all([prisma.tenant.findUnique({
+		where: { id: tenantId },
+		select: { planTier: true }
+	}), prisma.subscriptionAccount.findUnique({
+		where: { tenantId },
+		select: {
+			planTier: true,
+			seatLimitOverride: true
+		}
+	}).catch(() => null)]);
+	const planTier = normalizePlanTier(sub?.planTier || tenant?.planTier);
+	const fallback = PHASE4_PLAN_CATALOG[planTier];
+	const dbEntitlement = await prisma.planEntitlement.findUnique({ where: { planTier } }).catch(() => null);
+	const spec = dbEntitlement ? {
+		...fallback,
+		maxSeats: dbEntitlement.maxSeats,
+		maxActiveProjects: dbEntitlement.maxActiveProjects,
+		retentionDays: dbEntitlement.retentionDays,
+		monthlyEventQuota: dbEntitlement.monthlyEventQuota,
+		monthlyAiTokenQuota: dbEntitlement.monthlyAiTokenQuota,
+		storageQuotaMb: dbEntitlement.storageQuotaMb,
+		apiRateLimitPerMin: dbEntitlement.apiRateLimitPerMin,
+		githubIdeEnabled: dbEntitlement.githubIdeEnabled,
+		clientPortalEnabled: dbEntitlement.clientPortalEnabled,
+		aiAssistanceAvailable: dbEntitlement.aiAssistanceAvailable,
+		outboundWebhooksEnabled: dbEntitlement.outboundWebhooksEnabled,
+		accountingConnectorsEnabled: dbEntitlement.accountingConnectorsEnabled,
+		externalPmEnabled: dbEntitlement.externalPmEnabled,
+		whiteLabelEnabled: dbEntitlement.whiteLabelEnabled,
+		baseMonthlyPriceCents: dbEntitlement.baseMonthlyPriceCents,
+		perSeatPriceCents: dbEntitlement.perSeatPriceCents
+	} : fallback;
+	return {
+		planTier,
+		spec,
+		effectiveMaxSeats: sub?.seatLimitOverride && sub.seatLimitOverride > 0 ? sub.seatLimitOverride : spec.maxSeats
+	};
+}
+async function checkSeatQuota(tenantId) {
+	const { planTier, effectiveMaxSeats } = await getTenantPlanEntitlement(tenantId);
+	if (!isValidUuid(tenantId)) return {
+		allowed: true,
+		planTier,
+		used: 0,
+		limit: effectiveMaxSeats
+	};
+	const used = await prisma.membership.count({ where: {
+		tenantId,
+		status: { in: ["active", "invited"] }
+	} });
+	if (used >= effectiveMaxSeats) return {
+		allowed: false,
+		planTier,
+		used,
+		limit: effectiveMaxSeats,
+		error: `Plan Entitlement Limit: ${planTier.toUpperCase()} plan allows up to ${effectiveMaxSeats} active/invited seats (currently ${used}). Upgrade your plan to add more team members.`
+	};
+	return {
+		allowed: true,
+		planTier,
+		used,
+		limit: effectiveMaxSeats
+	};
+}
+async function checkProjectQuota(tenantId) {
+	const { planTier, spec } = await getTenantPlanEntitlement(tenantId);
+	if (!isValidUuid(tenantId)) return {
+		allowed: true,
+		planTier,
+		used: 0,
+		limit: spec.maxActiveProjects
+	};
+	const used = await prisma.project.count({ where: {
+		tenantId,
+		status: "active"
+	} });
+	if (used >= spec.maxActiveProjects) return {
+		allowed: false,
+		planTier,
+		used,
+		limit: spec.maxActiveProjects,
+		error: `Plan Entitlement Limit: ${planTier.toUpperCase()} plan allows up to ${spec.maxActiveProjects} active projects (currently ${used}). Upgrade your plan to create more projects.`
+	};
+	return {
+		allowed: true,
+		planTier,
+		used,
+		limit: spec.maxActiveProjects
+	};
+}
+async function checkFeatureEntitlement(tenantId, feature) {
+	const { planTier, spec } = await getTenantPlanEntitlement(tenantId);
+	const meta = FEATURE_META[feature];
+	if (!Boolean(spec[meta.flag])) return {
+		allowed: false,
+		planTier,
+		requiredPlan: meta.requiredPlan,
+		error: `${meta.label} requires the ${meta.requiredPlan} plan or higher (currently on ${planTier.toUpperCase()}).`
+	};
+	return {
+		allowed: true,
+		planTier,
+		requiredPlan: meta.requiredPlan
+	};
+}
+function getConnectorRequiredFeature(provider, category) {
+	const p = provider.toLowerCase().trim();
+	const c = (category || "").toLowerCase().trim();
+	if (c === "accounting" || p === "xero" || p === "quickbooks") return "accounting_connectors";
+	if (c === "pm" || c === "external_pm" || c === "project_management" || p === "jira" || p === "linear" || p === "asana" || p === "trello" || p === "clickup" || p === "monday") return "external_pm";
+	if (c === "git" || p === "github" || p === "gitlab" || p === "bitbucket") return "github_ide";
+	return null;
+}
+async function checkConnectorEntitlement(tenantId, provider, category) {
+	const requiredFeature = getConnectorRequiredFeature(provider, category);
+	if (!requiredFeature) {
+		const { planTier } = await getTenantPlanEntitlement(tenantId);
+		return {
+			allowed: true,
+			planTier
+		};
+	}
+	return checkFeatureEntitlement(tenantId, requiredFeature);
 }
 // src/server/prismaPhase4Handlers.ts
 /**
@@ -1456,9 +1856,13 @@ async function handleCheckoutSubscriptionPrisma(body) {
 					providerSubscriptionId: `sub_${body.tenantId.slice(0, 8)}`
 				}
 			});
+			const planSpec = PHASE4_PLAN_CATALOG[body.planTier];
 			await tx.tenant.update({
 				where: { id: body.tenantId },
-				data: { planTier: body.planTier }
+				data: {
+					planTier: body.planTier,
+					...!planSpec.aiAssistanceAvailable ? { aiEnabled: false } : {}
+				}
 			});
 			const saasInvoice = await tx.saasSubscriptionInvoice.create({ data: {
 				tenantId: body.tenantId,
@@ -1489,6 +1893,60 @@ async function handleCheckoutSubscriptionPrisma(body) {
 		})
 	};
 }
+async function handleRequestSubscriptionUpgradePrisma(body) {
+	if (!isValidUuid(body.tenantId)) return {
+		ok: false,
+		error: "Invalid tenant ID."
+	};
+	const tenant = await prisma.tenant.findUnique({
+		where: { id: body.tenantId },
+		select: {
+			id: true,
+			name: true,
+			slug: true,
+			planTier: true
+		}
+	});
+	if (!tenant) return {
+		ok: false,
+		error: "Workspace not found."
+	};
+	const estUsd = (body.estimatedTotalCents / 100).toFixed(2);
+	const reason = [
+		`Upgrade requested: ${tenant.planTier.toUpperCase()} -> ${body.requestedPlanTier.toUpperCase()} (${body.billingCycle})`,
+		`via ${body.billingProvider}`,
+		`for ${body.seatsBilled} seat(s) (~${body.currency} ${estUsd})`,
+		body.actorEmail ? `by ${body.actorEmail}` : "",
+		body.contactNote?.trim() ? `Note: ${body.contactNote.trim()}` : ""
+	].filter(Boolean).join(" · ");
+	const audit = await prisma.auditEntry.create({ data: {
+		tenantId: body.tenantId,
+		actorUserId: isValidUuid(body.actorUserId) ? body.actorUserId : null,
+		actionType: "SAAS_UPGRADE_REQUESTED",
+		targetEntity: `tenants:${tenant.slug}`,
+		reason
+	} });
+	const superEmails = Array.from(getSuperAdminEmailSet());
+	const superUsers = await prisma.userProfile.findMany({
+		where: { email: {
+			in: superEmails,
+			mode: "insensitive"
+		} },
+		select: { id: true }
+	}).catch(() => []);
+	for (const su of superUsers) await prisma.notification.create({ data: {
+		tenantId: body.tenantId,
+		recipientUserId: su.id,
+		notificationType: "plan_upgrade_request",
+		title: `Upgrade Request: ${tenant.name} → ${body.requestedPlanTier.toUpperCase()}`,
+		body: reason
+	} }).catch(() => {});
+	return {
+		ok: true,
+		requestId: audit.id,
+		message: `Upgrade request to ${body.requestedPlanTier.toUpperCase()} (${body.billingCycle}) submitted! Our billing team will activate your workspace shortly.`
+	};
+}
 async function handleUpdateBrandingPrisma(body) {
 	if (!isValidUuid(body.tenantId)) return { ok: false };
 	await prisma.$transaction(async (tx) => {
@@ -1508,6 +1966,8 @@ async function handleUpdateBrandingPrisma(body) {
 }
 async function handleCreateApiKeyPrisma(body) {
 	if (!isValidUuid(body.tenantId)) return { ok: false };
+	const { spec } = await getTenantPlanEntitlement(body.tenantId);
+	const clampedRateLimit = Math.max(1, Math.min(body.rateLimitPerMin || spec.apiRateLimitPerMin, spec.apiRateLimitPerMin));
 	return {
 		ok: true,
 		id: (await prisma.apiKey.create({ data: {
@@ -1516,9 +1976,10 @@ async function handleCreateApiKeyPrisma(body) {
 			keyPrefix: body.keyPrefix,
 			keyHashSha256: body.keyHashSha256,
 			scopes: body.scopes,
-			rateLimitPerMin: body.rateLimitPerMin,
+			rateLimitPerMin: clampedRateLimit,
 			createdBy: isValidUuid(body.createdBy) ? body.createdBy : null
-		} })).id
+		} })).id,
+		rateLimitPerMin: clampedRateLimit
 	};
 }
 async function handleRevokeApiKeyPrisma(body) {
@@ -5827,140 +6288,6 @@ async function handleGenerateReportAiBriefPrisma(input) {
 		}
 	};
 }
-// src/server/serverAuthGuard.ts
-/**
-* DevProof (TikTrack) - Server-Side Authentication & Tenant Isolation Guard
-*
-* Cryptographically verifies Supabase Auth JWTs from `Authorization: Bearer <token>`
-* and resolves the caller's canonical Super Admin status and active workspace
-* memberships directly from PostgreSQL — never trusting client-supplied role fields.
-*/
-const TOKEN_CACHE_TTL_MS = 3e4;
-const TOKEN_CACHE_MAX_SIZE = 256;
-const tokenCache = /* @__PURE__ */ new Map();
-function getSuperAdminEmailSet() {
-	return /* @__PURE__ */ new Set([...(process.env.SUPER_ADMIN_EMAILS || process.env.VITE_SUPER_ADMIN_EMAILS || "iamartseeker@gmail.com").toLowerCase().split(",").map((e) => e.trim()).filter(Boolean), "iamartseeker@gmail.com"]);
-}
-function getSupabaseAuthVerifierConfig() {
-	const url = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
-	const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim();
-	if (!url || !key || key.includes("your-local-or-project")) return null;
-	return {
-		url,
-		key
-	};
-}
-function extractBearerToken(req) {
-	const raw = req.headers.authorization;
-	if (!raw || typeof raw !== "string") return null;
-	const match = raw.match(/^Bearer\s+(.+)$/i);
-	return match ? match[1].trim() : null;
-}
-async function verifySupabaseJwt(token, cfg) {
-	const hash = crypto$1.createHash("sha256").update(token).digest("hex");
-	const now = Date.now();
-	const cached = tokenCache.get(hash);
-	if (cached && cached.expiresAtMs > now) return {
-		userId: cached.userId,
-		email: cached.email
-	};
-	try {
-		const { data, error } = await createClient(cfg.url, cfg.key, { auth: {
-			autoRefreshToken: false,
-			persistSession: false
-		} }).auth.getUser(token);
-		if (error || !data?.user?.email) {
-			tokenCache.delete(hash);
-			return null;
-		}
-		const identity = {
-			userId: data.user.id,
-			email: data.user.email.toLowerCase().trim()
-		};
-		if (tokenCache.size >= TOKEN_CACHE_MAX_SIZE) {
-			const oldestKey = tokenCache.keys().next().value;
-			if (oldestKey) tokenCache.delete(oldestKey);
-		}
-		tokenCache.set(hash, {
-			...identity,
-			expiresAtMs: now + TOKEN_CACHE_TTL_MS
-		});
-		return identity;
-	} catch {
-		return null;
-	}
-}
-async function resolveServerActor(req) {
-	const authCfg = getSupabaseAuthVerifierConfig();
-	if (!authCfg) return {
-		authEnforced: false,
-		authenticated: true,
-		userId: null,
-		email: null,
-		isSuperAdmin: true,
-		tenantIds: /* @__PURE__ */ new Set(),
-		tenantRoles: /* @__PURE__ */ new Map()
-	};
-	const token = extractBearerToken(req);
-	if (!token) return {
-		authEnforced: true,
-		authenticated: false,
-		userId: null,
-		email: null,
-		isSuperAdmin: false,
-		tenantIds: /* @__PURE__ */ new Set(),
-		tenantRoles: /* @__PURE__ */ new Map()
-	};
-	const identity = await verifySupabaseJwt(token, authCfg);
-	if (!identity) return {
-		authEnforced: true,
-		authenticated: false,
-		userId: null,
-		email: null,
-		isSuperAdmin: false,
-		tenantIds: /* @__PURE__ */ new Set(),
-		tenantRoles: /* @__PURE__ */ new Map()
-	};
-	const isSuperAdmin = getSuperAdminEmailSet().has(identity.email);
-	const tenantIds = /* @__PURE__ */ new Set();
-	const tenantRoles = /* @__PURE__ */ new Map();
-	try {
-		const memberships = await prisma.membership.findMany({
-			where: {
-				status: { in: ["active", "invited"] },
-				OR: [...isValidUuid(identity.userId) ? [{ userId: identity.userId }] : [], { user: { email: {
-					equals: identity.email,
-					mode: "insensitive"
-				} } }]
-			},
-			include: { roleGrants: true }
-		});
-		for (const m of memberships) {
-			tenantIds.add(m.tenantId);
-			const roles = tenantRoles.get(m.tenantId) ?? /* @__PURE__ */ new Set();
-			for (const rg of m.roleGrants) roles.add(rg.role);
-			tenantRoles.set(m.tenantId, roles);
-		}
-	} catch (err) {
-		console.warn("[ServerAuthGuard] Failed to resolve memberships:", err instanceof Error ? err.message : String(err));
-	}
-	return {
-		authEnforced: true,
-		authenticated: true,
-		userId: identity.userId,
-		email: identity.email,
-		isSuperAdmin,
-		tenantIds,
-		tenantRoles
-	};
-}
-function canActorAccessTenant(actor, tenantId) {
-	if (!actor.authEnforced) return true;
-	if (!actor.authenticated) return false;
-	if (actor.isSuperAdmin) return true;
-	if (!tenantId || !isValidUuid(tenantId)) return true;
-	return actor.tenantIds.has(tenantId);
-}
 // src/server/prismaApiPlugin.ts
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
@@ -6160,6 +6487,11 @@ async function handlePrismaApiRequest(req, res) {
 			if (!isValidUuid(body.tenantId) || !body.email?.trim() || !body.name?.trim()) return sendJson(res, 400, {
 				ok: false,
 				error: "Valid tenantId, name, and email are required."
+			});
+			const seatQuota = await checkSeatQuota(body.tenantId);
+			if (!seatQuota.allowed) return sendJson(res, 403, {
+				ok: false,
+				error: seatQuota.error
 			});
 			const normalizedEmail = body.email.toLowerCase().trim();
 			const effectiveTempPassword = body.temporaryPassword?.trim() || `TT-${crypto$1.randomBytes(4).toString("hex")}!`;
@@ -6444,6 +6776,11 @@ async function handlePrismaApiRequest(req, res) {
 			if (!isValidUuid(body.tenantId)) return sendJson(res, 200, {
 				ok: false,
 				error: "Non-UUID tenant ID"
+			});
+			const projectQuota = await checkProjectQuota(body.tenantId);
+			if (!projectQuota.allowed) return sendJson(res, 403, {
+				ok: false,
+				error: projectQuota.error
 			});
 			const created = await prisma.$transaction(async (tx) => {
 				const proj = await tx.project.create({ data: {
@@ -6972,24 +7309,94 @@ async function handlePrismaApiRequest(req, res) {
 			});
 		}
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/ai-draft-gemini")) return sendJson(res, 200, await generateGeminiSummaryDraft(await readJsonBody(req)));
-		if (req.method === "PATCH" && url.startsWith("/api/prisma/phase3/tenant-ai")) return sendJson(res, 200, await handleToggleTenantAiPrisma(await readJsonBody(req)));
+		if (req.method === "PATCH" && url.startsWith("/api/prisma/phase3/tenant-ai")) {
+			const body = await readJsonBody(req);
+			if (body.aiEnabled) {
+				const aiGate = await checkFeatureEntitlement(body.tenantId, "ai_assistance");
+				if (!aiGate.allowed) return sendJson(res, 403, {
+					ok: false,
+					error: aiGate.error
+				});
+			}
+			return sendJson(res, 200, await handleToggleTenantAiPrisma(body));
+		}
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/rule-sets")) return sendJson(res, 201, await handlePublishRuleSetPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/ai-generate")) return sendJson(res, 201, await handleCreateAiGenerationPrisma(await readJsonBody(req)));
 		if (req.method === "PATCH" && url.startsWith("/api/prisma/phase3/ai-decision")) return sendJson(res, 200, await handleDecideAiGenerationPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/timesheets/partial-approve")) return sendJson(res, 200, await handlePartialApproveTimesheetPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/disputes/action")) return sendJson(res, 200, await handleDisputeActionPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase3/disputes")) return sendJson(res, 201, await handleOpenDisputePrisma(await readJsonBody(req)));
-		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/subscription/checkout")) return sendJson(res, 200, await handleCheckoutSubscriptionPrisma(await readJsonBody(req)));
-		if (req.method === "PATCH" && url.startsWith("/api/prisma/phase4/branding")) return sendJson(res, 200, await handleUpdateBrandingPrisma(await readJsonBody(req)));
+		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/subscription/request-upgrade")) {
+			const body = await readJsonBody(req);
+			const result = await handleRequestSubscriptionUpgradePrisma({
+				...body,
+				actorUserId: actor?.userId || body.actorUserId,
+				actorEmail: actor?.email || body.actorEmail
+			});
+			return sendJson(res, result.ok ? 200 : 400, result);
+		}
+		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/subscription/checkout")) {
+			const body = await readJsonBody(req);
+			const liveGatewayEnabled = process.env.PAYMENT_GATEWAY_LIVE === "true";
+			const isPaidTier = body.planTier !== "starter";
+			const isSuperAdmin = !actor || !actor.authEnforced || actor.isSuperAdmin;
+			if (isPaidTier && !liveGatewayEnabled && !isSuperAdmin) return sendJson(res, 402, {
+				ok: false,
+				requiresManualActivation: true,
+				error: "Direct self-service paid upgrades are locked until live payment checkout is connected. Submit an Upgrade Request for billing activation."
+			});
+			return sendJson(res, 200, await handleCheckoutSubscriptionPrisma(body));
+		}
+		if (req.method === "PATCH" && url.startsWith("/api/prisma/phase4/branding")) {
+			const body = await readJsonBody(req);
+			const brandingGate = await checkFeatureEntitlement(body.tenantId, "white_label");
+			if (!brandingGate.allowed) return sendJson(res, 403, {
+				ok: false,
+				error: brandingGate.error
+			});
+			return sendJson(res, 200, await handleUpdateBrandingPrisma(body));
+		}
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/api-keys/revoke")) return sendJson(res, 200, await handleRevokeApiKeyPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/api-keys")) return sendJson(res, 201, await handleCreateApiKeyPrisma(await readJsonBody(req)));
-		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/webhooks/deliver")) return sendJson(res, 201, await handleDispatchWebhookDeliveryPrisma(await readJsonBody(req)));
-		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/webhooks")) return sendJson(res, 201, await handleCreateWebhookEndpointPrisma(await readJsonBody(req)));
-		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/connectors")) return sendJson(res, 200, await handleUpsertConnectorPrisma(await readJsonBody(req)));
+		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/webhooks/deliver")) {
+			const body = await readJsonBody(req);
+			const whGate = await checkFeatureEntitlement(body.tenantId, "outbound_webhooks");
+			if (!whGate.allowed) return sendJson(res, 403, {
+				ok: false,
+				error: whGate.error
+			});
+			return sendJson(res, 201, await handleDispatchWebhookDeliveryPrisma(body));
+		}
+		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/webhooks")) {
+			const body = await readJsonBody(req);
+			const whGate = await checkFeatureEntitlement(body.tenantId, "outbound_webhooks");
+			if (!whGate.allowed) return sendJson(res, 403, {
+				ok: false,
+				error: whGate.error
+			});
+			return sendJson(res, 201, await handleCreateWebhookEndpointPrisma(body));
+		}
+		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/connectors")) {
+			const body = await readJsonBody(req);
+			if (body.status === "connected") {
+				const connGate = await checkConnectorEntitlement(body.tenantId, body.provider, body.category);
+				if (!connGate.allowed) return sendJson(res, 403, {
+					ok: false,
+					error: connGate.error
+				});
+			}
+			return sendJson(res, 200, await handleUpsertConnectorPrisma(body));
+		}
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/calendar-sync")) return sendJson(res, 201, await handleSyncCalendarMeetingPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/phase4/portable-reports")) return sendJson(res, 201, await handleCreatePortableReportPrisma(await readJsonBody(req)));
 		if (req.method === "POST" && url.startsWith("/api/prisma/integrations/connect")) {
-			const result = await handleConnectRealIntegration(await readJsonBody(req));
+			const body = await readJsonBody(req);
+			const connGate = await checkConnectorEntitlement(body.tenantId, body.provider);
+			if (!connGate.allowed) return sendJson(res, 403, {
+				ok: false,
+				error: connGate.error
+			});
+			const result = await handleConnectRealIntegration(body);
 			return sendJson(res, result.ok ? 200 : 400, result);
 		}
 		if (req.method === "POST" && url.startsWith("/api/prisma/integrations/disconnect")) return sendJson(res, 200, await handleDisconnectRealIntegration(await readJsonBody(req)));
@@ -7001,7 +7408,15 @@ async function handlePrismaApiRequest(req, res) {
 			const result = await handleSendChatTestAlert(await readJsonBody(req));
 			return sendJson(res, result.ok ? 200 : 400, result);
 		}
-		if (req.method === "POST" && url.startsWith("/api/prisma/integrations/webhook-dispatch")) return sendJson(res, 200, await handleDispatchRealOutboundWebhook(await readJsonBody(req)));
+		if (req.method === "POST" && url.startsWith("/api/prisma/integrations/webhook-dispatch")) {
+			const body = await readJsonBody(req);
+			const whGate = await checkFeatureEntitlement(body.tenantId, "outbound_webhooks");
+			if (!whGate.allowed) return sendJson(res, 403, {
+				ok: false,
+				error: whGate.error
+			});
+			return sendJson(res, 200, await handleDispatchRealOutboundWebhook(body));
+		}
 		if (req.method === "GET" && url.startsWith("/api/prisma/integrations/oauth-status")) return sendJson(res, 200, getCalendarOAuthStatus());
 		if (req.method === "POST" && url.startsWith("/api/prisma/integrations/calendar-events")) {
 			const result = await handleFetchRealCalendarEvents(await readJsonBody(req));

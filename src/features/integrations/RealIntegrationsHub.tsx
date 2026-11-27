@@ -3,6 +3,7 @@ import { notifyError } from '@/lib/notify'
 import { createPortal } from 'react-dom'
 import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase4Store } from '@/context/Phase4Store'
+import { PHASE4_PLAN_CATALOG } from '@/lib/phase4/saasBilling'
 import {
   connectRealIntegrationViaPrisma,
   disconnectRealIntegrationViaPrisma,
@@ -56,11 +57,19 @@ export function RealIntegrationsHub({
     usePhase1Store()
   const isPlatformAdmin = activeUser.role === 'super_admin' || isSuperAdminSession
   const {
+    subscription,
     connectors,
     upsertRealConnectorState,
     removeRealConnectorState,
     syncCalendarMeeting,
   } = usePhase4Store()
+
+  const planSpec = PHASE4_PLAN_CATALOG[subscription.planTier]
+  const isConnectorLockedByPlan = (cat: ConnectorCategory): boolean => {
+    if (cat === 'pm') return !planSpec.externalPmEnabled
+    if (cat === 'git') return !planSpec.githubIdeEnabled
+    return false
+  }
 
   const [categoryFilter, setCategoryFilter] = useState<ConnectorCategory | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -665,6 +674,19 @@ export function RealIntegrationsHub({
                       Disconnect
                     </button>
                   </>
+                ) : isConnectorLockedByPlan(spec.category) ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onFeedback?.({
+                        ok: false,
+                        text: `${spec.name} requires the Team plan or higher (currently on ${subscription.planTier.toUpperCase()}). Visit Plans & Usage to upgrade.`,
+                      })
+                    }
+                    className="w-full py-2 rounded-xl text-xs font-semibold cursor-pointer bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 dark:text-zinc-400 hover:text-[#6d25da] dark:hover:text-[#c5a8f0] ring-1 ring-zinc-200 dark:ring-white/10 transition"
+                  >
+                    Team+ Plan Required
+                  </button>
                 ) : (
                   <button
                     type="button"

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { usePhase4Store } from '@/context/Phase4Store'
+import { PHASE4_PLAN_CATALOG } from '@/lib/phase4/saasBilling'
 import type {
   OutboundWebhookEventType,
   PublicApiScope,
@@ -37,6 +38,7 @@ export function PublicApiAndWebhooksPanel({
   onFeedback?: (msg: { ok: boolean; text: string }) => void
 }) {
   const {
+    subscription,
     apiKeys,
     webhookEndpoints,
     webhookDeliveries,
@@ -46,6 +48,9 @@ export function PublicApiAndWebhooksPanel({
     createWebhookEndpoint,
     dispatchTestOutboundWebhook,
   } = usePhase4Store()
+
+  const planSpec = PHASE4_PLAN_CATALOG[subscription.planTier]
+  const webhooksAllowed = planSpec.outboundWebhooksEnabled
 
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [keyName, setKeyName] = useState('CI / ERP Sync Key')
@@ -307,16 +312,28 @@ export function PublicApiAndWebhooksPanel({
 
       {/* Real Outbound Webhooks */}
       <div className={`lg:col-span-6 ${CARD_CLS} space-y-5`}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
             Outbound Webhooks (Live HTTP POST)
           </h3>
-          <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-            HMAC-SHA256
-          </span>
+          {webhooksAllowed ? (
+            <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+              HMAC-SHA256
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#6d25da]/12 text-[#581eae] dark:bg-[#8b51e1]/20 dark:text-[#c5a8f0]">
+              Team+ Plan Required
+            </span>
+          )}
         </div>
 
-        <form onSubmit={(e) => void handleCreateWebhook(e)} className="space-y-4">
+        {!webhooksAllowed && (
+          <div className="rounded-xl border border-[#6d25da]/25 bg-[#6d25da]/[0.06] dark:bg-[#8b51e1]/10 px-3.5 py-2.5 text-xs text-zinc-700 dark:text-zinc-300">
+            Outbound webhooks are unlocked starting on the <strong className="text-[#581eae] dark:text-[#c5a8f0]">Team</strong> plan (currently on <strong className="uppercase">{subscription.planTier}</strong>).
+          </div>
+        )}
+
+        <form onSubmit={(e) => void handleCreateWebhook(e)} className={`space-y-4 ${!webhooksAllowed ? 'opacity-60 pointer-events-none select-none' : ''}`}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={LABEL_CLS}>Webhook Name</label>

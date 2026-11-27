@@ -87,7 +87,7 @@ const DRAFT_TYPE_LABELS: Record<AiTargetType, string> = {
 }
 
 export function VerificationAndAiView() {
-  const { activeUser, tasks, hasPermission } = usePhase1Store()
+  const { activeTenant, activeUser, tasks, hasPermission } = usePhase1Store()
   const {
     aiEnabled,
     aiServerStatus,
@@ -785,11 +785,15 @@ export function VerificationAndAiView() {
                 </span>
               </div>
 
-              <label className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-zinc-50 dark:bg-white/[0.04] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] text-xs cursor-pointer">
+              <label
+                className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-zinc-50 dark:bg-white/[0.04] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] text-xs ${
+                  activeTenant.planTier === 'starter' ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'
+                }`}
+              >
                 <input
                   type="checkbox"
                   checked={aiEnabled}
-                  disabled={!canManageRules}
+                  disabled={!canManageRules || activeTenant.planTier === 'starter'}
                   onChange={(e) => toggleTenantAi(e.target.checked)}
                   className="h-4 w-4 accent-[#6d25da]"
                 />
@@ -802,7 +806,11 @@ export function VerificationAndAiView() {
                         : 'text-amber-600 dark:text-amber-400'
                     }
                   >
-                    {aiEnabled ? 'ON' : 'OFF (Templates Only)'}
+                    {activeTenant.planTier === 'starter'
+                      ? 'Team+ Plan Required'
+                      : aiEnabled
+                        ? 'ON'
+                        : 'OFF (Templates Only)'}
                   </span>
                 </span>
               </label>

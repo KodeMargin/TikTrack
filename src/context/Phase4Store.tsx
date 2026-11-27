@@ -55,6 +55,7 @@ import {
   createPortableReportViaPrisma,
   createWebhookEndpointViaPrisma,
   dispatchRealOutboundWebhookViaPrisma,
+  requestSubscriptionUpgradeViaPrisma,
   revokeApiKeyViaPrisma,
   syncCalendarMeetingViaPrisma,
   updateBrandingViaPrisma,
@@ -89,7 +90,13 @@ interface Phase4StoreContextValue {
     planTier: SaasPlanTier
     billingProvider: BillingProvider
     billingCycle: 'monthly' | 'annual'
-  }) => { ok: boolean; message: string }
+  }) => Promise<{ ok: boolean; message: string; requiresManualActivation?: boolean }>
+  requestSubscriptionUpgrade: (input: {
+    requestedPlanTier: SaasPlanTier
+    billingProvider: string
+    billingCycle: 'monthly' | 'annual'
+    contactNote?: string
+  }) => Promise<{ ok: boolean; message: string }>
   updateWhiteLabelBranding: (
     config: WhiteLabelBrandingConfig
   ) => { ok: boolean; message: string }
@@ -363,11 +370,11 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     [projects, tasks, timesheetLines]
   )
 
-  function checkoutSubscriptionPlan(input: {
+  async function checkoutSubscriptionPlan(input: {
     planTier: SaasPlanTier
     billingProvider: BillingProvider
     billingCycle: 'monthly' | 'annual'
-  }): { ok: boolean; message: string } {
+  }): Promise<{ ok: boolean; message: string; requiresManualActivation?: boolean }> {
     const seatsBilled = Math.max(1, usageSnapshot.activeSeats)
     const totals = calculateSaasSubscriptionTotals(
       input.planTier,
@@ -391,16 +398,9 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
       sequenceNumber: saasInvoices.length + 1,
     })
 
-    setLocalSubs((prev) => [
-      nextSub,
-      ...prev.filter((s) => s.tenantId !== activeTenant.id),
-    ])
-    setLocalSaasInvoices((prev) => [saasInvoice, ...prev])
-    setTenantPlanTierState(activeTenant.id, input.planTier)
-
     if (prismaStatus.connected) {
       const spec = PHASE4_PLAN_CATALOG[input.planTier]
-      void checkoutSubscriptionViaPrisma({
+      const res = await checkoutSubscriptionViaPrisma({
         tenantId: activeTenant.id,
         planTier: input.planTier,
         billingProvider: input.billingProvider,
@@ -414,11 +414,73 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
         billingPeriodLabel: saasInvoice.billingPeriodLabel,
         actorUserId: activeUser.id,
       })
+      if (!res?.ok) {
+        return {
+          ok: false,
+          requiresManualActivation: res?.requiresManualActivation,
+          message:
+            res?.error ||
+            'Plan change could not be activated. Please submit an upgrade request.',
+        }
+      }
     }
+
+    setLocalSubs((prev) => [
+      nextSub,
+      ...prev.filter((s) => s.tenantId !== activeTenant.id),
+    ])
+    setLocalSaasInvoices((prev) => [saasInvoice, ...prev])
+    setTenantPlanTierState(activeTenant.id, input.planTier)
 
     return {
       ok: true,
       message: `Switched plan to ${input.planTier.toUpperCase()} (${input.billingCycle}) via ${input.billingProvider}. Receipt ${saasInvoice.invoiceNumber} issued.`,
+    }
+  }
+
+  async function requestSubscriptionUpgrade(input: {
+    requestedPlanTier: SaasPlanTier
+    billingProvider: string
+    billingCycle: 'monthly' | 'annual'
+    contactNote?: string
+  }): Promise<{ ok: boolean; message: string }> {
+    const seatsBilled = Math.max(1, usageSnapshot.activeSeats)
+    const totals = calculateSaasSubscriptionTotals(
+      input.requestedPlanTier,
+      seatsBilled,
+      input.billingCycle
+    )
+
+    if (prismaStatus.connected) {
+      const res = await requestSubscriptionUpgradeViaPrisma({
+        tenantId: activeTenant.id,
+        requestedPlanTier: input.requestedPlanTier,
+        billingProvider: input.billingProvider,
+        billingCycle: input.billingCycle,
+        seatsBilled,
+        estimatedTotalCents: totals.totalCents,
+        currency: activeTenant.currency,
+        contactNote: input.contactNote,
+        actorUserId: activeUser.id,
+        actorEmail: activeUser.email,
+      })
+      if (!res?.ok) {
+        return {
+          ok: false,
+          message: res?.error || 'Failed to submit upgrade request. Please try again.',
+        }
+      }
+      return {
+        ok: true,
+        message:
+          res.message ||
+          `Upgrade request to ${input.requestedPlanTier.toUpperCase()} submitted for billing activation.`,
+      }
+    }
+
+    return {
+      ok: true,
+      message: `Upgrade request to ${input.requestedPlanTier.toUpperCase()} (${input.billingCycle}) recorded (offline mode).`,
     }
   }
 
@@ -455,11 +517,13 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     if (!input.name.trim() || input.scopes.length === 0) {
       return { ok: false, message: 'Provide a key name and at least one scope.' }
     }
+    const maxRateLimit = PHASE4_PLAN_CATALOG[subscription.planTier].apiRateLimitPerMin
+    const effectiveRateLimit = Math.max(1, Math.min(input.rateLimitPerMin, maxRateLimit))
     const { plaintextKey, record } = await generateScopedApiKey({
       tenantId: activeTenant.id,
       name: input.name,
       scopes: input.scopes,
-      rateLimitPerMin: input.rateLimitPerMin,
+      rateLimitPerMin: effectiveRateLimit,
     })
 
     let persistedId = record.id
@@ -582,6 +646,12 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     targetUrl: string
     subscribedEvents: OutboundWebhookEventType[]
   }) {
+    if (!PHASE4_PLAN_CATALOG[subscription.planTier].outboundWebhooksEnabled) {
+      return {
+        ok: false,
+        message: `Outbound Webhooks require the Team plan or higher (currently on ${subscription.planTier.toUpperCase()}).`,
+      }
+    }
     if (!input.name.trim() || !input.targetUrl.startsWith('http')) {
       return { ok: false, message: 'Provide a valid endpoint name and https:// URL.' }
     }
@@ -628,6 +698,12 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
     eventType: OutboundWebhookEventType
     payloadData?: Record<string, unknown>
   }) {
+    if (!PHASE4_PLAN_CATALOG[subscription.planTier].outboundWebhooksEnabled) {
+      return {
+        ok: false,
+        message: `Outbound Webhooks require the Team plan or higher (currently on ${subscription.planTier.toUpperCase()}).`,
+      }
+    }
     const endpoint = webhookEndpoints.find((e) => e.id === input.endpointId)
     if (!endpoint) {
       return { ok: false, message: 'Webhook endpoint not found.' }
@@ -711,6 +787,21 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
   }): { ok: boolean; message: string } {
     const existing = connectors.find((c) => c.provider === input.provider)
     const nextStatus = existing?.status === 'connected' ? 'disconnected' : 'connected'
+    if (nextStatus === 'connected') {
+      const planSpec = PHASE4_PLAN_CATALOG[subscription.planTier]
+      if (input.category === 'accounting' && !planSpec.accountingConnectorsEnabled) {
+        return {
+          ok: false,
+          message: `${input.displayName} requires the Agency or Enterprise plan (currently on ${subscription.planTier.toUpperCase()}).`,
+        }
+      }
+      if (input.category === 'external_pm' && !planSpec.externalPmEnabled) {
+        return {
+          ok: false,
+          message: `${input.displayName} requires the Team plan or higher (currently on ${subscription.planTier.toUpperCase()}).`,
+        }
+      }
+    }
     const nextRecord: EcosystemConnectorRecord = {
       id: existing?.id ?? `conn-${input.provider}`,
       tenantId: activeTenant.id,
@@ -883,6 +974,7 @@ export function Phase4StoreProvider({ children }: { children: ReactNode }) {
         projectForecasts,
         portableReports,
         checkoutSubscriptionPlan,
+        requestSubscriptionUpgrade,
         updateWhiteLabelBranding,
         createScopedApiKey,
         revokeApiKey,

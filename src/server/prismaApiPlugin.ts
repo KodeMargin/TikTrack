@@ -58,11 +58,18 @@ import {
   handleCreatePortableReportPrisma,
   handleCreateWebhookEndpointPrisma,
   handleDispatchWebhookDeliveryPrisma,
+  handleRequestSubscriptionUpgradePrisma,
   handleRevokeApiKeyPrisma,
   handleSyncCalendarMeetingPrisma,
   handleUpdateBrandingPrisma,
   handleUpsertConnectorPrisma,
 } from './prismaPhase4Handlers.ts'
+import {
+  checkConnectorEntitlement,
+  checkFeatureEntitlement,
+  checkProjectQuota,
+  checkSeatQuota,
+} from './planEntitlementGuard.ts'
 import {
   handleCreateCustomRolePrisma,
   handleDeleteCustomRolePrisma,
@@ -401,6 +408,10 @@ export async function handlePrismaApiRequest(
               }>(req)
               if (!isValidUuid(body.tenantId) || !body.email?.trim() || !body.name?.trim()) {
                 return sendJson(res, 400, { ok: false, error: 'Valid tenantId, name, and email are required.' })
+              }
+              const seatQuota = await checkSeatQuota(body.tenantId)
+              if (!seatQuota.allowed) {
+                return sendJson(res, 403, { ok: false, error: seatQuota.error })
               }
               const normalizedEmail = body.email.toLowerCase().trim()
               const effectiveTempPassword =
@@ -758,6 +769,10 @@ export async function handlePrismaApiRequest(
               }>(req)
               if (!isValidUuid(body.tenantId)) {
                 return sendJson(res, 200, { ok: false, error: 'Non-UUID tenant ID' })
+              }
+              const projectQuota = await checkProjectQuota(body.tenantId)
+              if (!projectQuota.allowed) {
+                return sendJson(res, 403, { ok: false, error: projectQuota.error })
               }
               const created = await prisma.$transaction(async (tx) => {
                 const proj = await tx.project.create({
@@ -1514,6 +1529,12 @@ export async function handlePrismaApiRequest(
 
             if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase3/tenant-ai')) {
               const body = await readJsonBody<Parameters<typeof handleToggleTenantAiPrisma>[0]>(req)
+              if (body.aiEnabled) {
+                const aiGate = await checkFeatureEntitlement(body.tenantId, 'ai_assistance')
+                if (!aiGate.allowed) {
+                  return sendJson(res, 403, { ok: false, error: aiGate.error })
+                }
+              }
               return sendJson(res, 200, await handleToggleTenantAiPrisma(body))
             }
 
@@ -1547,13 +1568,38 @@ export async function handlePrismaApiRequest(
               return sendJson(res, 201, await handleOpenDisputePrisma(body))
             }
 
+            if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/subscription/request-upgrade')) {
+              const body = await readJsonBody<Parameters<typeof handleRequestSubscriptionUpgradePrisma>[0]>(req)
+              const result = await handleRequestSubscriptionUpgradePrisma({
+                ...body,
+                actorUserId: actor?.userId || body.actorUserId,
+                actorEmail: actor?.email || body.actorEmail,
+              })
+              return sendJson(res, result.ok ? 200 : 400, result)
+            }
+
             if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/subscription/checkout')) {
               const body = await readJsonBody<Parameters<typeof handleCheckoutSubscriptionPrisma>[0]>(req)
+              const liveGatewayEnabled = process.env.PAYMENT_GATEWAY_LIVE === 'true'
+              const isPaidTier = body.planTier !== 'starter'
+              const isSuperAdmin = !actor || !actor.authEnforced || actor.isSuperAdmin
+              if (isPaidTier && !liveGatewayEnabled && !isSuperAdmin) {
+                return sendJson(res, 402, {
+                  ok: false,
+                  requiresManualActivation: true,
+                  error:
+                    'Direct self-service paid upgrades are locked until live payment checkout is connected. Submit an Upgrade Request for billing activation.',
+                })
+              }
               return sendJson(res, 200, await handleCheckoutSubscriptionPrisma(body))
             }
 
             if (req.method === 'PATCH' && url.startsWith('/api/prisma/phase4/branding')) {
               const body = await readJsonBody<Parameters<typeof handleUpdateBrandingPrisma>[0]>(req)
+              const brandingGate = await checkFeatureEntitlement(body.tenantId, 'white_label')
+              if (!brandingGate.allowed) {
+                return sendJson(res, 403, { ok: false, error: brandingGate.error })
+              }
               return sendJson(res, 200, await handleUpdateBrandingPrisma(body))
             }
 
@@ -1569,16 +1615,34 @@ export async function handlePrismaApiRequest(
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/webhooks/deliver')) {
               const body = await readJsonBody<Parameters<typeof handleDispatchWebhookDeliveryPrisma>[0]>(req)
+              const whGate = await checkFeatureEntitlement(body.tenantId, 'outbound_webhooks')
+              if (!whGate.allowed) {
+                return sendJson(res, 403, { ok: false, error: whGate.error })
+              }
               return sendJson(res, 201, await handleDispatchWebhookDeliveryPrisma(body))
             }
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/webhooks')) {
               const body = await readJsonBody<Parameters<typeof handleCreateWebhookEndpointPrisma>[0]>(req)
+              const whGate = await checkFeatureEntitlement(body.tenantId, 'outbound_webhooks')
+              if (!whGate.allowed) {
+                return sendJson(res, 403, { ok: false, error: whGate.error })
+              }
               return sendJson(res, 201, await handleCreateWebhookEndpointPrisma(body))
             }
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/phase4/connectors')) {
               const body = await readJsonBody<Parameters<typeof handleUpsertConnectorPrisma>[0]>(req)
+              if (body.status === 'connected') {
+                const connGate = await checkConnectorEntitlement(
+                  body.tenantId,
+                  body.provider,
+                  body.category
+                )
+                if (!connGate.allowed) {
+                  return sendJson(res, 403, { ok: false, error: connGate.error })
+                }
+              }
               return sendJson(res, 200, await handleUpsertConnectorPrisma(body))
             }
 
@@ -1595,6 +1659,10 @@ export async function handlePrismaApiRequest(
             // --- Real External Integrations (Git, PM Tools, Chat Alerts, Live Webhooks, Calendar OAuth) ---
             if (req.method === 'POST' && url.startsWith('/api/prisma/integrations/connect')) {
               const body = await readJsonBody<Parameters<typeof handleConnectRealIntegration>[0]>(req)
+              const connGate = await checkConnectorEntitlement(body.tenantId, body.provider)
+              if (!connGate.allowed) {
+                return sendJson(res, 403, { ok: false, error: connGate.error })
+              }
               const result = await handleConnectRealIntegration(body)
               return sendJson(res, result.ok ? 200 : 400, result)
             }
@@ -1618,6 +1686,10 @@ export async function handlePrismaApiRequest(
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/integrations/webhook-dispatch')) {
               const body = await readJsonBody<Parameters<typeof handleDispatchRealOutboundWebhook>[0]>(req)
+              const whGate = await checkFeatureEntitlement(body.tenantId, 'outbound_webhooks')
+              if (!whGate.allowed) {
+                return sendJson(res, 403, { ok: false, error: whGate.error })
+              }
               const result = await handleDispatchRealOutboundWebhook(body)
               return sendJson(res, 200, result)
             }
