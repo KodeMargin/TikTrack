@@ -143,6 +143,15 @@ mkdir -p "$OUT_DIR"
 UPLOAD_FILES=()
 PLATFORM_MANIFEST_ARGS=()
 
+cleanup_stale_tiktrack_volumes() {
+  for vol in /Volumes/TikTrack*; do
+    if [ -d "$vol" ]; then
+      echo "    Detaching lingering DMG volume: $vol"
+      hdiutil detach "$vol" -force >/dev/null 2>&1 || true
+    fi
+  done
+}
+
 for TARGET in "${TARGETS[@]}"; do
   if [ "$TARGET" = "aarch64-apple-darwin" ]; then
     ARCH_LABEL="aarch64"
@@ -154,7 +163,25 @@ for TARGET in "${TARGETS[@]}"; do
 
   echo ""
   echo "==> Building Tauri app for $TARGET..."
-  npm run tauri build -- --target "$TARGET"
+  BUILD_OK=false
+  for attempt in 1 2 3; do
+    cleanup_stale_tiktrack_volumes
+    rm -f "$AGENT_DIR/src-tauri/target/$TARGET/release/bundle/dmg"/rw.*.dmg 2>/dev/null || true
+    # CI=true passes --skip-jenkins to bundle_dmg.sh, preventing Finder/Spotlight from locking the DMG volume
+    if CI=true npm run tauri build -- --target "$TARGET"; then
+      BUILD_OK=true
+      break
+    fi
+    if [ "$attempt" -lt 3 ]; then
+      echo "    ⚠️  DMG/Tauri bundle attempt $attempt failed (macOS hdiutil busy). Cleaning up and retrying in 3s..."
+      cleanup_stale_tiktrack_volumes
+      sleep 3
+    fi
+  done
+  if [ "$BUILD_OK" != true ]; then
+    echo "Error: Tauri build failed for $TARGET after 3 attempts."
+    exit 1
+  fi
 
   BUNDLE_DIR="$AGENT_DIR/src-tauri/target/$TARGET/release/bundle"
   DMG_FILE="$(find "$BUNDLE_DIR/dmg" -maxdepth 1 -name '*.dmg' | head -n 1 || true)"
