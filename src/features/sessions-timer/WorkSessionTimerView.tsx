@@ -4,6 +4,7 @@ import { usePhase1Store } from '@/context/Phase1Store'
 import type { WorkMode } from '@/types/domain.types'
 import { InfoTooltip } from '@/components/InfoTooltip'
 import { ActiveRulesSummaryBanner } from '@/features/verification-ai/ActiveRulesSummaryBanner'
+import { Select } from '@/components/Select'
 
 const WORK_MODE_DETAILS: {
   mode: WorkMode
@@ -305,7 +306,7 @@ export function WorkSessionTimerView() {
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
                     Project
                   </label>
-                  <select
+                  <Select
                     value={activeProjectId}
                     onChange={(e) => {
                       const nextProjId = e.target.value
@@ -324,14 +325,14 @@ export function WorkSessionTimerView() {
                         {p.code} · {p.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
                     Task
                   </label>
-                  <select
+                  <Select
                     value={currentTask?.id ?? ''}
                     onChange={(e) =>
                       setTimerTaskAndMode(activeProjectId, e.target.value, timer.workMode)
@@ -344,7 +345,7 @@ export function WorkSessionTimerView() {
                         {t.code}: {t.title}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -521,7 +522,7 @@ export function WorkSessionTimerView() {
                 <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">
                   Work Mode
                 </label>
-                <select
+                <Select
                   value={manualMode}
                   onChange={(e) => setManualMode(e.target.value as WorkMode)}
                   className="w-full rounded-xl bg-zinc-50 dark:bg-white/[0.04] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] px-2.5 py-1.5 text-zinc-900 dark:text-white"
@@ -531,7 +532,7 @@ export function WorkSessionTimerView() {
                       {m.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">

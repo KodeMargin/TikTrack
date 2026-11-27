@@ -9,6 +9,7 @@ import {
 import type { ArtifactLinkType } from '@/types/domain.types'
 import { formatMinuteOfDay } from '@/lib/time-engine'
 import { InfoTooltip } from '@/components/InfoTooltip'
+import { Select } from '@/components/Select'
 
 function formatDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes))
@@ -226,7 +227,7 @@ export function UnifiedTimelineView() {
           >
             Date:
           </label>
-          <select
+          <Select
             id="timeline-date-filter"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
@@ -238,7 +239,7 @@ export function UnifiedTimelineView() {
                 {d}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -589,7 +590,7 @@ export function UnifiedTimelineView() {
               <label className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">
                 What were you doing?
               </label>
-              <select
+              <Select
                 value={gapChoice}
                 onChange={(e) =>
                   setGapChoice(e.target.value as IdleReconciliationChoice)
@@ -602,7 +603,7 @@ export function UnifiedTimelineView() {
                 <option value="break">Personal Break</option>
                 <option value="away">Away from Desk</option>
                 <option value="other">Other Work Activity</option>
-              </select>
+              </Select>
             </div>
 
             <div className="space-y-1">
@@ -671,7 +672,7 @@ export function UnifiedTimelineView() {
                 <label className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                   Assign to Task
                 </label>
-                <select
+                <Select
                   value={overrideTaskId}
                   onChange={(e) => setOverrideTaskId(e.target.value)}
                   className="w-full rounded-xl px-2.5 py-2 text-xs"
@@ -681,13 +682,13 @@ export function UnifiedTimelineView() {
                       {t.code} · {t.title}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                   When was it done?
                 </label>
-                <select
+                <Select
                   value={overrideLinkType}
                   onChange={(e) =>
                     setOverrideLinkType(e.target.value as ArtifactLinkType)
@@ -697,7 +698,7 @@ export function UnifiedTimelineView() {
                   <option value="contemporaneous">During Work Session</option>
                   <option value="retrospective_outcome">Finished After Session</option>
                   <option value="manual_attached">Manually Linked</option>
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -744,7 +745,7 @@ export function UnifiedTimelineView() {
                 <label className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                   Task
                 </label>
-                <select
+                <Select
                   value={annTaskId}
                   onChange={(e) => setAnnTaskId(e.target.value)}
                   className="w-full rounded-xl px-2.5 py-2 text-xs"
@@ -754,13 +755,13 @@ export function UnifiedTimelineView() {
                       {t.code}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                   Note Type
                 </label>
-                <select
+                <Select
                   value={annType}
                   onChange={(e) =>
                     setAnnType(
@@ -773,7 +774,7 @@ export function UnifiedTimelineView() {
                   <option value="thinking_note">Thinking &amp; Architecture</option>
                   <option value="research_outcome">Research Summary</option>
                   <option value="pair_programming">Pair Programming</option>
-                </select>
+                </Select>
               </div>
             </div>
 

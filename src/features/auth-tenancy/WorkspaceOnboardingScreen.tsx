@@ -5,6 +5,7 @@ import { useTheme } from '@/context/ThemeContext'
 import { CountryTimezonePicker } from '@/components/CountryTimezonePicker'
 import { detectUserLocation } from '@/lib/countryTimezones'
 import type { UserRole } from '@/types/domain.types'
+import { Select } from '@/components/Select'
 
 interface WorkspaceOnboardingScreenProps {
   onComplete: () => void
@@ -294,7 +295,7 @@ export function WorkspaceOnboardingScreen({
                     <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300 mb-1">
                       Billing Currency
                     </label>
-                    <select
+                    <Select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
                       className="w-full rounded-xl border border-zinc-200 bg-zinc-50 dark:border-white/10 dark:bg-white/[0.04] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
@@ -305,7 +306,7 @@ export function WorkspaceOnboardingScreen({
                       <option value="LKR">LKR (Rs)</option>
                       <option value="AUD">AUD (A$)</option>
                       <option value="CAD">CAD (C$)</option>
-                    </select>
+                    </Select>
                   </div>
                 </div>
 
@@ -399,7 +400,7 @@ export function WorkspaceOnboardingScreen({
                     <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300 mb-1">
                       Role
                     </label>
-                    <select
+                    <Select
                       value={devRole}
                       onChange={(e) => setDevRole(e.target.value as UserRole)}
                       className="w-full h-[38px] rounded-lg border border-zinc-200 bg-white dark:border-white/10 dark:bg-white/[0.04] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
@@ -408,7 +409,7 @@ export function WorkspaceOnboardingScreen({
                       <option value="project_manager">Project Manager</option>
                       <option value="finance">Finance</option>
                       <option value="auditor">Auditor</option>
-                    </select>
+                    </Select>
                   </div>
                   <div>
                     <div className="flex items-center justify-between gap-1.5 mb-1">

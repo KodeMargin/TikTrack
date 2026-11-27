@@ -4,6 +4,7 @@ import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store } from '@/context/Phase2Store'
 import { usePhase3Store } from '@/context/Phase3Store'
 import { buildContractualAuditBundle } from '@/lib/phase3/auditExport'
+import { Select } from '@/components/Select'
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   open: {
@@ -207,7 +208,7 @@ export function DisputesAndAppealsView() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="md:col-span-2">
             <label className={LABEL_CLS}>Timesheet Entry</label>
-            <select
+            <Select
               value={selectedLineId || timesheetLines[0]?.id || ''}
               onChange={(e) => setSelectedLineId(e.target.value)}
               className={INPUT_CLS}
@@ -222,7 +223,7 @@ export function DisputesAndAppealsView() {
                   </option>
                 ))
               )}
-            </select>
+            </Select>
           </div>
 
           <div>
@@ -261,7 +262,7 @@ export function DisputesAndAppealsView() {
 
           <div>
             <label className={LABEL_CLS}>Attach Work Proof (Optional)</label>
-            <select
+            <Select
               value={selectedArtifactIds[0] ?? ''}
               onChange={(e) =>
                 setSelectedArtifactIds(e.target.value ? [e.target.value] : [])
@@ -274,7 +275,7 @@ export function DisputesAndAppealsView() {
                   {a.sourceType}: {a.summaryTitle}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -410,7 +411,7 @@ export function DisputesAndAppealsView() {
                         }
                         className="flex-1 min-w-60 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-1.5 text-zinc-900 dark:text-white"
                       />
-                      <select
+                      <Select
                         value={replyArtifacts[d.id] ?? ''}
                         onChange={(e) =>
                           setReplyArtifacts((prev) => ({ ...prev, [d.id]: e.target.value }))
@@ -423,7 +424,7 @@ export function DisputesAndAppealsView() {
                             {a.sourceType}: {a.summaryTitle}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <button
                         type="button"
                         onClick={() => {
@@ -448,7 +449,7 @@ export function DisputesAndAppealsView() {
                     {/* Escalate to 2nd Reviewer */}
                     {d.status !== 'escalated' && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <select
+                        <Select
                           value={
                             escalateReviewerByDispute[d.id] ??
                             eligibleSecondReviewers[0]?.id ??
@@ -471,7 +472,7 @@ export function DisputesAndAppealsView() {
                               </option>
                             ))
                           )}
-                        </select>
+                        </Select>
                         <input
                           type="text"
                           placeholder="Reason for 2nd review..."

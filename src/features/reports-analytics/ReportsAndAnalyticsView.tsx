@@ -51,6 +51,7 @@ import {
   TimeUtilizationReportView,
 } from './views/TenantOperationalViews'
 import { REPORT_CARD_CLS } from './components/ReportSharedUi'
+import { Select } from '@/components/Select'
 
 interface ReportCatalogEntry {
   id: ReportId
@@ -946,7 +947,7 @@ export function ReportsAndAnalyticsView() {
                   Select any tenant workspace to inspect &amp; export this report separately
                 </span>
               </div>
-              <select
+              <Select
                 value={activeTenant.id}
                 onChange={(e) => {
                   setActiveTenantId(e.target.value)
@@ -959,7 +960,7 @@ export function ReportsAndAnalyticsView() {
                     {t.name} ({t.slug} • {t.currency})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
 
@@ -970,7 +971,7 @@ export function ReportsAndAnalyticsView() {
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
                   Period
                 </label>
-                <select
+                <Select
                   value={filters.preset}
                   onChange={(e) =>
                     setFilters((prev) => ({ ...prev, preset: e.target.value as DateRangePreset }))
@@ -983,7 +984,7 @@ export function ReportsAndAnalyticsView() {
                   <option value="90d">Last 90 Days</option>
                   <option value="this_month">This Month</option>
                   <option value="custom">Custom Range</option>
-                </select>
+                </Select>
               </div>
 
               {filters.preset === 'custom' && (
@@ -1021,7 +1022,7 @@ export function ReportsAndAnalyticsView() {
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
                   Project
                 </label>
-                <select
+                <Select
                   value={filters.projectId}
                   onChange={(e) =>
                     setFilters((prev) => ({ ...prev, projectId: e.target.value }))
@@ -1034,7 +1035,7 @@ export function ReportsAndAnalyticsView() {
                       {p.code} - {p.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               {canViewTeam && (
@@ -1042,7 +1043,7 @@ export function ReportsAndAnalyticsView() {
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
                     Team Member
                   </label>
-                  <select
+                  <Select
                     value={filters.developerId}
                     onChange={(e) =>
                       setFilters((prev) => ({ ...prev, developerId: e.target.value }))
@@ -1055,7 +1056,7 @@ export function ReportsAndAnalyticsView() {
                         {m.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               )}
 
@@ -1063,7 +1064,7 @@ export function ReportsAndAnalyticsView() {
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
                   Work Mode
                 </label>
-                <select
+                <Select
                   value={filters.workMode}
                   onChange={(e) =>
                     setFilters((prev) => ({ ...prev, workMode: e.target.value }))
@@ -1079,14 +1080,14 @@ export function ReportsAndAnalyticsView() {
                   <option value="review">Review</option>
                   <option value="meeting">Meeting</option>
                   <option value="design">Design</option>
-                </select>
+                </Select>
               </div>
 
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
                   Billability
                 </label>
-                <select
+                <Select
                   value={filters.billableFilter}
                   onChange={(e) =>
                     setFilters((prev) => ({
@@ -1099,7 +1100,7 @@ export function ReportsAndAnalyticsView() {
                   <option value="all">All</option>
                   <option value="billable">Billable Only</option>
                   <option value="non_billable">Non-Billable Only</option>
-                </select>
+                </Select>
               </div>
 
               {(filters.preset !== 'all' ||

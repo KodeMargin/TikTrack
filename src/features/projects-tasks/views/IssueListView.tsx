@@ -17,6 +17,7 @@ import {
   type TaskTimeStatsMap,
 } from '../types'
 import { IssueTypeBadge, MemberAvatar } from '../components/StatusPriorityBadges'
+import { Select } from '@/components/Select'
 
 type SortField = 'code' | 'title' | 'priority' | 'status' | 'dueDate' | 'logged'
 
@@ -224,7 +225,7 @@ export function IssueListView({
           </td>
 
           <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
-            <select
+            <Select
               aria-label={`Status for ${task.code}`}
               value={task.status}
               disabled={!permissions.canChangeTaskStatus}
@@ -238,11 +239,11 @@ export function IssueListView({
                   {c.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </td>
 
           <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
-            <select
+            <Select
               aria-label={`Priority for ${task.code}`}
               value={task.priority}
               disabled={!permissions.canEditTask}
@@ -256,7 +257,7 @@ export function IssueListView({
                   {p.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </td>
 
           <td className="py-3 px-3">
@@ -379,7 +380,7 @@ export function IssueListView({
 
           <div className="flex flex-wrap items-center gap-2">
             {permissions.canChangeTaskStatus && (
-              <select
+              <Select
                 aria-label="Bulk change status"
                 defaultValue=""
                 onChange={(e) => {
@@ -397,11 +398,11 @@ export function IssueListView({
                     {c.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
 
             {permissions.canEditTask && (
-              <select
+              <Select
                 aria-label="Bulk change priority"
                 defaultValue=""
                 onChange={(e) => {
@@ -419,11 +420,11 @@ export function IssueListView({
                     {p.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
 
             {permissions.canEditTask && sprints.length > 0 && (
-              <select
+              <Select
                 aria-label="Bulk assign sprint"
                 defaultValue=""
                 onChange={(e) => {
@@ -444,7 +445,7 @@ export function IssueListView({
                       {s.name}
                     </option>
                   ))}
-              </select>
+              </Select>
             )}
 
             {permissions.canDeleteTask && (

@@ -3,6 +3,7 @@ import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store, type TimesheetLineItem } from '@/context/Phase1Store'
 import { ActiveRulesSummaryBanner } from '@/features/verification-ai/ActiveRulesSummaryBanner'
 import { PortableWorkReportPanel } from '@/features/timesheets-review/PortableWorkReportPanel'
+import { Select } from '@/components/Select'
 
 function formatDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes))
@@ -808,7 +809,7 @@ export function TimesheetsAndReviewView() {
         {/* Period Submission & Bulk Approve Controls */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {projects.length > 0 && (canSubmit || canApprove) && (
-            <select
+            <Select
               value={submitProjectId || projects[0]?.id || ''}
               onChange={(e) => setSubmitProjectId(e.target.value)}
               aria-label="Select project for period action"
@@ -819,7 +820,7 @@ export function TimesheetsAndReviewView() {
                   {p.code} · {p.name}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
 
           {canSubmit && (
@@ -1069,7 +1070,7 @@ export function TimesheetsAndReviewView() {
             className="w-52 sm:w-60 rounded-xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] px-3 py-1.5 text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
           />
 
-          <select
+          <Select
             value={filterProjectId}
             onChange={(e) => setFilterProjectId(e.target.value)}
             aria-label="Filter by project"
@@ -1081,7 +1082,7 @@ export function TimesheetsAndReviewView() {
                 {p.code} · {p.name}
               </option>
             ))}
-          </select>
+          </Select>
 
           <div className="inline-flex rounded-xl bg-zinc-100 dark:bg-white/[0.05] p-0.5">
             <button

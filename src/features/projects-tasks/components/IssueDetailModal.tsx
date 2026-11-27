@@ -22,6 +22,7 @@ import {
   type TaskTimeStats,
 } from '../types'
 import { IssueTypeBadge, MemberAvatar, PriorityBadge } from './StatusPriorityBadges'
+import { Select } from '@/components/Select'
 
 export function IssueDetailModal({
   task,
@@ -220,7 +221,7 @@ export function IssueDetailModal({
             <span>/</span>
             <div className="inline-flex items-center gap-1.5">
               {permissions.canEditTask ? (
-                <select
+                <Select
                   aria-label="Change issue type"
                   value={task.issueType ?? (task.parentTaskId ? 'subtask' : 'task')}
                   onChange={(e) =>
@@ -233,7 +234,7 @@ export function IssueDetailModal({
                       {opt.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : (
                 <IssueTypeBadge
                   type={task.issueType ?? (task.parentTaskId ? 'subtask' : 'task')}
@@ -811,7 +812,7 @@ export function IssueDetailModal({
             {/* Primary Workflow Actions */}
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
-                <select
+                <Select
                   aria-label="Issue status"
                   value={task.status}
                   disabled={!permissions.canChangeTaskStatus}
@@ -826,7 +827,7 @@ export function IssueDetailModal({
                       {c.label}
                     </option>
                   ))}
-                </select>
+                </Select>
 
                 {permissions.canApproveTask &&
                   (task.status === 'review' || task.status === 'active') && (
@@ -911,7 +912,7 @@ export function IssueDetailModal({
               <div className="grid grid-cols-5 items-center gap-2">
                 <span className="col-span-2 text-zinc-500 dark:text-zinc-400">Priority</span>
                 <div className="col-span-3">
-                  <select
+                  <Select
                     value={task.priority}
                     disabled={!permissions.canEditTask}
                     onChange={(e) =>
@@ -924,7 +925,7 @@ export function IssueDetailModal({
                         {p.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -932,7 +933,7 @@ export function IssueDetailModal({
               <div className="grid grid-cols-5 items-center gap-2">
                 <span className="col-span-2 text-zinc-500 dark:text-zinc-400">Sprint</span>
                 <div className="col-span-3">
-                  <select
+                  <Select
                     value={task.sprintId ?? ''}
                     disabled={!permissions.canEditTask}
                     onChange={(e) =>
@@ -946,7 +947,7 @@ export function IssueDetailModal({
                         {s.name} ({s.status})
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -954,7 +955,7 @@ export function IssueDetailModal({
               <div className="grid grid-cols-5 items-center gap-2">
                 <span className="col-span-2 text-zinc-500 dark:text-zinc-400">Parent</span>
                 <div className="col-span-3">
-                  <select
+                  <Select
                     value={task.parentTaskId ?? ''}
                     disabled={!permissions.canEditTask}
                     onChange={(e) =>
@@ -970,7 +971,7 @@ export function IssueDetailModal({
                           {pt.code} · {pt.title.slice(0, 22)}
                         </option>
                       ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -1018,7 +1019,7 @@ export function IssueDetailModal({
               <div className="grid grid-cols-5 items-center gap-2">
                 <span className="col-span-2 text-zinc-500 dark:text-zinc-400">Work Mode</span>
                 <div className="col-span-3">
-                  <select
+                  <Select
                     value={task.defaultWorkMode}
                     disabled={!permissions.canEditTask}
                     onChange={(e) =>
@@ -1031,7 +1032,7 @@ export function IssueDetailModal({
                         {m.charAt(0).toUpperCase() + m.slice(1)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 

@@ -17,6 +17,7 @@ import {
   WORK_MODE_OPTIONS,
 } from '../types'
 import { MemberAvatar } from './StatusPriorityBadges'
+import { Select } from '@/components/Select'
 
 export function CreateIssueModal({
   open,
@@ -163,7 +164,7 @@ export function CreateIssueModal({
               <label className="block font-semibold text-zinc-600 dark:text-zinc-400">
                 Issue Type
               </label>
-              <select
+              <Select
                 value={issueType}
                 onChange={(e) => setIssueType(e.target.value as TaskIssueType)}
                 className="w-full"
@@ -173,7 +174,7 @@ export function CreateIssueModal({
                     {t.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="space-y-1">
@@ -193,7 +194,7 @@ export function CreateIssueModal({
               <label className="block font-semibold text-zinc-600 dark:text-zinc-400">
                 Status
               </label>
-              <select
+              <Select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as TaskRecord['status'])}
                 className="w-full"
@@ -203,14 +204,14 @@ export function CreateIssueModal({
                     {c.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="space-y-1">
               <label className="block font-semibold text-zinc-600 dark:text-zinc-400">
                 Priority
               </label>
-              <select
+              <Select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskRecord['priority'])}
                 className="w-full"
@@ -220,7 +221,7 @@ export function CreateIssueModal({
                     {p.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -274,7 +275,7 @@ export function CreateIssueModal({
               <label className="block font-semibold text-zinc-600 dark:text-zinc-400">
                 Sprint
               </label>
-              <select
+              <Select
                 value={sprintId}
                 onChange={(e) => setSprintId(e.target.value)}
                 className="w-full"
@@ -287,14 +288,14 @@ export function CreateIssueModal({
                       {s.name} ({s.status})
                     </option>
                   ))}
-              </select>
+              </Select>
             </div>
 
             <div className="space-y-1">
               <label className="block font-semibold text-zinc-600 dark:text-zinc-400">
                 Parent / Epic
               </label>
-              <select
+              <Select
                 value={parentTaskId}
                 onChange={(e) => {
                   setParentTaskId(e.target.value)
@@ -310,14 +311,14 @@ export function CreateIssueModal({
                     {pt.code} · {pt.title.slice(0, 32)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="space-y-1">
               <label className="block font-semibold text-zinc-600 dark:text-zinc-400">
                 Default Work Mode
               </label>
-              <select
+              <Select
                 value={defaultWorkMode}
                 onChange={(e) => setDefaultWorkMode(e.target.value as WorkMode)}
                 className="w-full capitalize"
@@ -327,7 +328,7 @@ export function CreateIssueModal({
                     {m.charAt(0).toUpperCase() + m.slice(1)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 

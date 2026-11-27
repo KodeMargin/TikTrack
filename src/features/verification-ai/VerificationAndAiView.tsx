@@ -9,6 +9,7 @@ import type {
   VerificationRuleCode,
   VerificationRuleConfig,
 } from '@/types/domain.types'
+import { Select } from '@/components/Select'
 
 function formatDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes))
@@ -808,7 +809,7 @@ export function VerificationAndAiView() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-100 dark:border-white/[0.06] text-xs">
-              <select
+              <Select
                 value={selectedTaskId || tasks[0]?.id || ''}
                 onChange={(e) => setSelectedTaskId(e.target.value)}
                 className="rounded-xl px-3 py-2 font-medium"
@@ -818,7 +819,7 @@ export function VerificationAndAiView() {
                     {t.code} · {t.title}
                   </option>
                 ))}
-              </select>
+              </Select>
 
               {(
                 [

@@ -4,6 +4,7 @@ import type {
   OutboundWebhookEventType,
   PublicApiScope,
 } from '@/types/domain.types'
+import { Select } from '@/components/Select'
 
 const SCOPE_OPTIONS: { value: PublicApiScope; label: string }[] = [
   { value: 'projects:read', label: 'Read Projects' },
@@ -270,7 +271,7 @@ export function PublicApiAndWebhooksPanel({
             </div>
             <div className="sm:col-span-3">
               <label className={LABEL_CLS}>Endpoint</label>
-              <select
+              <Select
                 value={testResource}
                 onChange={(e) =>
                   setTestResource(
@@ -283,7 +284,7 @@ export function PublicApiAndWebhooksPanel({
                 <option value="tasks">Tasks</option>
                 <option value="timesheets">Timesheets</option>
                 <option value="invoices">Invoices</option>
-              </select>
+              </Select>
             </div>
             <div className="sm:col-span-3 flex items-end">
               <button

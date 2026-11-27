@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ProjectRecord, WorkspaceMember } from '@/context/Phase1Store'
 import { BOARD_COLUMNS, type ProjectPermissions, type TaskStatus } from '../types'
 import { MemberAvatar } from '../components/StatusPriorityBadges'
+import { Select } from '@/components/Select'
 
 const PROJECT_ROLES = ['lead', 'developer', 'reviewer', 'viewer'] as const
 
@@ -168,7 +169,7 @@ export function ProjectSettingsView({
               <label className="block font-semibold text-zinc-700 dark:text-zinc-300">
                 Project Status
               </label>
-              <select
+              <Select
                 disabled={!permissions.canEditProject}
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ProjectRecord['status'])}
@@ -177,7 +178,7 @@ export function ProjectSettingsView({
                 <option value="active">Active</option>
                 <option value="paused">Paused</option>
                 <option value="archived">Archived</option>
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -276,7 +277,7 @@ export function ProjectSettingsView({
 
           {permissions.canEditProject && availableToAdd.length > 0 && (
             <form onSubmit={handleAddMember} className="flex items-center gap-2">
-              <select
+              <Select
                 value={addMemberUserId}
                 onChange={(e) => setAddMemberUserId(e.target.value)}
                 className="flex-1 !py-1.5 !text-xs"
@@ -287,8 +288,8 @@ export function ProjectSettingsView({
                     {m.name} ({m.role.replace(/_/g, ' ')})
                   </option>
                 ))}
-              </select>
-              <select
+              </Select>
+              <Select
                 value={addMemberRole}
                 onChange={(e) => setAddMemberRole(e.target.value)}
                 className="w-28 !py-1.5 !text-xs capitalize"
@@ -298,7 +299,7 @@ export function ProjectSettingsView({
                     {r}
                   </option>
                 ))}
-              </select>
+              </Select>
               <button
                 type="submit"
                 disabled={!addMemberUserId}
@@ -338,7 +339,7 @@ export function ProjectSettingsView({
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <select
+                      <Select
                         disabled={!permissions.canEditProject}
                         value={pm.projectRole}
                         onChange={(e) =>
@@ -351,7 +352,7 @@ export function ProjectSettingsView({
                             {r}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       {permissions.canEditProject && (
                         <button
                           type="button"

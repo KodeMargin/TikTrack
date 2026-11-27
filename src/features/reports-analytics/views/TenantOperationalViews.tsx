@@ -40,6 +40,7 @@ import {
   REPORT_CARD_CLS,
   StructuredDataTable,
 } from '../components/ReportSharedUi'
+import { Select } from '@/components/Select'
 
 // =============================================================================
 // R1: EXECUTIVE SUMMARY VIEW
@@ -652,7 +653,7 @@ export function CustomPivotBuilderView({
             <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
               Primary Group By
             </label>
-            <select
+            <Select
               value={config.groupByPrimary}
               onChange={(e) =>
                 onChangeConfig({ ...config, groupByPrimary: e.target.value as PivotDimension })
@@ -664,14 +665,14 @@ export function CustomPivotBuilderView({
                   {PIVOT_DIMENSION_LABELS[d]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div>
             <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
               Secondary Breakdown (Optional)
             </label>
-            <select
+            <Select
               value={config.groupBySecondary}
               onChange={(e) =>
                 onChangeConfig({
@@ -689,14 +690,14 @@ export function CustomPivotBuilderView({
                     {PIVOT_DIMENSION_LABELS[d]}
                   </option>
                 ))}
-            </select>
+            </Select>
           </div>
 
           <div>
             <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
               Visual Preview
             </label>
-            <select
+            <Select
               value={config.chartType}
               onChange={(e) =>
                 onChangeConfig({
@@ -710,7 +711,7 @@ export function CustomPivotBuilderView({
               <option value="stacked">Stacked Comparison + Table</option>
               <option value="line">Trend Line + Table</option>
               <option value="table_only">Table Only</option>
-            </select>
+            </Select>
           </div>
         </div>
 

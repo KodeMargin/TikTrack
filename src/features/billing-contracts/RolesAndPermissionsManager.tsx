@@ -7,6 +7,7 @@ import {
   DEFAULT_TENANT_OWNER_PERMISSIONS,
   type CustomRole,
 } from '@/types/permissions.types'
+import { Select } from '@/components/Select'
 
 export function RolesAndPermissionsManager({
   hideInviteForm = false,
@@ -383,7 +384,7 @@ export function RolesAndPermissionsManager({
                 className="sm:col-span-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white"
                 required
               />
-              <select
+              <Select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value)}
                 className="sm:col-span-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-zinc-900 dark:text-white font-medium"
@@ -406,7 +407,7 @@ export function RolesAndPermissionsManager({
                       ))}
                   </optgroup>
                 )}
-              </select>
+              </Select>
               <div className="sm:col-span-2 flex gap-1">
                 <input
                   type="text"
@@ -1184,7 +1185,7 @@ export function RolesAndPermissionsManager({
                 <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">
                   Role
                 </label>
-                <select
+                <Select
                   value={memberRoleSelect}
                   onChange={(e) => setMemberRoleSelect(e.target.value)}
                   className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white font-medium"
@@ -1207,7 +1208,7 @@ export function RolesAndPermissionsManager({
                         ))}
                     </optgroup>
                   )}
-                </select>
+                </Select>
               </div>
 
               {/* Extra Granular Overrides */}

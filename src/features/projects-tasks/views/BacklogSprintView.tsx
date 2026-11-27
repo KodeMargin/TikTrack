@@ -36,6 +36,7 @@ import {
   PriorityBadge,
   StatusPill,
 } from '../components/StatusPriorityBadges'
+import { Select } from '@/components/Select'
 
 function DraggableBacklogRow({
   task,
@@ -117,7 +118,7 @@ function DraggableBacklogRow({
 
         <PriorityBadge priority={task.priority} compact />
 
-        <select
+        <Select
           aria-label={`Change status for ${task.code}`}
           value={task.status}
           disabled={!canChangeStatus}
@@ -129,10 +130,10 @@ function DraggableBacklogRow({
               {c.shortLabel}
             </option>
           ))}
-        </select>
+        </Select>
 
         {availableSprints.length > 0 && canChangeStatus && (
-          <select
+          <Select
             aria-label={`Assign sprint for ${task.code}`}
             value={task.sprintId ?? ''}
             onChange={(e) => onMoveSprint(task.id, e.target.value || null)}
@@ -144,7 +145,7 @@ function DraggableBacklogRow({
                 {sp.name}
               </option>
             ))}
-          </select>
+          </Select>
         )}
 
         <div className="flex items-center -space-x-1 min-w-[24px] justify-end">
@@ -737,7 +738,7 @@ export function BacklogSprintView({
                         <label className="block font-semibold text-zinc-700 dark:text-zinc-300">
                           Move {incompleteCount} open issue(s) to:
                         </label>
-                        <select
+                        <Select
                           value={rolloverTargetId}
                           onChange={(e) => setRolloverTargetId(e.target.value)}
                           className="w-full"
@@ -748,7 +749,7 @@ export function BacklogSprintView({
                               {ns.name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     )}
                   </>

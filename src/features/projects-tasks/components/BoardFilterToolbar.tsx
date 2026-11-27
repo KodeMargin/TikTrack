@@ -11,6 +11,7 @@ import {
   type TaskPriority,
 } from '../types'
 import { MemberAvatar } from './StatusPriorityBadges'
+import { Select } from '@/components/Select'
 
 export function BoardFilterToolbar({
   filters,
@@ -176,11 +177,11 @@ export function BoardFilterToolbar({
       {/* Right: Dropdown Filters + Swimlanes + Reset */}
       <div className="flex flex-wrap items-center gap-2">
         {sprints.length > 0 && (
-          <select
+          <Select
             aria-label="Filter by sprint"
             value={filters.sprintFilter}
             onChange={(e) => onChangeFilters({ ...filters, sprintFilter: e.target.value })}
-            className="!py-1 !pl-2.5 !pr-7 !text-xs"
+            className="!py-1 !pl-2.5 !pr-2 !text-xs"
           >
             <option value="all">All Sprints</option>
             <option value="active_sprint">Active Sprint</option>
@@ -190,10 +191,10 @@ export function BoardFilterToolbar({
                 {s.name} ({s.status})
               </option>
             ))}
-          </select>
+          </Select>
         )}
 
-        <select
+        <Select
           aria-label="Filter by issue type"
           value={filters.issueTypes[0] ?? ''}
           onChange={(e) =>
@@ -202,7 +203,7 @@ export function BoardFilterToolbar({
               issueTypes: e.target.value ? [e.target.value as TaskIssueType] : [],
             })
           }
-          className="!py-1 !pl-2.5 !pr-7 !text-xs"
+          className="!py-1 !pl-2.5 !pr-2 !text-xs"
         >
           <option value="">All Types</option>
           {ISSUE_TYPE_OPTIONS.map((t) => (
@@ -210,9 +211,9 @@ export function BoardFilterToolbar({
               {t.label}
             </option>
           ))}
-        </select>
+        </Select>
 
-        <select
+        <Select
           aria-label="Filter by priority"
           value={filters.priorities[0] ?? ''}
           onChange={(e) =>
@@ -221,7 +222,7 @@ export function BoardFilterToolbar({
               priorities: e.target.value ? [e.target.value as TaskPriority] : [],
             })
           }
-          className="!py-1 !pl-2.5 !pr-7 !text-xs"
+          className="!py-1 !pl-2.5 !pr-2 !text-xs"
         >
           <option value="">All Priorities</option>
           {PRIORITY_OPTIONS.map((p) => (
@@ -229,9 +230,9 @@ export function BoardFilterToolbar({
               {p.label}
             </option>
           ))}
-        </select>
+        </Select>
 
-        <select
+        <Select
           aria-label="Filter by work mode"
           value={filters.workModes[0] ?? ''}
           onChange={(e) =>
@@ -240,7 +241,7 @@ export function BoardFilterToolbar({
               workModes: e.target.value ? [e.target.value as WorkMode] : [],
             })
           }
-          className="!py-1 !pl-2.5 !pr-7 !text-xs capitalize"
+          className="!py-1 !pl-2.5 !pr-2 !text-xs capitalize"
         >
           <option value="">All Modes</option>
           {WORK_MODE_OPTIONS.map((m) => (
@@ -248,9 +249,9 @@ export function BoardFilterToolbar({
               {m.charAt(0).toUpperCase() + m.slice(1)}
             </option>
           ))}
-        </select>
+        </Select>
 
-        <select
+        <Select
           aria-label="Filter by billing status"
           value={filters.billable}
           onChange={(e) =>
@@ -259,25 +260,25 @@ export function BoardFilterToolbar({
               billable: e.target.value as BoardFilters['billable'],
             })
           }
-          className="!py-1 !pl-2.5 !pr-7 !text-xs"
+          className="!py-1 !pl-2.5 !pr-2 !text-xs"
         >
           <option value="all">Billing: All</option>
           <option value="billable">Billable Only</option>
           <option value="non_billable">Non-Billable</option>
-        </select>
+        </Select>
 
         {showSwimlanes && onChangeSwimlaneMode && (
-          <select
+          <Select
             aria-label="Group board by swimlanes"
             value={swimlaneMode}
             onChange={(e) => onChangeSwimlaneMode(e.target.value as SwimlaneMode)}
-            className="!py-1 !pl-2.5 !pr-7 !text-xs"
+            className="!py-1 !pl-2.5 !pr-2 !text-xs"
           >
             <option value="none">Group: None</option>
             <option value="assignee">Swimlanes: Assignee</option>
             <option value="priority">Swimlanes: Priority</option>
             <option value="parent">Swimlanes: Parent / Epic</option>
-          </select>
+          </Select>
         )}
 
         {activeCount > 0 && (

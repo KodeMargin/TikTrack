@@ -6,6 +6,7 @@ import {
   type LocalPrivacyExclusionItem,
 } from '@/context/Phase2Store'
 import { validateEventEnvelope } from '@/lib/schemas'
+import { Select } from '@/components/Select'
 
 const EXCLUSION_TYPE_LABEL: Record<
   LocalPrivacyExclusionItem['exclusionType'],
@@ -310,7 +311,7 @@ export function PrivacyAuditView() {
                 <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                   Type
                 </label>
-                <select
+                <Select
                   value={exclusionType}
                   onChange={(e) =>
                     setExclusionType(
@@ -322,7 +323,7 @@ export function PrivacyAuditView() {
                   <option value="app_identifier">App Name</option>
                   <option value="domain_pattern">Website Domain</option>
                   <option value="workspace_path">Folder Path</option>
-                </select>
+                </Select>
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import { notifyFeedback } from '@/lib/notify'
 import { usePhase1Store } from '@/context/Phase1Store'
 import type { RoundingRule } from '@/types/domain.types'
 import { BudgetAndAccountingPanel } from '@/features/billing-contracts/BudgetAndAccountingPanel'
+import { Select } from '@/components/Select'
 
 function formatDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes))
@@ -325,7 +326,7 @@ export function BillingAndAdminView() {
                 <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                   Time Rounding
                 </label>
-                <select
+                <Select
                   value={activeTenant.roundingRule}
                   disabled={!canManageRates}
                   onChange={(e) =>
@@ -339,7 +340,7 @@ export function BillingAndAdminView() {
                   <option value="nearest_5m">Nearest 5 mins</option>
                   <option value="nearest_6m">Nearest 6 mins (0.1h)</option>
                   <option value="nearest_15m">Nearest 15 mins</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
@@ -380,7 +381,7 @@ export function BillingAndAdminView() {
                 <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                   Project
                 </label>
-                <select
+                <Select
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
                   className="w-full rounded-xl px-3 py-2"
@@ -390,7 +391,7 @@ export function BillingAndAdminView() {
                       {p.code} · {p.name} ({p.clientName})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="w-24">
                 <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">

@@ -54,11 +54,9 @@ export function CountryTimezonePicker({
 
   // Auto-focus search input when country dropdown opens
   useEffect(() => {
-    if (countryDropdownOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 50)
-    } else {
-      setCountrySearch('')
-    }
+    if (!countryDropdownOpen) return
+    const timer = setTimeout(() => searchInputRef.current?.focus(), 50)
+    return () => clearTimeout(timer)
   }, [countryDropdownOpen])
 
   // Handle click outside to close dropdowns
@@ -66,9 +64,11 @@ export function CountryTimezonePicker({
     function handleClickOutside(e: MouseEvent) {
       if (countryRef.current && !countryRef.current.contains(e.target as Node)) {
         setCountryDropdownOpen(false)
+        setCountrySearch('')
       }
       if (tzRef.current && !tzRef.current.contains(e.target as Node)) {
         setTzDropdownOpen(false)
+        setTzSearch('')
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -133,21 +133,24 @@ export function CountryTimezonePicker({
           <button
             type="button"
             disabled={disabled}
+            data-open={countryDropdownOpen ? 'true' : 'false'}
             onClick={() => setCountryDropdownOpen((prev) => !prev)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs hover:border-slate-400 dark:hover:border-white/20 transition cursor-pointer disabled:opacity-50 text-left"
+            className="dp-select-trigger w-full text-xs"
           >
             <div className="flex items-center gap-2 truncate">
               <span className="text-base shrink-0 leading-none">{selectedCountry?.flag || '🌐'}</span>
               <span className="truncate font-medium">{selectedCountry?.name || 'Select Country'}</span>
               {showDialCode && selectedCountry?.dialCode && (
-                <span className="text-slate-400 dark:text-slate-500 font-mono text-[10px]">
+                <span className="text-zinc-400 dark:text-zinc-500 font-mono text-[10px]">
                   {selectedCountry.dialCode}
                 </span>
               )}
             </div>
             <svg
-              className={`h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400 transition-transform duration-150 shrink-0 ml-1.5 ${
-                countryDropdownOpen ? 'rotate-180' : ''
+              className={`h-4 w-4 transition-transform duration-150 shrink-0 ml-1.5 ${
+                countryDropdownOpen
+                  ? 'rotate-180 text-[#6d25da] dark:text-[#a87ce9]'
+                  : 'text-zinc-400 dark:text-zinc-500'
               }`}
               fill="none"
               stroke="currentColor"
@@ -158,16 +161,16 @@ export function CountryTimezonePicker({
           </button>
 
           {countryDropdownOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-full max-h-64 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] shadow-2xl p-1.5 z-50 flex flex-col">
+            <div className="dp-select-menu dp-select-enter-down absolute left-0 top-full mt-1.5 w-full max-h-64 p-1.5 z-50 flex flex-col">
               {/* Search box */}
-              <div className="p-1.5 border-b border-slate-100 dark:border-white/5">
+              <div className="p-1 border-b border-zinc-200/70 dark:border-white/[0.08]">
                 <input
                   ref={searchInputRef}
                   type="text"
                   placeholder="Search country or code (e.g. Sri Lanka, +94)..."
                   value={countrySearch}
                   onChange={(e) => setCountrySearch(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#6d25da]"
+                  className="w-full px-2.5 py-1.5 rounded-lg text-xs"
                 />
               </div>
 
@@ -184,12 +187,9 @@ export function CountryTimezonePicker({
                       <button
                         key={c.code}
                         type="button"
+                        data-selected={isSelected ? 'true' : 'false'}
                         onClick={() => handleSelectCountry(c)}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
-                          isSelected
-                            ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold'
-                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
-                        }`}
+                        className="dp-select-option text-xs"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <span className="text-base shrink-0 leading-none">{c.flag}</span>
@@ -202,7 +202,7 @@ export function CountryTimezonePicker({
                             </span>
                           )}
                           {isSelected && (
-                            <svg className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="h-4 w-4 text-[#6d25da] dark:text-[#a87ce9]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4.5 12.75l6 6 9-13.5" />
                             </svg>
                           )}
@@ -220,22 +220,25 @@ export function CountryTimezonePicker({
       {/* Timezone Selector */}
       {showTimezone && (
         <div className="space-y-1">
-          <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300">
+          <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300">
             Timezone
           </label>
           <div className="relative" ref={tzRef}>
             <button
               type="button"
               disabled={disabled}
+              data-open={tzDropdownOpen ? 'true' : 'false'}
               onClick={() => setTzDropdownOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs hover:border-slate-400 dark:hover:border-white/20 transition cursor-pointer disabled:opacity-50 text-left"
+              className="dp-select-trigger w-full text-xs"
             >
               <span className="truncate font-medium">
                 {availableTimezones.find((t) => t.name === timezone)?.label || timezone}
               </span>
               <svg
-                className={`h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400 transition-transform duration-150 shrink-0 ml-1.5 ${
-                  tzDropdownOpen ? 'rotate-180' : ''
+                className={`h-4 w-4 transition-transform duration-150 shrink-0 ml-1.5 ${
+                  tzDropdownOpen
+                    ? 'rotate-180 text-[#6d25da] dark:text-[#a87ce9]'
+                    : 'text-zinc-400 dark:text-zinc-500'
                 }`}
                 fill="none"
                 stroke="currentColor"
@@ -246,15 +249,15 @@ export function CountryTimezonePicker({
             </button>
 
             {tzDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1.5 w-full max-h-56 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111623] shadow-2xl p-1.5 z-50 flex flex-col">
+              <div className="dp-select-menu dp-select-enter-down absolute left-0 top-full mt-1.5 w-full max-h-56 p-1.5 z-50 flex flex-col">
                 {availableTimezones.length > 5 && (
-                  <div className="p-1.5 border-b border-slate-100 dark:border-white/5">
+                  <div className="p-1 border-b border-zinc-200/70 dark:border-white/[0.08]">
                     <input
                       type="text"
                       placeholder="Search timezones..."
                       value={tzSearch}
                       onChange={(e) => setTzSearch(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#6d25da]"
+                      className="w-full px-2.5 py-1.5 rounded-lg text-xs"
                     />
                   </div>
                 )}
@@ -265,16 +268,13 @@ export function CountryTimezonePicker({
                       <button
                         key={tz.name}
                         type="button"
+                        data-selected={isSelected ? 'true' : 'false'}
                         onClick={() => handleSelectTimezone(tz.name)}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-left ${
-                          isSelected
-                            ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold'
-                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
-                        }`}
+                        className="dp-select-option text-xs"
                       >
                         <span className="truncate">{tz.label}</span>
                         {isSelected && (
-                          <svg className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="h-4 w-4 text-[#6d25da] dark:text-[#a87ce9] shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4.5 12.75l6 6 9-13.5" />
                           </svg>
                         )}

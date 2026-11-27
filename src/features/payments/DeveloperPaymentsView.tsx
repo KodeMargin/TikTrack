@@ -11,6 +11,7 @@ import {
   type WorkspaceMember,
 } from '@/context/Phase1Store'
 import { PaymentModeConfigCard } from '@/features/payments/PaymentModeConfigCard'
+import { Select } from '@/components/Select'
 
 function formatDuration(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes))
@@ -929,7 +930,7 @@ export function DeveloperPaymentsView() {
                 onChange={(e) => setTaskSearch(e.target.value)}
                 className="w-52 rounded-xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] px-3 py-1.5 text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#6d25da]"
               />
-              <select
+              <Select
                 value={taskProjectFilter}
                 onChange={(e) => setTaskProjectFilter(e.target.value)}
                 className="rounded-xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] px-3 py-1.5 text-zinc-900 dark:text-white"
@@ -940,7 +941,7 @@ export function DeveloperPaymentsView() {
                     {p.code} · {p.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -1063,7 +1064,7 @@ export function DeveloperPaymentsView() {
               ))}
             </div>
 
-            <select
+            <Select
               value={ledgerMemberFilter}
               onChange={(e) => setLedgerMemberFilter(e.target.value)}
               className="rounded-xl bg-white dark:bg-[#131319] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] px-3 py-1.5 text-zinc-900 dark:text-white"
@@ -1074,7 +1075,7 @@ export function DeveloperPaymentsView() {
                   {m.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {filteredLedgerPayouts.length === 0 ? (
@@ -1602,7 +1603,7 @@ export function DeveloperPaymentsView() {
                   <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                     Pay Model
                   </label>
-                  <select
+                  <Select
                     value={cfgPayModel}
                     onChange={(e) =>
                       setCfgPayModel(e.target.value as DeveloperPaymentConfig['payModel'])
@@ -1612,14 +1613,14 @@ export function DeveloperPaymentsView() {
                     <option value="hourly">Hourly Rate</option>
                     <option value="monthly_retainer">Monthly Retainer</option>
                     <option value="fixed_milestone">Fixed Milestone</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                     Currency
                   </label>
-                  <select
+                  <Select
                     value={cfgCurrency}
                     onChange={(e) => setCfgCurrency(e.target.value)}
                     className="w-full rounded-xl bg-zinc-50 dark:bg-white/[0.04] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] px-3 py-2 text-zinc-900 dark:text-white font-mono"
@@ -1630,7 +1631,7 @@ export function DeveloperPaymentsView() {
                     <option value="LKR">LKR</option>
                     <option value="AUD">AUD</option>
                     <option value="CAD">CAD</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {cfgPayModel === 'hourly' && (
@@ -1670,7 +1671,7 @@ export function DeveloperPaymentsView() {
                   <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                     Payout Schedule
                   </label>
-                  <select
+                  <Select
                     value={cfgFrequency}
                     onChange={(e) =>
                       setCfgFrequency(
@@ -1682,14 +1683,14 @@ export function DeveloperPaymentsView() {
                     <option value="weekly">Weekly</option>
                     <option value="biweekly">Biweekly</option>
                     <option value="monthly">Monthly</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                     Payout Method
                   </label>
-                  <select
+                  <Select
                     value={cfgMethod}
                     onChange={(e) =>
                       setCfgMethod(
@@ -1703,7 +1704,7 @@ export function DeveloperPaymentsView() {
                     <option value="payoneer">Payoneer</option>
                     <option value="stripe_connect">Stripe Connect</option>
                     <option value="crypto_usdc">USDC (Crypto)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
@@ -1902,7 +1903,7 @@ export function DeveloperPaymentsView() {
                   <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                     Task Compensation Type
                   </label>
-                  <select
+                  <Select
                     value={taskPayType}
                     onChange={(e) =>
                       setTaskPayType(e.target.value as TaskPaymentConfig['payType'])
@@ -1911,7 +1912,7 @@ export function DeveloperPaymentsView() {
                   >
                     <option value="fixed_bounty">Fixed Task Bounty (on completion / approval)</option>
                     <option value="hourly_rate">Task-Specific Hourly Rate</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
@@ -1933,7 +1934,7 @@ export function DeveloperPaymentsView() {
                   <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                     Currency
                   </label>
-                  <select
+                  <Select
                     value={taskPayCurrency}
                     onChange={(e) => setTaskPayCurrency(e.target.value)}
                     className="w-full rounded-xl bg-zinc-50 dark:bg-white/[0.04] ring-1 ring-zinc-950/[0.08] dark:ring-white/[0.1] px-3 py-2 text-zinc-900 dark:text-white font-mono"
@@ -1944,7 +1945,7 @@ export function DeveloperPaymentsView() {
                     <option value="LKR">LKR</option>
                     <option value="AUD">AUD</option>
                     <option value="CAD">CAD</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -2060,7 +2061,7 @@ export function DeveloperPaymentsView() {
                   <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 mb-1">
                     Status
                   </label>
-                  <select
+                  <Select
                     value={payStatus}
                     onChange={(e) =>
                       setPayStatus(e.target.value as DeveloperPayoutRecord['status'])
@@ -2070,7 +2071,7 @@ export function DeveloperPaymentsView() {
                     <option value="scheduled">Scheduled</option>
                     <option value="processing">Processing</option>
                     <option value="paid">Paid</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>

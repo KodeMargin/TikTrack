@@ -6,6 +6,7 @@ import { detectUserLocation } from '@/lib/countryTimezones'
 import { RolesAndPermissionsManager } from '@/features/billing-contracts/RolesAndPermissionsManager'
 import { PaymentModeConfigCard } from '@/features/payments/PaymentModeConfigCard'
 import { WorkspaceBrandingCard } from '@/features/auth-tenancy/WorkspaceBrandingCard'
+import { Select } from '@/components/Select'
 
 export function AuthAndOnboardingView() {
   const {
@@ -218,7 +219,7 @@ export function AuthAndOnboardingView() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
                     <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">Role</label>
-                    <select
+                    <Select
                       value={inviteRole}
                       onChange={(e) => setInviteRole(e.target.value)}
                       className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white font-medium"
@@ -241,7 +242,7 @@ export function AuthAndOnboardingView() {
                             ))}
                         </optgroup>
                       )}
-                    </select>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">Temporary Password</label>
@@ -324,7 +325,7 @@ export function AuthAndOnboardingView() {
 
                 <div>
                   <label className="block text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">Currency</label>
-                  <select
+                  <Select
                     value={wsCurrency}
                     onChange={(e) => setWsCurrency(e.target.value)}
                     className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-2 text-zinc-900 dark:text-white"
@@ -334,7 +335,7 @@ export function AuthAndOnboardingView() {
                     <option value="EUR">EUR (€)</option>
                     <option value="GBP">GBP (£)</option>
                     <option value="AUD">AUD (A$)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <CountryTimezonePicker

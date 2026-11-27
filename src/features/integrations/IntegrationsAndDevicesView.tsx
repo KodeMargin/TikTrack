@@ -4,6 +4,7 @@ import { usePhase1Store } from '@/context/Phase1Store'
 import { usePhase2Store, type EnrolledDeviceRecord } from '@/context/Phase2Store'
 import { PublicApiAndWebhooksPanel } from '@/features/integrations/EcosystemToolsAndApiPanels'
 import { RealIntegrationsHub } from '@/features/integrations/RealIntegrationsHub'
+import { Select } from '@/components/Select'
 
 const GITHUB_LATEST_RELEASE_API =
   'https://api.github.com/repos/KodeMargin/TikTrack-Release/releases/latest'
@@ -316,7 +317,7 @@ export function IntegrationsAndDevicesView() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <select
+                        <Select
                           value={selectedTask}
                           onChange={(e) =>
                             setSelectedTaskByMapping((prev) => ({
@@ -331,7 +332,7 @@ export function IntegrationsAndDevicesView() {
                               {t.code} - {t.title}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <button
                           type="button"
                           onClick={() => {
@@ -402,7 +403,7 @@ export function IntegrationsAndDevicesView() {
                           <span className="text-zinc-500 dark:text-zinc-400 text-[11px]">
                             Release Channel:
                           </span>
-                          <select
+                          <Select
                             value={dev.updateChannel}
                             onChange={(e) =>
                               updateDeviceChannel(
@@ -415,7 +416,7 @@ export function IntegrationsAndDevicesView() {
                             <option value="stable">Stable</option>
                             <option value="beta">Beta</option>
                             <option value="enterprise_pinned">Pinned</option>
-                          </select>
+                          </Select>
                         </div>
 
                         <button

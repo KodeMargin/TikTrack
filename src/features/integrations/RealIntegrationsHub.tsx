@@ -19,6 +19,7 @@ import {
   type ProviderGuideSpec,
 } from '@/features/integrations/integrationGuides'
 import { IntegrationBrandLogo } from '@/features/integrations/IntegrationBrandLogo'
+import { Select } from '@/components/Select'
 
 const CATEGORY_TABS: { id: ConnectorCategory | 'all'; label: string }[] = [
   { id: 'all', label: 'All Tools' },
@@ -366,7 +367,7 @@ export function RealIntegrationsHub({
                 onChange={(e) => setItemSearch(e.target.value)}
                 className="w-44 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-1.5 text-xs text-zinc-900 dark:text-white"
               />
-              <select
+              <Select
                 aria-label="Target Project"
                 value={resolvedTargetProjectId}
                 onChange={(e) => setTargetProjectId(e.target.value)}
@@ -381,7 +382,7 @@ export function RealIntegrationsHub({
                     </option>
                   ))
                 )}
-              </select>
+              </Select>
               <button
                 type="button"
                 onClick={handleImportSelectedItems}
@@ -476,7 +477,7 @@ export function RealIntegrationsHub({
               Upcoming &amp; Recent Meetings ({calendarEvents.length})
             </h3>
             <div className="flex items-center gap-2">
-              <select
+              <Select
                 aria-label="Privacy Level"
                 value={calendarSyncScope}
                 onChange={(e) =>
@@ -486,7 +487,7 @@ export function RealIntegrationsHub({
               >
                 <option value="title_and_duration">Log Title &amp; Duration</option>
                 <option value="metadata_only">Log Time &amp; Duration Only</option>
-              </select>
+              </Select>
               <button
                 type="button"
                 onClick={() => setCalendarEvents([])}
