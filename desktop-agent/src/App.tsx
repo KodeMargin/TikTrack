@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Update } from '@tauri-apps/plugin-updater'
+import { Select } from './Select'
 
 interface AgentAuthPublicDto {
   server_url: string
@@ -820,9 +821,8 @@ export default function App() {
               </div>
             ) : (
               <>
-                <select
+                <Select
                   aria-label="Assigned Task"
-                  className="tt-select"
                   value={status.task_id}
                   disabled={status.lifecycle === 'running'}
                   onChange={(e) => void handleSelectTask(e.target.value)}
@@ -833,7 +833,7 @@ export default function App() {
                       [{t.projectCode}] {t.code}: {t.title} ({t.status})
                     </option>
                   ))}
-                </select>
+                </Select>
                 {selectedTask && (
                   <div className="tt-task-meta">
                     <span>Project: {selectedTask.projectName}</span>
@@ -874,9 +874,9 @@ export default function App() {
             <label className="tt-label" htmlFor="tt-work-mode">
               Declared Work Mode
             </label>
-            <select
+            <Select
               id="tt-work-mode"
-              className="tt-select"
+              aria-label="Declared Work Mode"
               value={workMode}
               onChange={(e) => setWorkMode(e.target.value)}
             >
@@ -887,7 +887,7 @@ export default function App() {
               <option value="testing">Testing</option>
               <option value="review">Code Review</option>
               <option value="meeting">Meeting / Pair Programming</option>
-            </select>
+            </Select>
 
             <div className="tt-btn-grid">
               <button
@@ -1011,8 +1011,8 @@ export default function App() {
                   You had a {Math.round(status.unobserved_idle_seconds / 60)}m unobserved gap (never
                   labeled fraud). How should this interval be categorized?
                 </p>
-                <select
-                  className="tt-select"
+                <Select
+                  aria-label="Idle Reconciliation Category"
                   value={idleChoice}
                   onChange={(e) => setIdleChoice(e.target.value)}
                 >
@@ -1022,7 +1022,7 @@ export default function App() {
                   <option value="break">Personal Break</option>
                   <option value="away">Away from Desk (Exclude from Claim)</option>
                   <option value="other">Other Engineering Context</option>
-                </select>
+                </Select>
                 <input
                   type="text"
                   className="tt-input"

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Toaster } from 'sonner'
 import { notifyError, notifySuccess } from '@/lib/notify'
 import { Phase1StoreProvider, usePhase1Store } from '@/context/Phase1Store'
@@ -7,22 +7,90 @@ import { Phase3StoreProvider } from '@/context/Phase3Store'
 import { Phase4StoreProvider } from '@/context/Phase4Store'
 import { ThemeProvider, useTheme } from '@/context/ThemeContext'
 import type { UserRole } from '@/types/domain.types'
-import { AuthAndOnboardingView } from '@/features/auth-tenancy/AuthAndOnboardingView'
 import { AuthLoginScreen } from '@/features/auth-tenancy/AuthLoginScreen'
-import { WorkspaceOnboardingScreen } from '@/features/auth-tenancy/WorkspaceOnboardingScreen'
 import { isSupabaseAuthConfigured } from '@/lib/supabaseClient'
-import { ProjectsTasksView } from '@/features/projects-tasks/ProjectsTasksView'
-import { WorkSessionTimerView } from '@/features/sessions-timer/WorkSessionTimerView'
-import { TimesheetsAndReviewView } from '@/features/timesheets-review/TimesheetsAndReviewView'
-import { DeveloperPaymentsView } from '@/features/payments/DeveloperPaymentsView'
-import { BillingAndAdminView } from '@/features/billing-contracts/BillingAndAdminView'
-import { UnifiedTimelineView } from '@/features/timeline-evidence/UnifiedTimelineView'
-import { PrivacyAuditView } from '@/features/timeline-evidence/PrivacyAuditView'
-import { IntegrationsAndDevicesView } from '@/features/integrations/IntegrationsAndDevicesView'
-import { VerificationAndAiView } from '@/features/verification-ai/VerificationAndAiView'
-import { DisputesAndAppealsView } from '@/features/disputes/DisputesAndAppealsView'
-import { PricingPlansView } from '@/features/saas-ecosystem/PricingPlansView'
-import { ReportsAndAnalyticsView } from '@/features/reports-analytics/ReportsAndAnalyticsView'
+
+const WorkspaceOnboardingScreen = lazy(() =>
+  import('@/features/auth-tenancy/WorkspaceOnboardingScreen').then((m) => ({
+    default: m.WorkspaceOnboardingScreen,
+  }))
+)
+const AuthAndOnboardingView = lazy(() =>
+  import('@/features/auth-tenancy/AuthAndOnboardingView').then((m) => ({
+    default: m.AuthAndOnboardingView,
+  }))
+)
+const ProjectsTasksView = lazy(() =>
+  import('@/features/projects-tasks/ProjectsTasksView').then((m) => ({
+    default: m.ProjectsTasksView,
+  }))
+)
+const WorkSessionTimerView = lazy(() =>
+  import('@/features/sessions-timer/WorkSessionTimerView').then((m) => ({
+    default: m.WorkSessionTimerView,
+  }))
+)
+const TimesheetsAndReviewView = lazy(() =>
+  import('@/features/timesheets-review/TimesheetsAndReviewView').then((m) => ({
+    default: m.TimesheetsAndReviewView,
+  }))
+)
+const DeveloperPaymentsView = lazy(() =>
+  import('@/features/payments/DeveloperPaymentsView').then((m) => ({
+    default: m.DeveloperPaymentsView,
+  }))
+)
+const BillingAndAdminView = lazy(() =>
+  import('@/features/billing-contracts/BillingAndAdminView').then((m) => ({
+    default: m.BillingAndAdminView,
+  }))
+)
+const UnifiedTimelineView = lazy(() =>
+  import('@/features/timeline-evidence/UnifiedTimelineView').then((m) => ({
+    default: m.UnifiedTimelineView,
+  }))
+)
+const PrivacyAuditView = lazy(() =>
+  import('@/features/timeline-evidence/PrivacyAuditView').then((m) => ({
+    default: m.PrivacyAuditView,
+  }))
+)
+const IntegrationsAndDevicesView = lazy(() =>
+  import('@/features/integrations/IntegrationsAndDevicesView').then((m) => ({
+    default: m.IntegrationsAndDevicesView,
+  }))
+)
+const VerificationAndAiView = lazy(() =>
+  import('@/features/verification-ai/VerificationAndAiView').then((m) => ({
+    default: m.VerificationAndAiView,
+  }))
+)
+const DisputesAndAppealsView = lazy(() =>
+  import('@/features/disputes/DisputesAndAppealsView').then((m) => ({
+    default: m.DisputesAndAppealsView,
+  }))
+)
+const PricingPlansView = lazy(() =>
+  import('@/features/saas-ecosystem/PricingPlansView').then((m) => ({
+    default: m.PricingPlansView,
+  }))
+)
+const ReportsAndAnalyticsView = lazy(() =>
+  import('@/features/reports-analytics/ReportsAndAnalyticsView').then((m) => ({
+    default: m.ReportsAndAnalyticsView,
+  }))
+)
+
+function ViewLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="inline-flex items-center gap-2.5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#131319] px-4 py-2.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 shadow-sm">
+        <span className="h-2 w-2 rounded-full bg-[#6d25da] animate-pulse" />
+        <span>Loading view...</span>
+      </div>
+    </div>
+  )
+}
 
 type NavSection =
   | 'timesheets-review'
@@ -606,24 +674,28 @@ function DevProofShell() {
 
   if (!hasWorkspace || onboardingActive) {
     return (
-      <WorkspaceOnboardingScreen
-        onComplete={() => setOnboardingActive(false)}
-      />
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <WorkspaceOnboardingScreen
+          onComplete={() => setOnboardingActive(false)}
+        />
+      </Suspense>
     )
   }
 
   if (creatingAdditionalWorkspace) {
     return (
-      <WorkspaceOnboardingScreen
-        allowCancel
-        onCancel={() => setCreatingAdditionalWorkspace(false)}
-        onComplete={() => {
-          setCreatingAdditionalWorkspace(false)
-          if (isSuperAdminAccount) {
-            setSuperAdminViewMode('workspace')
-          }
-        }}
-      />
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <WorkspaceOnboardingScreen
+          allowCancel
+          onCancel={() => setCreatingAdditionalWorkspace(false)}
+          onComplete={() => {
+            setCreatingAdditionalWorkspace(false)
+            if (isSuperAdminAccount) {
+              setSuperAdminViewMode('workspace')
+            }
+          }}
+        />
+      </Suspense>
     )
   }
 
@@ -1293,27 +1365,29 @@ function DevProofShell() {
             </div>
           ) : (
             <div key={activeSection} className="dp-view-enter">
-              {activeSection === 'timesheets-review' && <TimesheetsAndReviewView />}
-              {activeSection === 'reports-analytics' && <ReportsAndAnalyticsView />}
-              {activeSection === 'developer-payments' && <DeveloperPaymentsView />}
-              {activeSection === 'timer-sessions' && <WorkSessionTimerView />}
-              {activeSection === 'projects-tasks' && (
-                <ProjectsTasksView
-                  onLaunchTimerForTask={(projectId, taskId, mode) => {
-                    setTimerTaskAndMode(projectId, taskId, mode)
-                    transitionTimer('running')
-                    navigateToSection('timer-sessions')
-                  }}
-                />
-              )}
-              {activeSection === 'timeline-evidence' && <UnifiedTimelineView />}
-              {activeSection === 'verification-ai' && <VerificationAndAiView />}
-              {activeSection === 'disputes-appeals' && <DisputesAndAppealsView />}
-              {activeSection === 'integrations-devices' && <IntegrationsAndDevicesView />}
-              {activeSection === 'privacy-audit' && <PrivacyAuditView />}
-              {activeSection === 'billing-admin' && <BillingAndAdminView />}
-              {activeSection === 'pricing-plans' && <PricingPlansView />}
-              {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
+              <Suspense fallback={<ViewLoadingFallback />}>
+                {activeSection === 'timesheets-review' && <TimesheetsAndReviewView />}
+                {activeSection === 'reports-analytics' && <ReportsAndAnalyticsView />}
+                {activeSection === 'developer-payments' && <DeveloperPaymentsView />}
+                {activeSection === 'timer-sessions' && <WorkSessionTimerView />}
+                {activeSection === 'projects-tasks' && (
+                  <ProjectsTasksView
+                    onLaunchTimerForTask={(projectId, taskId, mode) => {
+                      setTimerTaskAndMode(projectId, taskId, mode)
+                      transitionTimer('running')
+                      navigateToSection('timer-sessions')
+                    }}
+                  />
+                )}
+                {activeSection === 'timeline-evidence' && <UnifiedTimelineView />}
+                {activeSection === 'verification-ai' && <VerificationAndAiView />}
+                {activeSection === 'disputes-appeals' && <DisputesAndAppealsView />}
+                {activeSection === 'integrations-devices' && <IntegrationsAndDevicesView />}
+                {activeSection === 'privacy-audit' && <PrivacyAuditView />}
+                {activeSection === 'billing-admin' && <BillingAndAdminView />}
+                {activeSection === 'pricing-plans' && <PricingPlansView />}
+                {activeSection === 'auth-privacy' && <AuthAndOnboardingView />}
+              </Suspense>
             </div>
           )}
         </main>
