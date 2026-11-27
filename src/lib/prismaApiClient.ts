@@ -5,6 +5,7 @@
  * React frontend persists Phase 1 data through Prisma ORM without exposing DATABASE_URL.
  */
 
+import { supabase } from '@/lib/supabaseClient'
 import type {
   AiGenerationRecord,
   ApiKeyRecord,
@@ -129,11 +130,30 @@ export interface PrismaBootstrapPayload {
   rbac?: PrismaRbacBootstrapPayload
 }
 
+async function getAuthHeaders(
+  extra?: Record<string, string>
+): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...extra }
+  if (supabase) {
+    try {
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+    } catch {
+      // Ignore client session read errors; server enforces auth when configured
+    }
+  }
+  return headers
+}
+
 async function postJson<T>(url: string, body: unknown, method = 'POST'): Promise<T | null> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     })
     return (await res.json()) as T
@@ -144,7 +164,8 @@ async function postJson<T>(url: string, body: unknown, method = 'POST'): Promise
 
 export async function fetchPrismaBootstrap(): Promise<PrismaBootstrapPayload | null> {
   try {
-    const res = await fetch('/api/prisma/bootstrap')
+    const headers = await getAuthHeaders()
+    const res = await fetch('/api/prisma/bootstrap', { headers })
     if (!res.ok) return null
     return (await res.json()) as PrismaBootstrapPayload
   } catch {
@@ -160,7 +181,14 @@ export const createTenantViaPrisma = (input: {
   ownerName: string
   ownerEmail: string
   skipOwnerInvite?: boolean
-}) => postJson<{ ok: boolean; tenantId?: string; ownerId?: string; slug?: string }>('/api/prisma/tenants', input)
+}) =>
+  postJson<{
+    ok: boolean
+    tenantId?: string
+    ownerId?: string
+    slug?: string
+    error?: string
+  }>('/api/prisma/tenants', input)
 
 export const updateTenantSettingsViaPrisma = (input: {
   tenantId: string
@@ -533,7 +561,8 @@ export async function fetchGeminiStatusViaApi(): Promise<{
   model: string
 }> {
   try {
-    const res = await fetch('/api/prisma/phase3/ai-status')
+    const headers = await getAuthHeaders()
+    const res = await fetch('/api/prisma/phase3/ai-status', { headers })
     if (!res.ok) return { configured: false, model: 'gemini-2.5-flash' }
     return (await res.json()) as { configured: boolean; model: string }
   } catch {
@@ -835,9 +864,10 @@ export async function connectRealIntegrationViaPrisma(input: {
   connectedBy?: string
 }): Promise<{ ok: boolean; connector?: EcosystemConnectorRecord; message?: string; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/integrations/connect', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as {
@@ -856,9 +886,10 @@ export async function disconnectRealIntegrationViaPrisma(input: {
   provider: string
 }): Promise<{ ok: boolean; message?: string; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/integrations/disconnect', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as { ok: boolean; message?: string; error?: string }
@@ -872,9 +903,10 @@ export async function fetchRealIntegrationItemsViaPrisma(input: {
   provider: string
 }): Promise<{ ok: boolean; items: RealExternalTaskItem[]; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/integrations/items', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as { ok: boolean; items: RealExternalTaskItem[]; error?: string }
@@ -889,9 +921,10 @@ export async function sendChatTestAlertViaPrisma(input: {
   message?: string
 }): Promise<{ ok: boolean; httpStatus?: number; message?: string; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/integrations/chat-test', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as {
@@ -923,9 +956,10 @@ export async function dispatchRealOutboundWebhookViaPrisma(input: {
   error?: string
 }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/integrations/webhook-dispatch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as {
@@ -948,7 +982,8 @@ export async function fetchCalendarOAuthStatusViaPrisma(): Promise<{
   microsoftConfigured: boolean
 }> {
   try {
-    const res = await fetch('/api/prisma/integrations/oauth-status')
+    const headers = await getAuthHeaders()
+    const res = await fetch('/api/prisma/integrations/oauth-status', { headers })
     if (!res.ok) return { googleConfigured: false, microsoftConfigured: false }
     return (await res.json()) as { googleConfigured: boolean; microsoftConfigured: boolean }
   } catch {
@@ -961,9 +996,10 @@ export async function fetchRealCalendarEventsViaPrisma(input: {
   provider: 'google_calendar' | 'outlook_calendar'
 }): Promise<{ ok: boolean; events: RealCalendarEventItem[]; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/integrations/calendar-events', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as { ok: boolean; events: RealCalendarEventItem[]; error?: string }
@@ -1058,9 +1094,10 @@ export async function fetchPlatformReportsViaPrisma(input: {
   actorRole: string
 }): Promise<{ ok: boolean; generatedAtUtc?: string; tenants: PlatformTenantReportRowClient[]; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/reports/platform', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as {
@@ -1080,9 +1117,10 @@ export async function listSavedReportsViaPrisma(input: {
   actorTenantId?: string
 }): Promise<{ ok: boolean; reports: SavedReportClientItem[]; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/reports/saved/list', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as { ok: boolean; reports: SavedReportClientItem[]; error?: string }
@@ -1104,9 +1142,10 @@ export async function createSavedReportViaPrisma(input: {
   isPinned?: boolean
 }): Promise<{ ok: boolean; report?: SavedReportClientItem; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/reports/saved/create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as { ok: boolean; report?: SavedReportClientItem; error?: string }
@@ -1122,9 +1161,10 @@ export async function deleteSavedReportViaPrisma(input: {
   actorTenantId?: string
 }): Promise<{ ok: boolean; error?: string }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/reports/saved', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as { ok: boolean; error?: string }
@@ -1148,9 +1188,10 @@ export async function generateReportAiBriefViaPrisma(input: {
   error?: string
 }> {
   try {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
     const res = await fetch('/api/prisma/reports/ai-brief', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(input),
     })
     return (await res.json()) as {

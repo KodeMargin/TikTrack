@@ -96,6 +96,11 @@ import {
   handleGenerateReportAiBriefPrisma,
   handleListSavedReportsPrisma,
 } from './prismaReportsHandlers.ts'
+import {
+  canActorAccessTenant,
+  resolveServerActor,
+  type VerifiedServerActor,
+} from './serverAuthGuard.ts'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
@@ -156,6 +161,51 @@ export async function handlePrismaApiRequest(
   }
 
   try {
+            // Public endpoints (pre-auth, desktop agent auth, OAuth callbacks, API-key v1, inbound webhooks)
+            const isPublicEndpoint =
+              url.startsWith('/api/prisma/desktop/') ||
+              url.startsWith('/api/prisma/status') ||
+              url.startsWith('/api/prisma/auth/') ||
+              url.startsWith('/api/prisma/oauth/') ||
+              url.startsWith('/api/prisma/v1/') ||
+              url.startsWith('/api/prisma/phase2/webhook')
+
+            let actor: VerifiedServerActor | null = null
+            if (!isPublicEndpoint) {
+              actor = await resolveServerActor(req)
+
+              // Bootstrap returns empty data + connection status when unauthenticated,
+              // and tenant-scoped data when authenticated (never leaks cross-tenant PII).
+              if (req.method === 'GET' && url.startsWith('/api/prisma/bootstrap')) {
+                return sendJson(res, 200, await handleBootstrap(actor))
+              }
+
+              if (actor.authEnforced && !actor.authenticated) {
+                return sendJson(res, 401, {
+                  ok: false,
+                  error: 'Authentication required. Please sign in to access this endpoint.',
+                })
+              }
+
+              // Global cross-tenant isolation gate for all JSON mutations & queries with tenantId
+              if (req.method && req.method !== 'GET') {
+                const parsedBody = await readJsonBody<Record<string, unknown>>(req)
+                ;(req as IncomingMessage & { body?: unknown }).body = parsedBody
+                const targetTenantId =
+                  typeof parsedBody?.tenantId === 'string' ? parsedBody.tenantId : null
+                if (
+                  targetTenantId &&
+                  isValidUuid(targetTenantId) &&
+                  !canActorAccessTenant(actor, targetTenantId)
+                ) {
+                  return sendJson(res, 403, {
+                    ok: false,
+                    error: 'Forbidden: Cross-tenant access denied for this workspace.',
+                  })
+                }
+              }
+            }
+
             if (req.method === 'POST' && url.startsWith('/api/prisma/desktop/auth')) {
               const body = await readJsonBody<Parameters<typeof handleDesktopAuth>[0]>(req)
               const result = await handleDesktopAuth(body)
@@ -186,10 +236,6 @@ export async function handlePrismaApiRequest(
               return sendJson(res, 200, await checkPrismaConnection())
             }
 
-            if (req.method === 'GET' && url.startsWith('/api/prisma/bootstrap')) {
-              return sendJson(res, 200, await handleBootstrap())
-            }
-
             if (req.method === 'POST' && url.startsWith('/api/prisma/tenants')) {
               const body = await readJsonBody<{
                 name: string
@@ -200,7 +246,20 @@ export async function handlePrismaApiRequest(
                 ownerEmail: string
                 skipOwnerInvite?: boolean
               }>(req)
+              if (
+                actor?.authEnforced &&
+                !actor.isSuperAdmin &&
+                body.ownerEmail?.toLowerCase().trim() !== actor.email
+              ) {
+                return sendJson(res, 403, {
+                  ok: false,
+                  error: 'Forbidden: You can only provision a workspace for your own account email.',
+                })
+              }
               const tenantResult = await handleCreateTenant(body)
+              if (!tenantResult.ok) {
+                return sendJson(res, tenantResult.statusCode ?? 409, tenantResult)
+              }
               // Dispatch welcome/invite email to the owner via Supabase + Resend unless self-service owner is already signed in
               if (!body.skipOwnerInvite) {
                 void sendWorkspaceInviteEmail({
@@ -1665,6 +1724,9 @@ export async function handlePrismaApiRequest(
 
             // --- Granular RBAC (Permissions Seed, Roles, Member Grants & Tenant Owner Policy) ---
             if (req.method === 'POST' && url.startsWith('/api/prisma/rbac/seed')) {
+              if (actor?.authEnforced && !actor.isSuperAdmin) {
+                return sendJson(res, 403, { ok: false, error: 'Forbidden: Super Admin privileges required.' })
+              }
               const result = await seedPermissionsAndRoles({ force: true })
               return sendJson(res, 200, { ok: true, ...result })
             }
@@ -1690,39 +1752,65 @@ export async function handlePrismaApiRequest(
             }
 
             if (req.method === 'PUT' && url.startsWith('/api/prisma/rbac/tenant-owner-permissions')) {
+              if (actor?.authEnforced && !actor.isSuperAdmin) {
+                return sendJson(res, 403, { ok: false, error: 'Forbidden: Super Admin privileges required.' })
+              }
               const body = await readJsonBody<Parameters<typeof handleUpdateTenantOwnerPermissionsPrisma>[0]>(req)
               return sendJson(res, 200, await handleUpdateTenantOwnerPermissionsPrisma(body))
             }
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/rbac/permissions')) {
+              if (actor?.authEnforced && !actor.isSuperAdmin) {
+                return sendJson(res, 403, { ok: false, error: 'Forbidden: Super Admin privileges required.' })
+              }
               const body = await readJsonBody<Parameters<typeof handleRegisterPermissionPrisma>[0]>(req)
               return sendJson(res, 201, await handleRegisterPermissionPrisma(body))
             }
 
             // --- Reporting & Analytics Endpoints ---
             if (req.method === 'POST' && url.startsWith('/api/prisma/reports/platform')) {
-              const body = await readJsonBody<{ actorRole?: string }>(req)
+              const verifiedRole =
+                !actor || !actor.authEnforced || actor.isSuperAdmin ? 'super_admin' : 'member'
               const result = await handleFetchPlatformReportsPrisma({
-                actorRole: body.actorRole || '',
+                actorRole: verifiedRole,
               })
               return sendJson(res, result.statusCode, result.payload)
             }
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/reports/saved/list')) {
               const body = await readJsonBody<Parameters<typeof handleListSavedReportsPrisma>[0]>(req)
-              const result = await handleListSavedReportsPrisma(body)
+              const verifiedRole =
+                !actor || !actor.authEnforced || actor.isSuperAdmin ? 'super_admin' : 'member'
+              const result = await handleListSavedReportsPrisma({
+                tenantId: body.tenantId,
+                actorRole: verifiedRole,
+                actorTenantId: body.tenantId,
+              })
               return sendJson(res, result.statusCode, result.payload)
             }
 
             if (req.method === 'POST' && url.startsWith('/api/prisma/reports/saved/create')) {
               const body = await readJsonBody<Parameters<typeof handleCreateSavedReportPrisma>[0]>(req)
-              const result = await handleCreateSavedReportPrisma(body)
+              const verifiedRole =
+                !actor || !actor.authEnforced || actor.isSuperAdmin ? 'super_admin' : 'member'
+              const result = await handleCreateSavedReportPrisma({
+                ...body,
+                actorRole: verifiedRole,
+                actorTenantId: body.tenantId,
+                createdBy: actor?.userId || body.createdBy,
+              })
               return sendJson(res, result.statusCode, result.payload)
             }
 
             if (req.method === 'DELETE' && url.startsWith('/api/prisma/reports/saved')) {
               const body = await readJsonBody<Parameters<typeof handleDeleteSavedReportPrisma>[0]>(req)
-              const result = await handleDeleteSavedReportPrisma(body)
+              const verifiedRole =
+                !actor || !actor.authEnforced || actor.isSuperAdmin ? 'super_admin' : 'member'
+              const result = await handleDeleteSavedReportPrisma({
+                ...body,
+                actorRole: verifiedRole,
+                actorTenantId: body.tenantId,
+              })
               return sendJson(res, result.statusCode, result.payload)
             }
 
@@ -1736,6 +1824,12 @@ export async function handlePrismaApiRequest(
             return true
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
+            if (message.startsWith('SLUG_CONFLICT:')) {
+              return sendJson(res, 409, {
+                ok: false,
+                error: message.slice('SLUG_CONFLICT:'.length),
+              })
+            }
             sendJson(res, 500, { ok: false, error: message })
             return true
           }

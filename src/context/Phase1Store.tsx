@@ -1029,6 +1029,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    if (authChecking) return
     let active = true
     void fetchPrismaBootstrap().then((payload) => {
       if (!active) return
@@ -1041,7 +1042,7 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false
     }
-  }, [])
+  }, [authChecking, sessionUserEmail])
 
   // Live 1-second monotonic ticker + crash-recovery checkpoint (F1-022, F1-024)
   useEffect(() => {
@@ -1382,36 +1383,6 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     return { cleanSlug, newTenantId, newOwnerId, newTenant, newOwner }
   }
 
-  function syncProvisionedIds(
-    tempTenantId: string,
-    tempOwnerId: string,
-    realTenantId: string,
-    realOwnerId: string,
-    realSlug?: string,
-    activateWorkspace = true
-  ) {
-    setTenants((prev) =>
-      prev.map((t) =>
-        t.id === tempTenantId
-          ? { ...t, id: realTenantId, slug: realSlug || t.slug }
-          : t
-      )
-    )
-    setMembers((prev) =>
-      prev.map((m) =>
-        m.id === tempOwnerId && m.tenantId === tempTenantId
-          ? { ...m, id: realOwnerId, tenantId: realTenantId }
-          : m.tenantId === tempTenantId
-            ? { ...m, tenantId: realTenantId }
-            : m
-      )
-    )
-    if (activateWorkspace) {
-      setActiveTenantIdState(realTenantId)
-      setActiveUserId(realOwnerId)
-    }
-  }
-
   async function createTenantWorkspace(input: {
     name: string
     slug: string
@@ -1421,45 +1392,66 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
     ownerEmail: string
     skipOwnerInvite?: boolean
   }): Promise<{ ok: boolean; message: string }> {
-    const cleanSlugCheck = input.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-')
+    const cleanSlugCheck = input.slug
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-|-$/g, '')
+    if (!cleanSlugCheck) {
+      return { ok: false, message: 'Please enter a valid workspace slug.' }
+    }
     if (tenants.some((t) => t.slug === cleanSlugCheck)) {
-      return { ok: false, message: `Workspace slug "${cleanSlugCheck}" already exists.` }
+      return {
+        ok: false,
+        message: `Workspace slug "${cleanSlugCheck}" already exists. Please choose a different workspace URL slug.`,
+      }
     }
 
-    const { newTenantId, newOwnerId, newTenant, newOwner } = buildLocalTenantAndOwner(input)
+    const { newTenantId, newOwnerId, newTenant, newOwner } = buildLocalTenantAndOwner({
+      ...input,
+      slug: cleanSlugCheck,
+    })
     const isOwnWorkspace =
       !sessionUserEmail ||
       input.ownerEmail.toLowerCase().trim() === sessionUserEmail.toLowerCase().trim()
 
-    setTenants((prev) => [...prev, newTenant])
-    setMembers((prev) => [...prev, newOwner])
-    if (isOwnWorkspace) {
-      setActiveTenantIdState(newTenantId)
-      setActiveUserId(newOwnerId)
-    }
-
     if (prismaStatus.connected) {
       try {
-        const res = await createTenantViaPrisma(input)
-        if (res?.ok && res.tenantId && res.ownerId) {
-          syncProvisionedIds(
-            newTenantId,
-            newOwnerId,
-            res.tenantId,
-            res.ownerId,
-            res.slug,
-            isOwnWorkspace
-          )
-          void refreshPrismaConnection()
-        } else {
+        const res = await createTenantViaPrisma({ ...input, slug: cleanSlugCheck })
+        if (!res?.ok || !res.tenantId || !res.ownerId) {
           return {
             ok: false,
-            message: 'Workspace could not be persisted to database. Please try again.',
+            message:
+              res?.error ||
+              'Workspace could not be persisted to database. Please try again.',
           }
         }
+        const realTenant: TenantWorkspace = {
+          ...newTenant,
+          id: res.tenantId,
+          slug: res.slug || cleanSlugCheck,
+        }
+        const realOwner: WorkspaceMember = {
+          ...newOwner,
+          id: res.ownerId,
+          tenantId: res.tenantId,
+        }
+        setTenants((prev) => [...prev, realTenant])
+        setMembers((prev) => [...prev, realOwner])
+        if (isOwnWorkspace) {
+          setActiveTenantIdState(res.tenantId)
+          setActiveUserId(res.ownerId)
+        }
+        void refreshPrismaConnection()
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to create workspace'
         return { ok: false, message: msg }
+      }
+    } else {
+      setTenants((prev) => [...prev, newTenant])
+      setMembers((prev) => [...prev, newOwner])
+      if (isOwnWorkspace) {
+        setActiveTenantIdState(newTenantId)
+        setActiveUserId(newOwnerId)
       }
     }
 
@@ -1484,36 +1476,54 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
         .toLowerCase()
         .replace(/[^a-z0-9-]+/g, '-')
         .replace(/^-|-$/g, '') || `workspace-${Date.now()}`
-    const uniqueSlug = tenants.some((t) => t.slug === baseSlug)
-      ? `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
-      : baseSlug
+
+    if (tenants.some((t) => t.slug === baseSlug)) {
+      return {
+        ok: false,
+        message: `Workspace slug "${baseSlug}" already exists. Please choose a different workspace URL slug.`,
+      }
+    }
 
     const { newTenantId, newOwnerId, newTenant, newOwner } = buildLocalTenantAndOwner({
       ...input,
-      slug: uniqueSlug,
+      slug: baseSlug,
     })
-
-    setTenants((prev) => [...prev, newTenant])
-    setMembers((prev) => [...prev, newOwner])
-    setActiveTenantIdState(newTenantId)
-    setActiveUserId(newOwnerId)
 
     if (prismaStatus.connected) {
       try {
         const res = await createTenantViaPrisma({
           ...input,
-          slug: uniqueSlug,
+          slug: baseSlug,
           skipOwnerInvite: true,
         })
-        if (res?.ok && res.tenantId && res.ownerId) {
-          syncProvisionedIds(newTenantId, newOwnerId, res.tenantId, res.ownerId, res.slug)
-          void refreshPrismaConnection()
+        if (!res?.ok || !res.tenantId || !res.ownerId) {
           return {
-            ok: true,
-            message: `Workspace "${input.name}" is ready!`,
-            tenantId: res.tenantId,
-            slug: res.slug || uniqueSlug,
+            ok: false,
+            message:
+              res?.error ||
+              'Workspace could not be persisted to database. Please try again.',
           }
+        }
+        const realTenant: TenantWorkspace = {
+          ...newTenant,
+          id: res.tenantId,
+          slug: res.slug || baseSlug,
+        }
+        const realOwner: WorkspaceMember = {
+          ...newOwner,
+          id: res.ownerId,
+          tenantId: res.tenantId,
+        }
+        setTenants((prev) => [...prev, realTenant])
+        setMembers((prev) => [...prev, realOwner])
+        setActiveTenantIdState(res.tenantId)
+        setActiveUserId(res.ownerId)
+        void refreshPrismaConnection()
+        return {
+          ok: true,
+          message: `Workspace "${input.name}" is ready!`,
+          tenantId: res.tenantId,
+          slug: res.slug || baseSlug,
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to persist workspace'
@@ -1521,11 +1531,16 @@ export function Phase1StoreProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    setTenants((prev) => [...prev, newTenant])
+    setMembers((prev) => [...prev, newOwner])
+    setActiveTenantIdState(newTenantId)
+    setActiveUserId(newOwnerId)
+
     return {
       ok: true,
       message: `Workspace "${input.name}" is ready!`,
       tenantId: newTenantId,
-      slug: uniqueSlug,
+      slug: baseSlug,
     }
   }
 

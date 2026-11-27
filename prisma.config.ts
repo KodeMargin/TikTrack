@@ -1,6 +1,6 @@
 import path from 'node:path'
 import dotenv from 'dotenv'
-import { defineConfig } from 'prisma/config'
+import { definePrismaConfig } from 'prisma/config'
 
 // Load .env.local first (Vite convention), then fallback to .env
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
@@ -16,7 +16,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') })
  * - DATABASE_URL (port 6543, transaction pooler with ?pgbouncer=true) is used at runtime
  *   by PrismaClient.
  */
-export default defineConfig({
+export default definePrismaConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',

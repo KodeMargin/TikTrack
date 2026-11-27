@@ -12,6 +12,7 @@ import { handleBootstrapPhase2Data } from './prismaPhase2Handlers.ts'
 import { handleBootstrapPhase3Data } from './prismaPhase3Handlers.ts'
 import { handleBootstrapPhase4Data } from './prismaPhase4Handlers.ts'
 import { handleBootstrapRbacData } from './prismaRbacHandlers.ts'
+import type { VerifiedServerActor } from './serverAuthGuard.ts'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -69,9 +70,9 @@ async function ensureJiraWorkspaceSchema(): Promise<void> {
   }
 }
 
-export async function handleBootstrap() {
+export async function handleBootstrap(actor?: VerifiedServerActor) {
   const status = await checkPrismaConnection()
-  if (!status.connected) {
+  if (!status.connected || (actor?.authEnforced && !actor.authenticated)) {
     return {
       status,
       tenants: [],
@@ -207,9 +208,77 @@ export async function handleBootstrap() {
     ])
   )
 
+  const scopeToTenantIds =
+    actor?.authEnforced && !actor.isSuperAdmin ? actor.tenantIds : null
+  const allowTenant = (tid: string | null | undefined) =>
+    !scopeToTenantIds || (Boolean(tid) && scopeToTenantIds.has(tid as string))
+
+  const scopedTenants = dbTenants.filter((t) => allowTenant(t.id))
+  const scopedMemberships = dbMemberships.filter((m) => allowTenant(m.tenantId))
+  const scopedProjects = dbProjects.filter((p) => allowTenant(p.tenantId))
+  const scopedSprints = dbSprints.filter((s) => allowTenant(s.tenantId))
+  const scopedTasks = dbTasks.filter((t) => allowTenant(t.tenantId))
+  const scopedTimesheetLines = dbTimesheetLines.filter((l) => allowTenant(l.tenantId))
+  const scopedContracts = dbContracts.filter((c) => allowTenant(c.tenantId))
+  const scopedInvoices = dbInvoices.filter((inv) => allowTenant(inv.tenantId))
+  const scopedNotifications = dbNotifications.filter((n) => allowTenant(n.tenantId))
+  const scopedAudits = dbAudits.filter((a) => allowTenant(a.tenantId))
+
+  const scopedPhase2 = scopeToTenantIds
+    ? {
+        activityRollups: phase2.activityRollups.filter((r) => allowTenant(r.tenantId)),
+        evidenceArtifacts: phase2.evidenceArtifacts.filter((r) => allowTenant(r.tenantId)),
+        sessionAnnotations: phase2.sessionAnnotations.filter((r) => allowTenant(r.tenantId)),
+        ideMappings: phase2.ideMappings.filter((r) => allowTenant(r.tenantId)),
+        integrations: phase2.integrations.filter((r) => allowTenant(r.tenantId)),
+        webhookReceipts: phase2.webhookReceipts.filter((r) => allowTenant(r.tenantId)),
+        devices: phase2.devices.filter((r) => allowTenant(r.tenantId)),
+        privacyExclusions: phase2.privacyExclusions.filter((r) => allowTenant(r.tenantId)),
+        privacyAuditBatches: phase2.privacyAuditBatches.filter((r) => allowTenant(r.tenantId)),
+      }
+    : phase2
+
+  const scopedPhase3 = scopeToTenantIds
+    ? {
+        ruleSets: phase3.ruleSets.filter((r) => allowTenant(r.tenantId)),
+        correlationEdges: phase3.correlationEdges.filter((r) => allowTenant(r.tenantId)),
+        aiGenerations: phase3.aiGenerations.filter((r) => allowTenant(r.tenantId)),
+        disputes: phase3.disputes.filter((r) => allowTenant(r.tenantId)),
+      }
+    : phase3
+
+  const scopedPhase4 = scopeToTenantIds
+    ? {
+        subscriptions: phase4.subscriptions.filter((r) => allowTenant(r.tenantId)),
+        saasInvoices: phase4.saasInvoices.filter((r) => allowTenant(r.tenantId)),
+        usageRecords: phase4.usageRecords.filter((r) => allowTenant(r.tenantId)),
+        apiKeys: phase4.apiKeys.filter((r) => allowTenant(r.tenantId)),
+        webhookEndpoints: phase4.webhookEndpoints.filter((r) => allowTenant(r.tenantId)),
+        webhookDeliveries: phase4.webhookDeliveries.filter((r) => allowTenant(r.tenantId)),
+        connectors: phase4.connectors.filter((r) => allowTenant(r.tenantId)),
+        calendarMeetings: phase4.calendarMeetings.filter((r) => allowTenant(r.tenantId)),
+        portableReports: phase4.portableReports.filter((r) => allowTenant(r.tenantId)),
+      }
+    : phase4
+
+  const scopedRbac = scopeToTenantIds
+    ? {
+        ...rbac,
+        roles: rbac.roles.filter((r) => r.isSystemRole || allowTenant(r.tenantId)),
+        tenantOwnerPermissions: Object.fromEntries(
+          Object.entries(rbac.tenantOwnerPermissions).filter(([tid]) => allowTenant(tid))
+        ),
+        memberGrantsByMembershipId: Object.fromEntries(
+          scopedMemberships
+            .filter((m) => Boolean(rbac.memberGrantsByMembershipId[m.id]))
+            .map((m) => [m.id, rbac.memberGrantsByMembershipId[m.id]])
+        ),
+      }
+    : rbac
+
   return {
     status,
-    tenants: dbTenants.map((t) => ({
+    tenants: scopedTenants.map((t) => ({
       id: t.id,
       name: t.name,
       slug: t.slug,
@@ -233,7 +302,7 @@ export async function handleBootstrap() {
         effectiveFrom: pv.effectiveFrom.toISOString(),
       })),
     })),
-    members: dbMemberships.map((m) => {
+    members: scopedMemberships.map((m) => {
       const isSuper = superAdminEmails.includes(m.user.email.toLowerCase().trim())
       return {
         id: m.userId,
@@ -256,10 +325,10 @@ export async function handleBootstrap() {
         assignedProjectIds: m.user.projectMemberships
           .filter((pm) => pm.tenantId === m.tenantId)
           .map((pm) => pm.projectId),
-        customPermissions: rbac.memberGrantsByMembershipId[m.id] ?? [],
+        customPermissions: scopedRbac.memberGrantsByMembershipId[m.id] ?? [],
       }
     }),
-    projects: dbProjects.map((p) => ({
+    projects: scopedProjects.map((p) => ({
       id: p.id,
       tenantId: p.tenantId,
       code: p.code,
@@ -277,7 +346,7 @@ export async function handleBootstrap() {
         addedAt: pm.addedAt.toISOString(),
       })),
     })),
-    sprints: dbSprints.map((s) => ({
+    sprints: scopedSprints.map((s) => ({
       id: s.id,
       tenantId: s.tenantId,
       projectId: s.projectId,
@@ -288,7 +357,7 @@ export async function handleBootstrap() {
       endDate: s.endDate ? s.endDate.toISOString().slice(0, 10) : null,
       createdAt: s.createdAt.toISOString(),
     })),
-    tasks: dbTasks.map((t) => ({
+    tasks: scopedTasks.map((t) => ({
       id: t.id,
       tenantId: t.tenantId,
       projectId: t.projectId,
@@ -322,7 +391,7 @@ export async function handleBootstrap() {
       createdAt: t.createdAt.toISOString(),
       updatedAt: t.updatedAt.toISOString(),
     })),
-    timesheetLines: dbTimesheetLines.map((l) => {
+    timesheetLines: scopedTimesheetLines.map((l) => {
       const task = taskById.get(l.taskId)
       return {
         id: l.id,
@@ -368,7 +437,7 @@ export async function handleBootstrap() {
         isLocked: l.isLocked,
       }
     }),
-    contracts: dbContracts.map((c) => ({
+    contracts: scopedContracts.map((c) => ({
       id: c.id,
       tenantId: c.tenantId,
       projectId: c.projectId,
@@ -388,7 +457,7 @@ export async function handleBootstrap() {
         label: rv.versionLabel,
       })),
     })),
-    invoices: dbInvoices.map((inv) => ({
+    invoices: scopedInvoices.map((inv) => ({
       id: inv.id,
       tenantId: inv.tenantId,
       invoiceNumber: inv.invoiceNumber,
@@ -418,7 +487,7 @@ export async function handleBootstrap() {
         amount: Number(ln.lineTotal),
       })),
     })),
-    notifications: dbNotifications.map((n) => ({
+    notifications: scopedNotifications.map((n) => ({
       id: n.id,
       tenantId: n.tenantId,
       recipientUserId: n.recipientUserId,
@@ -429,7 +498,7 @@ export async function handleBootstrap() {
       createdAt: n.createdAt.toISOString(),
     })),
     planEntitlements: dbEntitlements,
-    auditLogs: dbAudits.map((a) => ({
+    auditLogs: scopedAudits.map((a) => ({
       id: a.id,
       tenantId: a.tenantId,
       actorName: a.actorUser?.fullName ?? 'System',
@@ -439,10 +508,10 @@ export async function handleBootstrap() {
       reason: a.reason ?? '',
       timestamp: a.occurredAtUtc.toISOString(),
     })),
-    phase2,
-    phase3,
-    phase4,
-    rbac,
+    phase2: scopedPhase2,
+    phase3: scopedPhase3,
+    phase4: scopedPhase4,
+    rbac: scopedRbac,
   }
 }
 
@@ -460,6 +529,19 @@ export async function handleCreateTenant(body: {
       .replace(/[^a-z0-9-]+/g, '-')
       .replace(/^-|-$/g, '') || `workspace-${crypto.randomUUID().slice(0, 6)}`
   const normalizedOwnerEmail = body.ownerEmail.toLowerCase().trim()
+
+  // Reject duplicate workspace slugs cleanly instead of silently appending random suffixes
+  const preExistingSlug = await prisma.tenant.findUnique({
+    where: { slug: baseSlug },
+    select: { id: true },
+  })
+  if (preExistingSlug) {
+    return {
+      ok: false as const,
+      statusCode: 409,
+      error: `Workspace slug "${baseSlug}" already exists. Please choose a different workspace URL slug.`,
+    }
+  }
 
   // Ensure the owner exists in Supabase Auth before inserting into `public.user_profiles`
   // (which references `auth.users(id)`).
@@ -481,7 +563,12 @@ export async function handleCreateTenant(body: {
       where: { slug: baseSlug },
       select: { id: true },
     })
-    const slug = existingSlug ? `${baseSlug}-${crypto.randomUUID().slice(0, 4)}` : baseSlug
+    if (existingSlug) {
+      throw new Error(
+        `SLUG_CONFLICT:Workspace slug "${baseSlug}" already exists. Please choose a different workspace URL slug.`
+      )
+    }
+    const slug = baseSlug
 
     const existingUser =
       (authOwner?.userId
