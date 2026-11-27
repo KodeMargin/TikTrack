@@ -1,6 +1,6 @@
 [package]
 name = "tiktrack-desktop-agent"
-version = "0.2.1"
+version = "0.2.2"
 description = "TikTrack transparent desktop tray timer and privacy-preserving session agent"
 authors = ["TikTrack Engineering"]
 edition = "2021"

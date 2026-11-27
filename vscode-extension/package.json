@@ -2,7 +2,7 @@
   "name": "devproof-vscode-telemetry",
   "displayName": "TikTrack - Privacy-First Work Verification",
   "description": "Opt-in IDE workspace/branch task mapper, debug session lifecycle, and test runner summary collector for TikTrack (zero source code or keystroke exfiltration).",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "publisher": "KodeMargin",
   "icon": "icon.png",
@@ -58,7 +58,7 @@
         },
         "tiktrack.supabaseEdgeUrl": {
           "type": "string",
-          "default": "http://127.0.0.1:54321/functions/v1/tracking-events-batch",
+          "default": "https://tvmsmhipyjhxgqqngznb.supabase.co/functions/v1/tracking-events-batch",
           "description": "TikTrack Supabase Edge Function batch ingestion endpoint."
         }
       }
